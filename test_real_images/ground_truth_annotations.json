@@ -1,0 +1,1919 @@
+[
+  {
+    "filename": "20130317_020501_Android.jpg",
+    "original_width": 1416,
+    "original_height": 576,
+    "scale": 0.635593220338983,
+    "correct_detections": [],
+    "manual_boxes": [
+      {
+        "bbox": [
+          97,
+          111,
+          1335,
+          437
+        ]
+      }
+    ]
+  },
+  {
+    "filename": "20190929_112829.jpg",
+    "original_width": 1960,
+    "original_height": 4032,
+    "scale": 0.45918367346938777,
+    "correct_detections": [],
+    "manual_boxes": [
+      {
+        "bbox": [
+          245,
+          784,
+          1887,
+          2764
+        ]
+      }
+    ]
+  },
+  {
+    "filename": "20191124_100445.jpg",
+    "original_width": 4032,
+    "original_height": 1960,
+    "scale": 0.22321428571428573,
+    "correct_detections": [],
+    "manual_boxes": [
+      {
+        "bbox": [
+          1369,
+          652,
+          2951,
+          1844
+        ]
+      }
+    ]
+  },
+  {
+    "filename": "20200525_170722.jpg",
+    "original_width": 3024,
+    "original_height": 4032,
+    "scale": 0.2976190476190476,
+    "correct_detections": [],
+    "manual_boxes": [
+      {
+        "bbox": [
+          1094,
+          1200,
+          1991,
+          2182
+        ]
+      },
+      {
+        "bbox": [
+          1084,
+          148,
+          1558,
+          686
+        ]
+      }
+    ]
+  },
+  {
+    "filename": "20200529_185329.jpg",
+    "original_width": 4032,
+    "original_height": 3024,
+    "scale": 0.22321428571428573,
+    "correct_detections": [],
+    "manual_boxes": [
+      {
+        "bbox": [
+          1777,
+          969,
+          2391,
+          2299
+        ]
+      }
+    ]
+  },
+  {
+    "filename": "20200926_163413.jpg",
+    "original_width": 3024,
+    "original_height": 4032,
+    "scale": 0.2976190476190476,
+    "correct_detections": [],
+    "manual_boxes": [
+      {
+        "bbox": [
+          620,
+          620,
+          2193,
+          3240
+        ]
+      }
+    ]
+  },
+  {
+    "filename": "20201003_173051.jpg",
+    "original_width": 4032,
+    "original_height": 3024,
+    "scale": 0.22321428571428573,
+    "correct_detections": [
+      {
+        "model": "yolov8m",
+        "class_name": "person",
+        "confidence": 0.6597760915756226,
+        "bbox": [
+          2213,
+          484,
+          3096,
+          1250
+        ]
+      }
+    ],
+    "manual_boxes": [
+      {
+        "bbox": [
+          1082,
+          325,
+          3148,
+          2520
+        ]
+      }
+    ]
+  },
+  {
+    "filename": "20210529_150851.jpg",
+    "original_width": 4032,
+    "original_height": 3024,
+    "scale": 0.22321428571428573,
+    "correct_detections": [],
+    "manual_boxes": [
+      {
+        "bbox": [
+          549,
+          61,
+          2404,
+          1960
+        ]
+      }
+    ]
+  },
+  {
+    "filename": "20210815_163856.jpg",
+    "original_width": 4032,
+    "original_height": 3024,
+    "scale": 0.22321428571428573,
+    "correct_detections": [],
+    "manual_boxes": [
+      {
+        "bbox": [
+          1781,
+          1291,
+          2131,
+          1547
+        ]
+      }
+    ]
+  },
+  {
+    "filename": "20210910_191256.jpg",
+    "original_width": 4032,
+    "original_height": 3024,
+    "scale": 0.22321428571428573,
+    "correct_detections": [
+      {
+        "model": "yolov8m",
+        "class_name": "bird",
+        "confidence": 0.759209394454956,
+        "bbox": [
+          2379,
+          591,
+          3212,
+          2858
+        ]
+      },
+      {
+        "model": "yolov8m",
+        "class_name": "bird",
+        "confidence": 0.641065239906311,
+        "bbox": [
+          1075,
+          676,
+          2016,
+          2710
+        ]
+      }
+    ],
+    "manual_boxes": [
+      {
+        "bbox": [
+          1020,
+          507,
+          3264,
+          2895
+        ]
+      }
+    ]
+  },
+  {
+    "filename": "20220219_145944.jpg",
+    "original_width": 4032,
+    "original_height": 3024,
+    "scale": 0.22321428571428573,
+    "correct_detections": [],
+    "manual_boxes": [
+      {
+        "bbox": [
+          1239,
+          1578,
+          2435,
+          2331
+        ]
+      }
+    ]
+  },
+  {
+    "filename": "20220321_171136.jpg",
+    "original_width": 3024,
+    "original_height": 4032,
+    "scale": 0.2976190476190476,
+    "correct_detections": [],
+    "manual_boxes": [
+      {
+        "bbox": [
+          936,
+          1090,
+          2031,
+          3925
+        ]
+      },
+      {
+        "bbox": [
+          2058,
+          1761,
+          2388,
+          2571
+        ]
+      }
+    ]
+  },
+  {
+    "filename": "20220325_115329.jpg",
+    "original_width": 3024,
+    "original_height": 4032,
+    "scale": 0.2976190476190476,
+    "correct_detections": [],
+    "manual_boxes": [
+      {
+        "bbox": [
+          304,
+          407,
+          2831,
+          3475
+        ]
+      }
+    ]
+  },
+  {
+    "filename": "20220626_134318.jpg",
+    "original_width": 3024,
+    "original_height": 4032,
+    "scale": 0.2976190476190476,
+    "correct_detections": [],
+    "manual_boxes": [
+      {
+        "bbox": [
+          1010,
+          1210,
+          2273,
+          2920
+        ]
+      }
+    ]
+  },
+  {
+    "filename": "DSC_0154.JPG",
+    "original_width": 4000,
+    "original_height": 3000,
+    "scale": 0.225,
+    "correct_detections": [],
+    "manual_boxes": [
+      {
+        "bbox": [
+          425,
+          479,
+          3340,
+          2354
+        ]
+      }
+    ]
+  },
+  {
+    "filename": "DSC_0155.JPG",
+    "original_width": 3000,
+    "original_height": 4000,
+    "scale": 0.3,
+    "correct_detections": [],
+    "manual_boxes": [
+      {
+        "bbox": [
+          772,
+          1285,
+          2342,
+          2698
+        ]
+      }
+    ]
+  },
+  {
+    "filename": "DSC_0312.JPG",
+    "original_width": 4000,
+    "original_height": 3000,
+    "scale": 0.225,
+    "correct_detections": [
+      {
+        "model": "yolov8l",
+        "class_name": "elephant",
+        "confidence": 0.5394289493560791,
+        "bbox": [
+          1222,
+          1098,
+          2782,
+          2600
+        ]
+      },
+      {
+        "model": "yolov8m",
+        "class_name": "bench",
+        "confidence": 0.654151439666748,
+        "bbox": [
+          1209,
+          1049,
+          2778,
+          2573
+        ]
+      }
+    ],
+    "manual_boxes": [
+      {
+        "bbox": [
+          1163,
+          932,
+          2860,
+          2643
+        ]
+      }
+    ]
+  },
+  {
+    "filename": "DSC_0314.JPG",
+    "original_width": 2448,
+    "original_height": 3264,
+    "scale": 0.36764705882352944,
+    "correct_detections": [],
+    "manual_boxes": [
+      {
+        "bbox": [
+          736,
+          1233,
+          1767,
+          2180
+        ]
+      }
+    ]
+  },
+  {
+    "filename": "DSC_0402.JPG",
+    "original_width": 4000,
+    "original_height": 3000,
+    "scale": 0.225,
+    "correct_detections": [
+      {
+        "model": "yolov8x",
+        "class_name": "kite",
+        "confidence": 0.9171980619430542,
+        "bbox": [
+          529,
+          560,
+          3480,
+          2822
+        ]
+      }
+    ],
+    "manual_boxes": [
+      {
+        "bbox": [
+          87,
+          358,
+          3936,
+          2812
+        ]
+      }
+    ]
+  },
+  {
+    "filename": "DSC_0771.JPG",
+    "original_width": 4000,
+    "original_height": 3000,
+    "scale": 0.225,
+    "correct_detections": [
+      {
+        "model": "yolov8m",
+        "class_name": "person",
+        "confidence": 0.8559267520904541,
+        "bbox": [
+          2169,
+          600,
+          2813,
+          2587
+        ]
+      },
+      {
+        "model": "yolov8m",
+        "class_name": "person",
+        "confidence": 0.8292275667190552,
+        "bbox": [
+          1298,
+          316,
+          2102,
+          2507
+        ]
+      },
+      {
+        "model": "yolov8l",
+        "class_name": "person",
+        "confidence": 0.7451696991920471,
+        "bbox": [
+          1293,
+          320,
+          2107,
+          2511
+        ]
+      },
+      {
+        "model": "yolov8l",
+        "class_name": "person",
+        "confidence": 0.8299989700317383,
+        "bbox": [
+          2164,
+          600,
+          2818,
+          2578
+        ]
+      },
+      {
+        "model": "yolov8x",
+        "class_name": "person",
+        "confidence": 0.9236512184143066,
+        "bbox": [
+          1302,
+          329,
+          2107,
+          2507
+        ]
+      },
+      {
+        "model": "yolov8x",
+        "class_name": "person",
+        "confidence": 0.8981313705444336,
+        "bbox": [
+          2169,
+          604,
+          2818,
+          2587
+        ]
+      }
+    ],
+    "manual_boxes": [
+      {
+        "bbox": [
+          1274,
+          292,
+          2834,
+          2612
+        ]
+      }
+    ]
+  },
+  {
+    "filename": "DSC_0988.JPG",
+    "original_width": 4000,
+    "original_height": 3000,
+    "scale": 0.225,
+    "correct_detections": [
+      {
+        "model": "yolov8x",
+        "class_name": "person",
+        "confidence": 0.5108497738838196,
+        "bbox": [
+          2502,
+          1178,
+          3231,
+          2053
+        ]
+      }
+    ],
+    "manual_boxes": [
+      {
+        "bbox": [
+          2127,
+          1046,
+          3274,
+          2072
+        ]
+      }
+    ]
+  },
+  {
+    "filename": "DSC_1045.JPG",
+    "original_width": 4000,
+    "original_height": 3000,
+    "scale": 0.225,
+    "correct_detections": [
+      {
+        "model": "yolov8m",
+        "class_name": "person",
+        "confidence": 0.5217081904411316,
+        "bbox": [
+          596,
+          969,
+          1636,
+          2484
+        ]
+      },
+      {
+        "model": "yolov8m",
+        "class_name": "elephant",
+        "confidence": 0.451768159866333,
+        "bbox": [
+          2427,
+          1324,
+          3418,
+          2489
+        ]
+      },
+      {
+        "model": "yolov8l",
+        "class_name": "elephant",
+        "confidence": 0.920001208782196,
+        "bbox": [
+          2404,
+          1329,
+          3373,
+          2489
+        ]
+      },
+      {
+        "model": "yolov8l",
+        "class_name": "elephant",
+        "confidence": 0.6697929501533508,
+        "bbox": [
+          1747,
+          1124,
+          2484,
+          2182
+        ]
+      },
+      {
+        "model": "yolov8l",
+        "class_name": "elephant",
+        "confidence": 0.5755690932273865,
+        "bbox": [
+          591,
+          969,
+          1622,
+          2498
+        ]
+      },
+      {
+        "model": "yolov8l",
+        "class_name": "elephant",
+        "confidence": 0.29121771454811096,
+        "bbox": [
+          1742,
+          1124,
+          2680,
+          2484
+        ]
+      },
+      {
+        "model": "yolov8x",
+        "class_name": "elephant",
+        "confidence": 0.516899049282074,
+        "bbox": [
+          1751,
+          1129,
+          2484,
+          2178
+        ]
+      },
+      {
+        "model": "yolov8x",
+        "class_name": "elephant",
+        "confidence": 0.2509963810443878,
+        "bbox": [
+          591,
+          964,
+          1622,
+          2480
+        ]
+      },
+      {
+        "model": "yolov8l",
+        "class_name": "tv",
+        "confidence": 0.32131171226501465,
+        "bbox": [
+          520,
+          476,
+          3551,
+          2631
+        ]
+      }
+    ],
+    "manual_boxes": [
+      {
+        "bbox": [
+          509,
+          443,
+          3549,
+          2630
+        ]
+      },
+      {
+        "bbox": [
+          572,
+          903,
+          1678,
+          2530
+        ]
+      },
+      {
+        "bbox": [
+          1625,
+          1059,
+          2692,
+          2547
+        ]
+      },
+      {
+        "bbox": [
+          2425,
+          1267,
+          3429,
+          2503
+        ]
+      }
+    ]
+  },
+  {
+    "filename": "DSC_1209.JPG",
+    "original_width": 4000,
+    "original_height": 3000,
+    "scale": 0.225,
+    "correct_detections": [
+      {
+        "model": "yolov8m",
+        "class_name": "person",
+        "confidence": 0.9288194179534912,
+        "bbox": [
+          1973,
+          1040,
+          3249,
+          2342
+        ]
+      },
+      {
+        "model": "yolov8m",
+        "class_name": "person",
+        "confidence": 0.7608226537704468,
+        "bbox": [
+          1738,
+          1151,
+          2262,
+          2560
+        ]
+      },
+      {
+        "model": "yolov8l",
+        "class_name": "person",
+        "confidence": 0.9027703404426575,
+        "bbox": [
+          1956,
+          1040,
+          3258,
+          2342
+        ]
+      },
+      {
+        "model": "yolov8x",
+        "class_name": "person",
+        "confidence": 0.879401445388794,
+        "bbox": [
+          1969,
+          1040,
+          3253,
+          2338
+        ]
+      },
+      {
+        "model": "yolov8x",
+        "class_name": "person",
+        "confidence": 0.49566131830215454,
+        "bbox": [
+          1738,
+          1160,
+          2307,
+          2604
+        ]
+      }
+    ],
+    "manual_boxes": [
+      {
+        "bbox": [
+          1714,
+          955,
+          3416,
+          2889
+        ]
+      }
+    ]
+  },
+  {
+    "filename": "DSC_1488.JPG",
+    "original_width": 4000,
+    "original_height": 3000,
+    "scale": 0.225,
+    "correct_detections": [
+      {
+        "model": "yolov8x",
+        "class_name": "person",
+        "confidence": 0.7229035496711731,
+        "bbox": [
+          916,
+          404,
+          3520,
+          2604
+        ]
+      },
+      {
+        "model": "yolov8l",
+        "class_name": "person",
+        "confidence": 0.25182387232780457,
+        "bbox": [
+          1022,
+          422,
+          3516,
+          2596
+        ]
+      }
+    ],
+    "manual_boxes": [
+      {
+        "bbox": [
+          1287,
+          398,
+          3509,
+          2567
+        ]
+      }
+    ]
+  },
+  {
+    "filename": "DSC_1734.JPG",
+    "original_width": 4000,
+    "original_height": 3000,
+    "scale": 0.225,
+    "correct_detections": [
+      {
+        "model": "yolov8m",
+        "class_name": "person",
+        "confidence": 0.3413713872432709,
+        "bbox": [
+          1044,
+          178,
+          3191,
+          2747
+        ]
+      }
+    ],
+    "manual_boxes": [
+      {
+        "bbox": [
+          1020,
+          134,
+          3207,
+          2974
+        ]
+      }
+    ]
+  },
+  {
+    "filename": "DSC_2149.JPG",
+    "original_width": 3000,
+    "original_height": 4000,
+    "scale": 0.3,
+    "correct_detections": [
+      {
+        "model": "yolov8m",
+        "class_name": "horse",
+        "confidence": 0.5425238609313965,
+        "bbox": [
+          1157,
+          240,
+          2480,
+          3823
+        ]
+      }
+    ],
+    "manual_boxes": [
+      {
+        "bbox": [
+          1132,
+          216,
+          2502,
+          3969
+        ]
+      }
+    ]
+  },
+  {
+    "filename": "DSC_2523.JPG",
+    "original_width": 4000,
+    "original_height": 3000,
+    "scale": 0.225,
+    "correct_detections": [],
+    "manual_boxes": [
+      {
+        "bbox": [
+          665,
+          123,
+          3398,
+          2852
+        ]
+      }
+    ]
+  },
+  {
+    "filename": "DSC_2744.JPG",
+    "original_width": 4000,
+    "original_height": 3000,
+    "scale": 0.225,
+    "correct_detections": [
+      {
+        "model": "yolov8m",
+        "class_name": "bird",
+        "confidence": 0.8742939233779907,
+        "bbox": [
+          1200,
+          169,
+          3400,
+          2080
+        ]
+      },
+      {
+        "model": "yolov8x",
+        "class_name": "bird",
+        "confidence": 0.924186110496521,
+        "bbox": [
+          1200,
+          169,
+          3404,
+          2084
+        ]
+      }
+    ],
+    "manual_boxes": [
+      {
+        "bbox": [
+          1096,
+          75,
+          3389,
+          2311
+        ]
+      }
+    ]
+  },
+  {
+    "filename": "DSC_2764.JPG",
+    "original_width": 3000,
+    "original_height": 4000,
+    "scale": 0.3,
+    "correct_detections": [
+      {
+        "model": "yolov8l",
+        "class_name": "suitcase",
+        "confidence": 0.8385102152824402,
+        "bbox": [
+          40,
+          340,
+          2777,
+          3550
+        ]
+      }
+    ],
+    "manual_boxes": [
+      {
+        "bbox": [
+          405,
+          749,
+          2435,
+          3139
+        ]
+      }
+    ]
+  },
+  {
+    "filename": "DSC_2816.JPG",
+    "original_width": 4000,
+    "original_height": 3000,
+    "scale": 0.225,
+    "correct_detections": [],
+    "manual_boxes": [
+      {
+        "bbox": [
+          527,
+          1128,
+          3776,
+          2554
+        ]
+      },
+      {
+        "bbox": [
+          527,
+          1365,
+          1123,
+          2365
+        ]
+      },
+      {
+        "bbox": [
+          3047,
+          1138,
+          3754,
+          2014
+        ]
+      }
+    ]
+  },
+  {
+    "filename": "DSC_2846.JPG",
+    "original_width": 4000,
+    "original_height": 3000,
+    "scale": 0.225,
+    "correct_detections": [],
+    "manual_boxes": [
+      {
+        "bbox": [
+          1616,
+          993,
+          2247,
+          1678
+        ]
+      }
+    ]
+  },
+  {
+    "filename": "DSC_2902.JPG",
+    "original_width": 4000,
+    "original_height": 3000,
+    "scale": 0.225,
+    "correct_detections": [
+      {
+        "model": "yolov8m",
+        "class_name": "skis",
+        "confidence": 0.7732803821563721,
+        "bbox": [
+          1693,
+          1213,
+          2409,
+          2747
+        ]
+      }
+    ],
+    "manual_boxes": [
+      {
+        "bbox": [
+          1683,
+          1081,
+          2496,
+          2783
+        ]
+      }
+    ]
+  },
+  {
+    "filename": "DSC_3089.JPG",
+    "original_width": 4000,
+    "original_height": 3000,
+    "scale": 0.225,
+    "correct_detections": [],
+    "manual_boxes": [
+      {
+        "bbox": [
+          385,
+          745,
+          1683,
+          2740
+        ]
+      },
+      {
+        "bbox": [
+          1674,
+          673,
+          2647,
+          2047
+        ]
+      },
+      {
+        "bbox": [
+          2576,
+          833,
+          3616,
+          2002
+        ]
+      },
+      {
+        "bbox": [
+          1683,
+          2056,
+          2629,
+          2665
+        ]
+      }
+    ]
+  },
+  {
+    "filename": "DSC_3148.JPG",
+    "original_width": 4000,
+    "original_height": 3000,
+    "scale": 0.225,
+    "correct_detections": [],
+    "manual_boxes": [
+      {
+        "bbox": [
+          305,
+          328,
+          3865,
+          2635
+        ]
+      }
+    ]
+  },
+  {
+    "filename": "DSC_3152.JPG",
+    "original_width": 4000,
+    "original_height": 3000,
+    "scale": 0.225,
+    "correct_detections": [
+      {
+        "model": "yolov8x",
+        "class_name": "tv",
+        "confidence": 0.5781565308570862,
+        "bbox": [
+          627,
+          249,
+          3124,
+          2622
+        ]
+      }
+    ],
+    "manual_boxes": [
+      {
+        "bbox": [
+          1065,
+          683,
+          2723,
+          2221
+        ]
+      }
+    ]
+  },
+  {
+    "filename": "DSC_3157.JPG",
+    "original_width": 3000,
+    "original_height": 4000,
+    "scale": 0.3,
+    "correct_detections": [],
+    "manual_boxes": [
+      {
+        "bbox": [
+          252,
+          766,
+          2825,
+          3303
+        ]
+      }
+    ]
+  },
+  {
+    "filename": "DSC_3201.JPG",
+    "original_width": 4000,
+    "original_height": 3000,
+    "scale": 0.225,
+    "correct_detections": [],
+    "manual_boxes": [
+      {
+        "bbox": [
+          172,
+          251,
+          3772,
+          2505
+        ]
+      }
+    ]
+  },
+  {
+    "filename": "DSC_3338.JPG",
+    "original_width": 3000,
+    "original_height": 4000,
+    "scale": 0.3,
+    "correct_detections": [
+      {
+        "model": "yolov8m",
+        "class_name": "handbag",
+        "confidence": 0.3384338319301605,
+        "bbox": [
+          730,
+          1413,
+          2190,
+          3187
+        ]
+      }
+    ],
+    "manual_boxes": [
+      {
+        "bbox": [
+          729,
+          1390,
+          2312,
+          3147
+        ]
+      },
+      {
+        "bbox": [
+          1012,
+          10,
+          2992,
+          1413
+        ]
+      }
+    ]
+  },
+  {
+    "filename": "DSC_3367.JPG",
+    "original_width": 3000,
+    "original_height": 4000,
+    "scale": 0.3,
+    "correct_detections": [],
+    "manual_boxes": [
+      {
+        "bbox": [
+          885,
+          1335,
+          1782,
+          3581
+        ]
+      },
+      {
+        "bbox": [
+          1835,
+          1888,
+          2092,
+          2465
+        ]
+      }
+    ]
+  },
+  {
+    "filename": "DSC_3412.JPG",
+    "original_width": 3000,
+    "original_height": 4000,
+    "scale": 0.3,
+    "correct_detections": [],
+    "manual_boxes": [
+      {
+        "bbox": [
+          1115,
+          1885,
+          2152,
+          2858
+        ]
+      }
+    ]
+  },
+  {
+    "filename": "DSC_3667.JPG",
+    "original_width": 4000,
+    "original_height": 3000,
+    "scale": 0.225,
+    "correct_detections": [
+      {
+        "model": "yolov8m",
+        "class_name": "vase",
+        "confidence": 0.48438793420791626,
+        "bbox": [
+          1396,
+          978,
+          1893,
+          1920
+        ]
+      },
+      {
+        "model": "yolov8m",
+        "class_name": "vase",
+        "confidence": 0.39911776781082153,
+        "bbox": [
+          653,
+          756,
+          1329,
+          1867
+        ]
+      },
+      {
+        "model": "yolov8m",
+        "class_name": "horse",
+        "confidence": 0.35611310601234436,
+        "bbox": [
+          2040,
+          511,
+          3147,
+          1640
+        ]
+      },
+      {
+        "model": "yolov8l",
+        "class_name": "vase",
+        "confidence": 0.9163495302200317,
+        "bbox": [
+          1991,
+          467,
+          3209,
+          2000
+        ]
+      },
+      {
+        "model": "yolov8l",
+        "class_name": "vase",
+        "confidence": 0.3787207007408142,
+        "bbox": [
+          644,
+          760,
+          1338,
+          1867
+        ]
+      },
+      {
+        "model": "yolov8x",
+        "class_name": "vase",
+        "confidence": 0.2702917754650116,
+        "bbox": [
+          2004,
+          458,
+          3173,
+          2000
+        ]
+      }
+    ],
+    "manual_boxes": [
+      {
+        "bbox": [
+          616,
+          696,
+          1372,
+          1892
+        ]
+      },
+      {
+        "bbox": [
+          1976,
+          399,
+          3252,
+          2034
+        ]
+      },
+      {
+        "bbox": [
+          1407,
+          905,
+          1927,
+          1928
+        ]
+      }
+    ]
+  },
+  {
+    "filename": "DSC_3672.JPG",
+    "original_width": 4000,
+    "original_height": 3000,
+    "scale": 0.225,
+    "correct_detections": [],
+    "manual_boxes": [
+      {
+        "bbox": [
+          1043,
+          341,
+          2127,
+          2527
+        ]
+      },
+      {
+        "bbox": [
+          1492,
+          1278,
+          3443,
+          2852
+        ]
+      }
+    ]
+  },
+  {
+    "filename": "DSC_3892.JPG",
+    "original_width": 4000,
+    "original_height": 3000,
+    "scale": 0.225,
+    "correct_detections": [
+      {
+        "model": "yolov8x",
+        "class_name": "bird",
+        "confidence": 0.8612455129623413,
+        "bbox": [
+          1658,
+          493,
+          2724,
+          2280
+        ]
+      }
+    ],
+    "manual_boxes": [
+      {
+        "bbox": [
+          1629,
+          411,
+          2732,
+          2376
+        ]
+      },
+      {
+        "bbox": [
+          2656,
+          549,
+          3305,
+          1873
+        ]
+      }
+    ]
+  },
+  {
+    "filename": "DSC_3894.JPG",
+    "original_width": 4000,
+    "original_height": 3000,
+    "scale": 0.225,
+    "correct_detections": [],
+    "manual_boxes": [
+      {
+        "bbox": [
+          420,
+          670,
+          3563,
+          2510
+        ]
+      }
+    ]
+  },
+  {
+    "filename": "DSC_3935.JPG",
+    "original_width": 4000,
+    "original_height": 3000,
+    "scale": 0.225,
+    "correct_detections": [
+      {
+        "model": "yolov8m",
+        "class_name": "bench",
+        "confidence": 0.778096079826355,
+        "bbox": [
+          462,
+          1040,
+          3262,
+          2298
+        ]
+      },
+      {
+        "model": "yolov8l",
+        "class_name": "bench",
+        "confidence": 0.6328719854354858,
+        "bbox": [
+          453,
+          1031,
+          3236,
+          2280
+        ]
+      }
+    ],
+    "manual_boxes": [
+      {
+        "bbox": [
+          554,
+          914,
+          3572,
+          2265
+        ]
+      }
+    ]
+  },
+  {
+    "filename": "DSC_3937.JPG",
+    "original_width": 3000,
+    "original_height": 4000,
+    "scale": 0.3,
+    "correct_detections": [],
+    "manual_boxes": [
+      {
+        "bbox": [
+          1102,
+          89,
+          1995,
+          3572
+        ]
+      }
+    ]
+  },
+  {
+    "filename": "DSC_3950.JPG",
+    "original_width": 4000,
+    "original_height": 3000,
+    "scale": 0.225,
+    "correct_detections": [],
+    "manual_boxes": [
+      {
+        "bbox": [
+          723,
+          803,
+          3372,
+          2497
+        ]
+      }
+    ]
+  },
+  {
+    "filename": "DSC_4063.JPG",
+    "original_width": 4000,
+    "original_height": 3000,
+    "scale": 0.225,
+    "correct_detections": [],
+    "manual_boxes": []
+  },
+  {
+    "filename": "DSC_4107.JPG",
+    "original_width": 4000,
+    "original_height": 3000,
+    "scale": 0.225,
+    "correct_detections": [
+      {
+        "model": "yolov8x",
+        "class_name": "horse",
+        "confidence": 0.3266250491142273,
+        "bbox": [
+          947,
+          933,
+          1916,
+          1964
+        ]
+      }
+    ],
+    "manual_boxes": [
+      {
+        "bbox": [
+          914,
+          877,
+          2292,
+          2010
+        ]
+      }
+    ]
+  },
+  {
+    "filename": "DSC_4135.JPG",
+    "original_width": 4000,
+    "original_height": 3000,
+    "scale": 0.225,
+    "correct_detections": [],
+    "manual_boxes": [
+      {
+        "bbox": [
+          1060,
+          737,
+          3385,
+          2573
+        ]
+      }
+    ]
+  },
+  {
+    "filename": "DSC_4166.JPG",
+    "original_width": 3000,
+    "original_height": 4000,
+    "scale": 0.3,
+    "correct_detections": [
+      {
+        "model": "yolov8m",
+        "class_name": "bird",
+        "confidence": 0.7257691621780396,
+        "bbox": [
+          1493,
+          1880,
+          1653,
+          2057
+        ]
+      },
+      {
+        "model": "yolov8l",
+        "class_name": "bird",
+        "confidence": 0.8334581851959229,
+        "bbox": [
+          1487,
+          1880,
+          1650,
+          2063
+        ]
+      },
+      {
+        "model": "yolov8x",
+        "class_name": "bird",
+        "confidence": 0.637588620185852,
+        "bbox": [
+          1490,
+          1880,
+          1653,
+          2060
+        ]
+      }
+    ],
+    "manual_boxes": [
+      {
+        "bbox": [
+          1475,
+          1827,
+          1695,
+          2097
+        ]
+      }
+    ]
+  },
+  {
+    "filename": "DSC_4198.JPG",
+    "original_width": 3000,
+    "original_height": 4000,
+    "scale": 0.3,
+    "correct_detections": [],
+    "manual_boxes": [
+      {
+        "bbox": [
+          1199,
+          1504,
+          2002,
+          2271
+        ]
+      }
+    ]
+  },
+  {
+    "filename": "DSC_4201.JPG",
+    "original_width": 3264,
+    "original_height": 2448,
+    "scale": 0.2757352941176471,
+    "correct_detections": [],
+    "manual_boxes": [
+      {
+        "bbox": [
+          619,
+          978,
+          2762,
+          1613
+        ]
+      }
+    ]
+  },
+  {
+    "filename": "DSC_4306.JPG",
+    "original_width": 3264,
+    "original_height": 2448,
+    "scale": 0.2757352941176471,
+    "correct_detections": [],
+    "manual_boxes": [
+      {
+        "bbox": [
+          1609,
+          1020,
+          2066,
+          1699
+        ]
+      }
+    ]
+  },
+  {
+    "filename": "DSC_4328.JPG",
+    "original_width": 3000,
+    "original_height": 4000,
+    "scale": 0.3,
+    "correct_detections": [],
+    "manual_boxes": [
+      {
+        "bbox": [
+          792,
+          654,
+          2162,
+          3324
+        ]
+      }
+    ]
+  },
+  {
+    "filename": "DSC_4332.JPG",
+    "original_width": 4000,
+    "original_height": 3000,
+    "scale": 0.225,
+    "correct_detections": [
+      {
+        "model": "yolov8m",
+        "class_name": "kite",
+        "confidence": 0.5377062559127808,
+        "bbox": [
+          1067,
+          542,
+          3040,
+          2338
+        ]
+      }
+    ],
+    "manual_boxes": [
+      {
+        "bbox": [
+          1043,
+          510,
+          3052,
+          2372
+        ]
+      }
+    ]
+  },
+  {
+    "filename": "DSC_4382.JPG",
+    "original_width": 4000,
+    "original_height": 3000,
+    "scale": 0.225,
+    "correct_detections": [],
+    "manual_boxes": [
+      {
+        "bbox": [
+          1883,
+          1267,
+          2452,
+          2018
+        ]
+      }
+    ]
+  },
+  {
+    "filename": "DSC_4396.JPG",
+    "original_width": 4000,
+    "original_height": 3000,
+    "scale": 0.225,
+    "correct_detections": [
+      {
+        "model": "yolov8m",
+        "class_name": "traffic light",
+        "confidence": 0.96175217628479,
+        "bbox": [
+          1640,
+          933,
+          2124,
+          2107
+        ]
+      },
+      {
+        "model": "yolov8m",
+        "class_name": "person",
+        "confidence": 0.3730618953704834,
+        "bbox": [
+          858,
+          1040,
+          1307,
+          2347
+        ]
+      },
+      {
+        "model": "yolov8l",
+        "class_name": "traffic light",
+        "confidence": 0.9217103719711304,
+        "bbox": [
+          1640,
+          933,
+          2129,
+          2111
+        ]
+      },
+      {
+        "model": "yolov8x",
+        "class_name": "traffic light",
+        "confidence": 0.959317147731781,
+        "bbox": [
+          1644,
+          938,
+          2129,
+          2107
+        ]
+      }
+    ],
+    "manual_boxes": [
+      {
+        "bbox": [
+          776,
+          819,
+          3407,
+          2459
+        ]
+      }
+    ]
+  },
+  {
+    "filename": "DSC_4399.JPG",
+    "original_width": 4000,
+    "original_height": 3000,
+    "scale": 0.225,
+    "correct_detections": [],
+    "manual_boxes": [
+      {
+        "bbox": [
+          856,
+          1291,
+          2852,
+          1887
+        ]
+      }
+    ]
+  },
+  {
+    "filename": "DSC_4411.JPG",
+    "original_width": 4000,
+    "original_height": 3000,
+    "scale": 0.225,
+    "correct_detections": [
+      {
+        "model": "yolov8m",
+        "class_name": "kite",
+        "confidence": 0.9815266728401184,
+        "bbox": [
+          1009,
+          1164,
+          2769,
+          2538
+        ]
+      },
+      {
+        "model": "yolov8l",
+        "class_name": "kite",
+        "confidence": 0.5597667098045349,
+        "bbox": [
+          1013,
+          1169,
+          2769,
+          2542
+        ]
+      }
+    ],
+    "manual_boxes": [
+      {
+        "bbox": [
+          985,
+          1126,
+          2803,
+          2566
+        ]
+      }
+    ]
+  },
+  {
+    "filename": "IMG-20230110-WA0001.jpg",
+    "original_width": 1024,
+    "original_height": 768,
+    "scale": 0.87890625,
+    "correct_detections": [],
+    "manual_boxes": [
+      {
+        "bbox": [
+          41,
+          79,
+          989,
+          676
+        ]
+      },
+      {
+        "bbox": [
+          324,
+          102,
+          925,
+          669
+        ]
+      }
+    ]
+  },
+  {
+    "filename": "WP_20131116_017.jpg",
+    "original_width": 2000,
+    "original_height": 3552,
+    "scale": 0.45,
+    "correct_detections": [],
+    "manual_boxes": [
+      {
+        "bbox": [
+          717,
+          1953,
+          1592,
+          2842
+        ]
+      },
+      {
+        "bbox": [
+          61,
+          557,
+          926,
+          1895
+        ]
+      },
+      {
+        "bbox": [
+          1379,
+          1233,
+          1872,
+          1866
+        ]
+      }
+    ]
+  },
+  {
+    "filename": "WP_20140222_15_38_04_Pro.jpg",
+    "original_width": 2000,
+    "original_height": 3552,
+    "scale": 0.45,
+    "correct_detections": [
+      {
+        "model": "yolov8m",
+        "class_name": "person",
+        "confidence": 0.5415564775466919,
+        "bbox": [
+          520,
+          589,
+          1938,
+          3084
+        ]
+      }
+    ],
+    "manual_boxes": [
+      {
+        "bbox": [
+          437,
+          526,
+          1968,
+          2614
+        ]
+      }
+    ]
+  },
+  {
+    "filename": "WP_20140222_17_39_20_Pro.jpg",
+    "original_width": 3552,
+    "original_height": 2000,
+    "scale": 0.2533783783783784,
+    "correct_detections": [
+      {
+        "model": "yolov8m",
+        "class_name": "elephant",
+        "confidence": 0.43556034564971924,
+        "bbox": [
+          762,
+          454,
+          2273,
+          1401
+        ]
+      },
+      {
+        "model": "yolov8l",
+        "class_name": "elephant",
+        "confidence": 0.41578033566474915,
+        "bbox": [
+          781,
+          458,
+          2052,
+          1354
+        ]
+      }
+    ],
+    "manual_boxes": [
+      {
+        "bbox": [
+          440,
+          376,
+          2856,
+          1437
+        ]
+      }
+    ]
+  }
+]
