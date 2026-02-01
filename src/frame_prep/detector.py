@@ -311,9 +311,9 @@ class ArtFeatureDetector:
         Get the most likely primary subject from detections.
 
         Uses a scoring system that combines:
-        - Class priority (art > other objects > people)
-        - Center-weighting (objects in center are preferred)
-        - Confidence and size
+        - Class priority (art > other objects > people > avoid)
+        - Strong center-weighting (objects in center are strongly preferred)
+        - Size bonus (larger objects preferred, especially when centered)
 
         Art museums/galleries usually have people viewing the art, not as the subject.
         The art is typically centered in photos, while people are on the sides.
@@ -321,7 +321,24 @@ class ArtFeatureDetector:
         if not detections:
             return None
 
-        # Classes that are likely to BE art or contain art
+        # High-priority art classes from open-vocabulary models (YOLO-World, Grounding DINO)
+        # These are the actual labels these models return for art
+        high_priority_art_classes = {
+            # Direct art terms
+            'artwork', 'painting', 'mural', 'mosaic', 'fresco',
+            'sculpture', 'statue', 'figurine', 'bust',
+            'art installation', 'art piece', 'artistic object',
+            'wall art', 'street art', 'graffiti',
+            'exhibit', 'display', 'gallery piece',
+            'decorative art', 'decorative piece',
+            'relief', 'carving', 'engraving',
+            # Compound labels from models
+            'sculpture statue', 'art installation exhibit',
+            'framed artwork', 'wall-mounted art',
+            'museum exhibit', 'gallery display',
+        }
+
+        # Classes that are likely to BE art or contain art (COCO classes)
         art_related_classes = {
             'vase', 'potted plant', 'clock', 'tv', 'laptop',  # Often decorative/art
             'kite',  # Often colorful art/patterns
@@ -333,18 +350,53 @@ class ArtFeatureDetector:
             'bottle', 'cup', 'bowl',  # Glass/ceramic art
         }
 
-        # Classes that are structural/background (avoid these)
-        structural_classes = {
+        # Classes to strongly avoid (not art, distractions)
+        avoid_classes = {
+            # Trash/utility
+            'trash', 'trash can', 'trash bin', 'garbage', 'garbage can',
+            'recycling', 'recycling bin', 'dumpster', 'waste bin',
+            # Structural/background
             'traffic light', 'stop sign', 'parking meter',
+            'window', 'door', 'wall', 'floor', 'ceiling',
+            # Small incidental elements
+            'signature', 'text', 'sign', 'label', 'plaque',
+            'light', 'lamp', 'outlet', 'switch',
         }
 
         # Get image center if available
         img_center_x = None
         img_center_y = None
+        img_area = 1
         if self._last_image_size:
             img_width, img_height = self._last_image_size
             img_center_x = img_width / 2
             img_center_y = img_height / 2
+            img_area = img_width * img_height
+
+        def get_class_multiplier(class_name: str) -> float:
+            """Get priority multiplier based on class name."""
+            class_lower = class_name.lower()
+
+            # Check high-priority art classes (exact or substring match)
+            for art_class in high_priority_art_classes:
+                if art_class in class_lower or class_lower in art_class:
+                    return 4.0  # Highest priority for explicit art
+
+            # Check avoid classes
+            for avoid_class in avoid_classes:
+                if avoid_class in class_lower or class_lower in avoid_class:
+                    return 0.05  # Strongly deprioritize
+
+            # Check COCO art-related classes
+            if class_lower in art_related_classes:
+                return 2.5
+
+            # Deprioritize people
+            if class_lower == 'person':
+                return 0.4
+
+            # Default for unknown classes (could be art from open-vocab models)
+            return 1.5
 
         def calculate_score(det: Detection) -> float:
             """
@@ -356,18 +408,10 @@ class ArtFeatureDetector:
             score = det.confidence
 
             # Class priority multiplier
-            if det.class_name in art_related_classes:
-                class_multiplier = 2.5  # Strongly prefer art objects
-            elif det.class_name in structural_classes:
-                class_multiplier = 0.1  # Strongly avoid structural elements
-            elif det.class_name == 'person':
-                class_multiplier = 0.5  # Deprioritize people
-            else:
-                class_multiplier = 1.5  # Other objects (could be art)
-
+            class_multiplier = get_class_multiplier(det.class_name)
             score *= class_multiplier
 
-            # Center-weighting: objects near center are preferred
+            # Strong center-weighting: objects near center are strongly preferred
             if img_center_x and img_center_y:
                 det_center_x, det_center_y = det.center
 
@@ -377,19 +421,32 @@ class ArtFeatureDetector:
                                (det_center_y - img_center_y) ** 2) ** 0.5)
                 normalized_dist = actual_dist / max_dist if max_dist > 0 else 0
 
-                # Center bonus: 2.0x at center, 1.0x at edges
-                center_bonus = 2.0 - normalized_dist
+                # Center bonus: 3.5x at center, 1.0x at corners (increased from 2.0x)
+                # Using quadratic falloff for stronger center preference
+                center_bonus = 1.0 + 2.5 * (1.0 - normalized_dist ** 2)
                 score *= center_bonus
 
             # Size bonus (larger objects are more likely to be the subject)
-            # Normalize area to image size if available
-            if self._last_image_size:
-                img_width, img_height = self._last_image_size
-                img_area = img_width * img_height
-                size_ratio = det.area / img_area if img_area > 0 else 0
-                # Bonus for objects 5-50% of image (too small = accessory, too large = background)
-                if 0.05 < size_ratio < 0.5:
-                    score *= (1.0 + size_ratio)
+            size_ratio = det.area / img_area if img_area > 0 else 0
+
+            # Progressive size bonus:
+            # - Very small (<2%): slight penalty
+            # - Small (2-10%): neutral to slight bonus
+            # - Medium (10-40%): good bonus
+            # - Large (40-60%): best bonus
+            # - Too large (>60%): reduced bonus (likely background)
+            if size_ratio < 0.02:
+                size_bonus = 0.7  # Penalty for tiny objects
+            elif size_ratio < 0.10:
+                size_bonus = 1.0 + size_ratio * 2  # 1.0 to 1.2
+            elif size_ratio < 0.40:
+                size_bonus = 1.2 + size_ratio  # 1.3 to 1.6
+            elif size_ratio < 0.60:
+                size_bonus = 1.6  # Peak bonus for large central subjects
+            else:
+                size_bonus = 1.2  # Reduced for very large (might be background)
+
+            score *= size_bonus
 
             return score
 
