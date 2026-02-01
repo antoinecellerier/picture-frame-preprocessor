@@ -22,10 +22,20 @@ def test_needs_cropping_landscape():
 
 
 def test_needs_cropping_portrait():
-    """Test detection of portrait images not needing crop."""
+    """Test detection of portrait images not needing crop when aspect matches."""
     cropper = SmartCropper(480, 800)
-    portrait_img = Image.new('RGB', (1080, 1920))
+    # Use exact target aspect ratio (800/480 = 1.667)
+    # 600 * 1.667 = 1000
+    portrait_img = Image.new('RGB', (600, 1000))
     assert cropper.needs_cropping(portrait_img) is False
+
+
+def test_needs_cropping_portrait_different_aspect():
+    """Test detection of portrait images needing crop when aspect differs."""
+    cropper = SmartCropper(480, 800)
+    # 1080x1920 has aspect 1.778, target is 1.667 - needs cropping
+    portrait_img = Image.new('RGB', (1080, 1920))
+    assert cropper.needs_cropping(portrait_img) is True
 
 
 def test_crop_center():
@@ -112,3 +122,62 @@ def test_calculate_crop_window_edge_right():
 
     assert left >= 0
     assert right <= 1920
+
+
+def test_contextual_zoom_large_subject():
+    """Test that large subjects get minimal zoom."""
+    cropper = SmartCropper(480, 800, zoom_factor=2.0)
+
+    # Subject fills 70% of frame - no zoom needed
+    zoom = cropper._calculate_contextual_zoom(
+        subject_bbox=(100, 50, 540, 810),  # 440x760
+        crop_width=600,
+        crop_height=1000
+    )
+    assert zoom == 1.0
+
+
+def test_contextual_zoom_tall_subject():
+    """Test that tall thin subjects (filling height) get minimal zoom."""
+    cropper = SmartCropper(480, 800, zoom_factor=2.0)
+
+    # Subject is tall but narrow - fills 80% of height
+    # Should NOT zoom much despite small area
+    zoom = cropper._calculate_contextual_zoom(
+        subject_bbox=(250, 100, 350, 900),  # 100x800 (tall thin)
+        crop_width=600,
+        crop_height=1000
+    )
+    # height_ratio = 800/1000 = 0.8 >= 0.65, so no zoom
+    assert zoom == 1.0
+
+
+def test_contextual_zoom_small_subject():
+    """Test that small subjects get moderate zoom."""
+    cropper = SmartCropper(480, 800, zoom_factor=2.0)
+
+    # Subject fills 30% of frame - needs zoom
+    zoom = cropper._calculate_contextual_zoom(
+        subject_bbox=(200, 350, 400, 650),  # 200x300
+        crop_width=600,
+        crop_height=1000
+    )
+    # max_ratio = 300/1000 = 0.3, target 0.7
+    # zoom_needed = 0.7/0.3 = 2.33, capped at zoom_factor 2.0
+    assert zoom > 1.0
+    assert zoom <= 2.0
+
+
+def test_contextual_zoom_tiny_subject():
+    """Test that tiny subjects get aggressive zoom (up to max)."""
+    cropper = SmartCropper(480, 800, zoom_factor=1.5)
+
+    # Subject is tiny - only 10% of frame
+    zoom = cropper._calculate_contextual_zoom(
+        subject_bbox=(270, 450, 330, 550),  # 60x100
+        crop_width=600,
+        crop_height=1000
+    )
+    # max_ratio = 100/1000 = 0.1, target 0.7
+    # zoom_needed = 0.7/0.1 = 7.0, capped at zoom_factor 1.5
+    assert zoom == 1.5  # Capped at max zoom factor

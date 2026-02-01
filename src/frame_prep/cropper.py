@@ -102,13 +102,16 @@ class SmartCropper:
         # Crop to window
         cropped = image.crop(crop_window)
 
-        # Calculate contextual zoom based on subject size
-        crop_area = (crop_window[2] - crop_window[0]) * (crop_window[3] - crop_window[1])
-        subject_area = primary.area
-        subject_ratio = subject_area / crop_area if crop_area > 0 else 0
+        # Calculate contextual zoom based on subject size relative to crop window
+        crop_width = crop_window[2] - crop_window[0]
+        crop_height = crop_window[3] - crop_window[1]
+        subject_bbox = primary.bbox
 
-        # Only zoom if subject is small relative to crop area
-        contextual_zoom = self._calculate_contextual_zoom(subject_ratio)
+        contextual_zoom = self._calculate_contextual_zoom(
+            subject_bbox=subject_bbox,
+            crop_width=crop_width,
+            crop_height=crop_height
+        )
 
         # Store zoom for reporting
         self.last_zoom_applied = contextual_zoom
@@ -250,38 +253,56 @@ class SmartCropper:
 
         return (int(left), int(top), int(right), int(bottom))
 
-    def _calculate_contextual_zoom(self, subject_ratio: float) -> float:
+    def _calculate_contextual_zoom(
+        self,
+        subject_bbox: Tuple[int, int, int, int],
+        crop_width: int,
+        crop_height: int
+    ) -> float:
         """
-        Calculate zoom factor based on subject size relative to crop area.
+        Calculate zoom factor based on subject dimensions relative to crop window.
 
-        Target: Make subject fill ~60-70% of frame
-        - If subject is tiny (< 20%), zoom aggressively (up to max zoom)
-        - If subject is small (20-40%), zoom moderately
-        - If subject is medium (40-60%), zoom slightly
-        - If subject is large (> 60%), don't zoom
+        Uses the subject's width and height ratios to determine zoom:
+        - If subject fills most of the frame in either dimension, minimize zoom
+        - If subject is small in both dimensions, zoom in to fill ~70% of frame
+        - Uses the LARGER dimension ratio to avoid over-zooming tall/wide subjects
 
         Args:
-            subject_ratio: Subject area / crop area (0.0 to 1.0)
+            subject_bbox: (x1, y1, x2, y2) bounding box of the subject
+            crop_width: Width of the crop window
+            crop_height: Height of the crop window
 
         Returns:
             Contextual zoom factor (1.0 = no zoom)
         """
-        # Target subject to fill 60-70% of frame
-        target_ratio = 0.65
+        x1, y1, x2, y2 = subject_bbox
+        subject_width = x2 - x1
+        subject_height = y2 - y1
 
-        if subject_ratio >= 0.6:
-            # Subject already large, no zoom needed
+        # Calculate how much of each dimension the subject fills
+        width_ratio = subject_width / crop_width if crop_width > 0 else 0
+        height_ratio = subject_height / crop_height if crop_height > 0 else 0
+
+        # Use the larger ratio - if subject fills height, don't zoom even if narrow
+        max_ratio = max(width_ratio, height_ratio)
+
+        # Target: subject should fill ~70% of the frame's larger dimension
+        target_ratio = 0.70
+
+        if max_ratio >= 0.65:
+            # Subject already fills most of the frame, no zoom needed
             return 1.0
-        elif subject_ratio >= 0.4:
-            # Medium subject, slight zoom
-            return min(1.15, self.zoom_factor)
-        elif subject_ratio >= 0.2:
-            # Small subject, moderate zoom
-            zoom_needed = (target_ratio / subject_ratio) ** 0.5
+        elif max_ratio >= 0.45:
+            # Subject is medium-sized, slight zoom
+            zoom_needed = target_ratio / max_ratio
+            return min(zoom_needed, 1.2, self.zoom_factor)
+        elif max_ratio >= 0.25:
+            # Subject is small, moderate zoom
+            zoom_needed = target_ratio / max_ratio
             return min(zoom_needed, self.zoom_factor)
         else:
-            # Tiny subject, aggressive zoom (but cap at max zoom)
-            zoom_needed = (target_ratio / max(subject_ratio, 0.01)) ** 0.5
+            # Subject is tiny, zoom more aggressively (but cap at max)
+            zoom_needed = target_ratio / max(max_ratio, 0.05)
             return min(zoom_needed, self.zoom_factor)
 
     def _apply_smart_zoom(

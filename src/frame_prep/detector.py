@@ -1,8 +1,11 @@
 """YOLO ML model wrapper for object detection (supports YOLOv8, YOLOv12, YOLO26)."""
 
 import os
-from typing import List, Optional, Tuple
-from dataclasses import dataclass
+import json
+import hashlib
+import fcntl
+from typing import List, Optional, Tuple, Union
+from dataclasses import dataclass, asdict
 from PIL import Image
 import numpy as np
 from pathlib import Path
@@ -15,6 +18,68 @@ os.environ.setdefault('OPENVINO_INFERENCE_NUM_THREADS', '8')
 # Project root directory (two levels up from this file)
 PROJECT_ROOT = Path(__file__).parent.parent.parent
 MODELS_DIR = PROJECT_ROOT / 'models'
+CACHE_DIR = PROJECT_ROOT / 'cache' / 'detections'
+
+
+def _compute_image_hash(image: Image.Image) -> str:
+    """Compute a hash of the image content for cache key generation."""
+    img_bytes = image.tobytes()
+    return hashlib.sha256(img_bytes).hexdigest()[:16]
+
+
+def _compute_path_hash(image_path: Union[str, Path]) -> str:
+    """Compute a hash based on file path and modification time for quick cache lookup."""
+    path = Path(image_path)
+    if path.exists():
+        stat = path.stat()
+        key = f"{path.absolute()}:{stat.st_size}:{stat.st_mtime}"
+        return hashlib.sha256(key.encode()).hexdigest()[:16]
+    return ""
+
+
+def _compute_params_hash(*args) -> str:
+    """Compute a hash of arbitrary parameters for cache key generation."""
+    params_str = json.dumps(args, sort_keys=True)
+    return hashlib.sha256(params_str.encode()).hexdigest()[:12]
+
+
+def _get_cache_path(model_name: str, image_hash: str, params_hash: str) -> Path:
+    """Get the cache file path for given model, image and parameters."""
+    model_cache_dir = CACHE_DIR / model_name
+    model_cache_dir.mkdir(parents=True, exist_ok=True)
+    return model_cache_dir / f"{image_hash}_{params_hash}.json"
+
+
+def _load_cached_detections(cache_path: Path) -> Optional[List['Detection']]:
+    """Load detections from cache file if it exists (with file locking for concurrent access)."""
+    if not cache_path.exists():
+        return None
+    try:
+        with open(cache_path, 'r') as f:
+            fcntl.flock(f.fileno(), fcntl.LOCK_SH)  # Shared lock for reading
+            try:
+                data = json.load(f)
+            finally:
+                fcntl.flock(f.fileno(), fcntl.LOCK_UN)
+        return [Detection(
+            bbox=tuple(d['bbox']),
+            confidence=d['confidence'],
+            class_name=d['class_name'],
+            area=d['area']
+        ) for d in data]
+    except (json.JSONDecodeError, KeyError, OSError):
+        return None
+
+
+def _save_cached_detections(cache_path: Path, detections: List['Detection']) -> None:
+    """Save detections to cache file (with file locking for concurrent access)."""
+    data = [asdict(d) for d in detections]
+    with open(cache_path, 'w') as f:
+        fcntl.flock(f.fileno(), fcntl.LOCK_EX)  # Exclusive lock for writing
+        try:
+            json.dump(data, f)
+        finally:
+            fcntl.flock(f.fileno(), fcntl.LOCK_UN)
 
 
 @dataclass
@@ -30,6 +95,101 @@ class Detection:
         """Get center point of bounding box."""
         x1, y1, x2, y2 = self.bbox
         return ((x1 + x2) // 2, (y1 + y2) // 2)
+
+
+# ============================================================================
+# Shared detection utilities (used by EnsembleDetector and OptimizedEnsembleDetector)
+# ============================================================================
+
+def calculate_iou(box1: Tuple[int, int, int, int],
+                  box2: Tuple[int, int, int, int]) -> float:
+    """Calculate Intersection over Union between two boxes."""
+    x1_1, y1_1, x2_1, y2_1 = box1
+    x1_2, y1_2, x2_2, y2_2 = box2
+
+    # Intersection
+    x1_i = max(x1_1, x1_2)
+    y1_i = max(y1_1, y1_2)
+    x2_i = min(x2_1, x2_2)
+    y2_i = min(y2_1, y2_2)
+
+    if x2_i < x1_i or y2_i < y1_i:
+        return 0.0
+
+    intersection = (x2_i - x1_i) * (y2_i - y1_i)
+
+    # Union
+    area1 = (x2_1 - x1_1) * (y2_1 - y1_1)
+    area2 = (x2_2 - x1_2) * (y2_2 - y1_2)
+    union = area1 + area2 - intersection
+
+    return intersection / union if union > 0 else 0.0
+
+
+def weighted_merge(detections: List[Detection]) -> Detection:
+    """Merge detections using confidence-weighted average."""
+    total_conf = sum(d.confidence for d in detections)
+
+    # Weighted average of coordinates
+    x1 = sum(d.bbox[0] * d.confidence for d in detections) / total_conf
+    y1 = sum(d.bbox[1] * d.confidence for d in detections) / total_conf
+    x2 = sum(d.bbox[2] * d.confidence for d in detections) / total_conf
+    y2 = sum(d.bbox[3] * d.confidence for d in detections) / total_conf
+
+    bbox = (int(x1), int(y1), int(x2), int(y2))
+
+    # Use highest confidence and most common class name
+    best_det = max(detections, key=lambda d: d.confidence)
+
+    # Calculate merged area
+    area = (bbox[2] - bbox[0]) * (bbox[3] - bbox[1])
+
+    return Detection(
+        bbox=bbox,
+        confidence=best_det.confidence,
+        class_name=best_det.class_name,
+        area=area
+    )
+
+
+def merge_boxes(detections: List[Detection], threshold: float) -> List[Detection]:
+    """Merge overlapping detections using IoU threshold."""
+    if not detections:
+        return []
+
+    # Sort by confidence (highest first)
+    detections = sorted(detections, key=lambda d: d.confidence, reverse=True)
+
+    merged = []
+    used = set()
+
+    for i, det1 in enumerate(detections):
+        if i in used:
+            continue
+
+        # Find all detections that overlap with this one
+        to_merge = [det1]
+
+        for j, det2 in enumerate(detections[i+1:], start=i+1):
+            if j in used:
+                continue
+
+            iou = calculate_iou(det1.bbox, det2.bbox)
+            if iou > threshold:
+                to_merge.append(det2)
+                used.add(j)
+
+        # Merge boxes (weighted average by confidence)
+        if len(to_merge) == 1:
+            merged.append(det1)
+        else:
+            merged_det = weighted_merge(to_merge)
+            merged.append(merged_det)
+
+    # Sort merged detections by confidence
+    merged.sort(key=lambda d: d.confidence, reverse=True)
+
+    return merged
 
 
 class ArtFeatureDetector:
@@ -317,110 +477,12 @@ class EnsembleDetector:
             print(f"Total detections before merge: {len(all_detections)}")
 
         # Merge overlapping boxes
-        merged_detections = self._merge_boxes(all_detections)
+        merged_detections = merge_boxes(all_detections, self.merge_threshold)
 
         if verbose:
             print(f"Total detections after merge: {len(merged_detections)}")
 
         return merged_detections
-
-    def _merge_boxes(self, detections: List[Detection]) -> List[Detection]:
-        """
-        Merge overlapping detections using IoU threshold.
-
-        Uses weighted average by confidence to compute merged box coordinates.
-        """
-        if not detections:
-            return []
-
-        # Sort by confidence (highest first)
-        detections = sorted(detections, key=lambda d: d.confidence, reverse=True)
-
-        merged = []
-        used = set()
-
-        for i, det1 in enumerate(detections):
-            if i in used:
-                continue
-
-            # Find all detections that overlap with this one
-            to_merge = [det1]
-            to_merge_indices = [i]
-
-            for j, det2 in enumerate(detections[i+1:], start=i+1):
-                if j in used:
-                    continue
-
-                iou = self._calculate_iou(det1.bbox, det2.bbox)
-                if iou > self.merge_threshold:
-                    to_merge.append(det2)
-                    to_merge_indices.append(j)
-                    used.add(j)
-
-            # Merge boxes (weighted average by confidence)
-            if len(to_merge) == 1:
-                merged.append(det1)
-            else:
-                merged_det = self._weighted_merge(to_merge)
-                merged.append(merged_det)
-
-        # Sort merged detections by confidence
-        merged.sort(key=lambda d: d.confidence, reverse=True)
-
-        return merged
-
-    def _calculate_iou(self, box1: Tuple[int, int, int, int],
-                       box2: Tuple[int, int, int, int]) -> float:
-        """Calculate Intersection over Union between two boxes."""
-        x1_1, y1_1, x2_1, y2_1 = box1
-        x1_2, y1_2, x2_2, y2_2 = box2
-
-        # Intersection
-        x1_i = max(x1_1, x1_2)
-        y1_i = max(y1_1, y1_2)
-        x2_i = min(x2_1, x2_2)
-        y2_i = min(y2_1, y2_2)
-
-        if x2_i < x1_i or y2_i < y1_i:
-            return 0.0
-
-        intersection = (x2_i - x1_i) * (y2_i - y1_i)
-
-        # Union
-        area1 = (x2_1 - x1_1) * (y2_1 - y1_1)
-        area2 = (x2_2 - x1_2) * (y2_2 - y1_2)
-        union = area1 + area2 - intersection
-
-        return intersection / union if union > 0 else 0.0
-
-    def _weighted_merge(self, detections: List[Detection]) -> Detection:
-        """
-        Merge multiple detections using confidence-weighted average.
-
-        Returns a new Detection with merged bbox and highest confidence.
-        """
-        total_conf = sum(d.confidence for d in detections)
-
-        # Weighted average of coordinates
-        x1 = sum(d.bbox[0] * d.confidence for d in detections) / total_conf
-        y1 = sum(d.bbox[1] * d.confidence for d in detections) / total_conf
-        x2 = sum(d.bbox[2] * d.confidence for d in detections) / total_conf
-        y2 = sum(d.bbox[3] * d.confidence for d in detections) / total_conf
-
-        bbox = (int(x1), int(y1), int(x2), int(y2))
-
-        # Use highest confidence and most common class name
-        best_det = max(detections, key=lambda d: d.confidence)
-
-        # Calculate merged area
-        area = (bbox[2] - bbox[0]) * (bbox[3] - bbox[1])
-
-        return Detection(
-            bbox=bbox,
-            confidence=best_det.confidence,
-            class_name=best_det.class_name,
-            area=area
-        )
 
     def get_primary_subject(self, detections: List[Detection]) -> Optional[Detection]:
         """
@@ -464,73 +526,83 @@ class OptimizedEnsembleDetector:
         self._last_image_size = None
         self._yolo_world = None
         self._grounding_dino = None
+        self._dino_processor = None
 
-    def _load_models(self):
-        """Lazy-load both models on first use."""
+        # YOLO-World class prompts (included in cache key)
+        self._art_classes = [
+            'museum exhibit', 'gallery display', 'art installation',
+            'sculpture on pedestal', 'statue on display',
+            'framed artwork', 'wall-mounted art',
+            'decorative sculpture', 'artistic piece',
+            'sculpture', 'statue', 'figurine', 'bust',
+            'painting', 'artwork', 'canvas',
+            'mosaic', 'tile art', 'mural', 'wall art',
+            'relief sculpture', 'pottery', 'vase'
+        ]
+
+        # Grounding DINO prompts (included in cache key)
+        self._dino_prompts = [
+            'sculpture', 'statue', 'painting', 'art installation',
+            'mosaic', 'artwork', 'mural', 'art piece',
+            'exhibit', 'artistic object', 'wall art', 'decorative art'
+        ]
+
+    def _load_yolo_world(self):
+        """Lazy-load YOLO-World model on first use."""
         if self._yolo_world is None:
             from ultralytics import YOLOWorld
 
-            # Ensure models directory exists
             MODELS_DIR.mkdir(parents=True, exist_ok=True)
-
-            # Load YOLO-World with improved prompts from models directory
-            # If it doesn't exist, Ultralytics will download it to this path
             yolo_world_path = MODELS_DIR / 'yolov8m-worldv2.pt'
             self._yolo_world = YOLOWorld(str(yolo_world_path))
+            self._yolo_world.set_classes(self._art_classes)
 
-            # Improved contextual + expanded prompts (23 classes)
-            art_classes = [
-                'museum exhibit', 'gallery display', 'art installation',
-                'sculpture on pedestal', 'statue on display',
-                'framed artwork', 'wall-mounted art',
-                'decorative sculpture', 'artistic piece',
-                'sculpture', 'statue', 'figurine', 'bust',
-                'painting', 'artwork', 'canvas',
-                'mosaic', 'tile art', 'mural', 'wall art',
-                'relief sculpture', 'pottery', 'vase'
-            ]
-            self._yolo_world.set_classes(art_classes)
-
+    def _load_grounding_dino(self):
+        """Lazy-load Grounding DINO model on first use."""
         if self._grounding_dino is None:
             from transformers import AutoProcessor, AutoModelForZeroShotObjectDetection
             import torch
 
-            # Load Grounding DINO
             model_id = "IDEA-Research/grounding-dino-tiny"
-            self._dino_processor = AutoProcessor.from_pretrained(model_id)
-            self._grounding_dino = AutoModelForZeroShotObjectDetection.from_pretrained(model_id)
+            try:
+                self._dino_processor = AutoProcessor.from_pretrained(model_id, local_files_only=True, use_fast=True)
+                self._grounding_dino = AutoModelForZeroShotObjectDetection.from_pretrained(model_id, local_files_only=True)
+            except OSError:
+                self._dino_processor = AutoProcessor.from_pretrained(model_id, use_fast=True)
+                self._grounding_dino = AutoModelForZeroShotObjectDetection.from_pretrained(model_id)
             self._grounding_dino = self._grounding_dino.to("cpu")
             self._grounding_dino.eval()
 
-            # Art-specific prompts for Grounding DINO
-            self._dino_prompts = [
-                'sculpture', 'statue', 'painting', 'art installation',
-                'mosaic', 'artwork', 'mural', 'art piece',
-                'exhibit', 'artistic object', 'wall art', 'decorative art'
-            ]
+    def _run_yolo_world(self, image: Image.Image, image_hash: str, verbose: bool, path_hash: str = "") -> List[Detection]:
+        """Run YOLO-World detection with caching."""
+        # Cache key includes confidence threshold and class prompts
+        params_hash = _compute_params_hash(self.confidence_threshold, self._art_classes)
 
-    def detect(self, image: Image.Image, verbose: bool = False) -> List[Detection]:
-        """
-        Run both detectors and merge results.
+        # Try path-based cache first (faster), then fall back to content hash
+        cache_path = None
+        if path_hash:
+            cache_path = _get_cache_path("yolo_world", path_hash, params_hash)
+            cached = _load_cached_detections(cache_path)
+            if cached is not None:
+                if verbose:
+                    print(f"  YOLO-World: {len(cached)} detections (cached)")
+                return cached
 
-        Args:
-            image: PIL Image to process
-            verbose: Print detection info
+        cache_path = _get_cache_path("yolo_world", image_hash, params_hash)
 
-        Returns:
-            List of merged Detection objects sorted by confidence
-        """
-        self._load_models()
-        self._last_image_size = (image.width, image.height)
+        cached = _load_cached_detections(cache_path)
+        if cached is not None:
+            if verbose:
+                print(f"  YOLO-World: {len(cached)} detections (cached)")
+            return cached
 
-        all_detections = []
-
-        # Run YOLO-World (fast)
         if verbose:
             print("Running YOLO-World...")
 
+        self._load_yolo_world()
         yolo_results = self._yolo_world.predict(image, conf=self.confidence_threshold, verbose=False)
 
+        detections = []
         for r in yolo_results:
             for box in r.boxes:
                 conf = float(box.conf[0])
@@ -538,20 +610,51 @@ class OptimizedEnsembleDetector:
                 cls_id = int(box.cls[0])
                 area = (bbox[2] - bbox[0]) * (bbox[3] - bbox[1])
 
-                all_detections.append(Detection(
+                detections.append(Detection(
                     bbox=bbox,
                     confidence=conf,
-                    class_name=f"yolo:{cls_id}",  # Will be overridden
+                    class_name=f"yolo:{cls_id}",
                     area=area
                 ))
 
         if verbose:
-            print(f"  YOLO-World: {len(all_detections)} detections")
+            print(f"  YOLO-World: {len(detections)} detections")
 
-        # Run Grounding DINO (accurate)
+        # Save to content-based cache (and path-based if available)
+        _save_cached_detections(cache_path, detections)
+        if path_hash:
+            path_cache = _get_cache_path("yolo_world", path_hash, params_hash)
+            if path_cache != cache_path:
+                _save_cached_detections(path_cache, detections)
+        return detections
+
+    def _run_grounding_dino(self, image: Image.Image, image_hash: str, verbose: bool, path_hash: str = "") -> List[Detection]:
+        """Run Grounding DINO detection with caching."""
+        # Cache key includes confidence threshold and prompts
+        params_hash = _compute_params_hash(self.confidence_threshold, self._dino_prompts)
+
+        # Try path-based cache first (faster), then fall back to content hash
+        cache_path = None
+        if path_hash:
+            cache_path = _get_cache_path("grounding_dino", path_hash, params_hash)
+            cached = _load_cached_detections(cache_path)
+            if cached is not None:
+                if verbose:
+                    print(f"  Grounding DINO: {len(cached)} detections (cached)")
+                return cached
+
+        cache_path = _get_cache_path("grounding_dino", image_hash, params_hash)
+
+        cached = _load_cached_detections(cache_path)
+        if cached is not None:
+            if verbose:
+                print(f"  Grounding DINO: {len(cached)} detections (cached)")
+            return cached
+
         if verbose:
             print("Running Grounding DINO...")
 
+        self._load_grounding_dino()
         import torch
 
         inputs = self._dino_processor(
@@ -570,7 +673,7 @@ class OptimizedEnsembleDetector:
             target_sizes=[image.size[::-1]]
         )[0]
 
-        dino_count = 0
+        detections = []
         for score, label, box in zip(
             dino_results["scores"],
             dino_results["text_labels"],
@@ -579,115 +682,58 @@ class OptimizedEnsembleDetector:
             bbox = tuple(int(x) for x in box.tolist())
             area = (bbox[2] - bbox[0]) * (bbox[3] - bbox[1])
 
-            all_detections.append(Detection(
+            detections.append(Detection(
                 bbox=bbox,
                 confidence=float(score),
                 class_name=label,
                 area=area
             ))
-            dino_count += 1
 
         if verbose:
-            print(f"  Grounding DINO: {dino_count} detections")
+            print(f"  Grounding DINO: {len(detections)} detections")
+
+        # Save to content-based cache (and path-based if available)
+        _save_cached_detections(cache_path, detections)
+        if path_hash:
+            path_cache = _get_cache_path("grounding_dino", path_hash, params_hash)
+            if path_cache != cache_path:
+                _save_cached_detections(path_cache, detections)
+        return detections
+
+    def detect(self, image: Image.Image, verbose: bool = False, image_path: Union[str, Path, None] = None) -> List[Detection]:
+        """
+        Run both detectors and merge results.
+
+        Args:
+            image: PIL Image to process
+            verbose: Print detection info
+            image_path: Optional path to image file for faster cache lookups
+
+        Returns:
+            List of merged Detection objects sorted by confidence
+        """
+        self._last_image_size = (image.width, image.height)
+
+        # Compute hashes for caching
+        path_hash = _compute_path_hash(image_path) if image_path else ""
+        image_hash = _compute_image_hash(image)
+
+        # Run each model (with per-model caching)
+        yolo_detections = self._run_yolo_world(image, image_hash, verbose, path_hash)
+        dino_detections = self._run_grounding_dino(image, image_hash, verbose, path_hash)
+
+        all_detections = yolo_detections + dino_detections
+
+        if verbose:
             print(f"  Total before merge: {len(all_detections)}")
 
-        # Merge overlapping boxes
-        merged_detections = self._merge_boxes(all_detections)
+        # Merge overlapping boxes (fast, no caching needed)
+        merged_detections = merge_boxes(all_detections, self.merge_threshold)
 
         if verbose:
             print(f"  Total after merge: {len(merged_detections)}")
 
         return merged_detections
-
-    def _merge_boxes(self, detections: List[Detection]) -> List[Detection]:
-        """Merge overlapping detections using optimized threshold."""
-        if not detections:
-            return []
-
-        # Sort by confidence
-        detections = sorted(detections, key=lambda d: d.confidence, reverse=True)
-
-        merged = []
-        used = set()
-
-        for i, det1 in enumerate(detections):
-            if i in used:
-                continue
-
-            # Find all detections that overlap with this one
-            to_merge = [det1]
-            to_merge_indices = [i]
-
-            for j, det2 in enumerate(detections[i+1:], start=i+1):
-                if j in used:
-                    continue
-
-                iou = self._calculate_iou(det1.bbox, det2.bbox)
-                if iou > self.merge_threshold:
-                    to_merge.append(det2)
-                    to_merge_indices.append(j)
-                    used.add(j)
-
-            # Merge boxes (weighted average by confidence)
-            if len(to_merge) == 1:
-                merged.append(det1)
-            else:
-                merged_det = self._weighted_merge(to_merge)
-                merged.append(merged_det)
-
-        # Sort merged detections by confidence
-        merged.sort(key=lambda d: d.confidence, reverse=True)
-
-        return merged
-
-    def _calculate_iou(self, box1: Tuple[int, int, int, int],
-                       box2: Tuple[int, int, int, int]) -> float:
-        """Calculate Intersection over Union between two boxes."""
-        x1_1, y1_1, x2_1, y2_1 = box1
-        x1_2, y1_2, x2_2, y2_2 = box2
-
-        # Intersection
-        x1_i = max(x1_1, x1_2)
-        y1_i = max(y1_1, y1_2)
-        x2_i = min(x2_1, x2_2)
-        y2_i = min(y2_1, y2_2)
-
-        if x2_i < x1_i or y2_i < y1_i:
-            return 0.0
-
-        intersection = (x2_i - x1_i) * (y2_i - y1_i)
-
-        # Union
-        area1 = (x2_1 - x1_1) * (y2_1 - y1_1)
-        area2 = (x2_2 - x1_2) * (y2_2 - y1_2)
-        union = area1 + area2 - intersection
-
-        return intersection / union if union > 0 else 0.0
-
-    def _weighted_merge(self, detections: List[Detection]) -> Detection:
-        """Merge multiple detections using confidence-weighted average."""
-        total_conf = sum(d.confidence for d in detections)
-
-        # Weighted average of coordinates
-        x1 = sum(d.bbox[0] * d.confidence for d in detections) / total_conf
-        y1 = sum(d.bbox[1] * d.confidence for d in detections) / total_conf
-        x2 = sum(d.bbox[2] * d.confidence for d in detections) / total_conf
-        y2 = sum(d.bbox[3] * d.confidence for d in detections) / total_conf
-
-        bbox = (int(x1), int(y1), int(x2), int(y2))
-
-        # Use highest confidence and most common class name
-        best_det = max(detections, key=lambda d: d.confidence)
-
-        # Calculate merged area
-        area = (bbox[2] - bbox[0]) * (bbox[3] - bbox[1])
-
-        return Detection(
-            bbox=bbox,
-            confidence=best_det.confidence,
-            class_name=best_det.class_name,
-            area=area
-        )
 
     def get_primary_subject(self, detections: List[Detection]) -> Optional[Detection]:
         """Get primary subject using center-weighting."""

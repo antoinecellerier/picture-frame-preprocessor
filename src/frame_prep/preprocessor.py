@@ -115,7 +115,12 @@ class ImagePreprocessor:
                     # Run detection if using smart strategy
                     detections = []
                     if self.strategy == 'smart':
-                        detections = self.detector.detect(img, verbose=verbose)
+                        # Pass image_path for cache lookups (OptimizedEnsembleDetector)
+                        try:
+                            detections = self.detector.detect(img, verbose=verbose, image_path=input_path)
+                        except TypeError:
+                            # Fallback for detectors that don't support image_path
+                            detections = self.detector.detect(img, verbose=verbose)
 
                         # Capture detection details for ML analysis
                         primary = self.detector.get_primary_subject(detections) if detections else None
