@@ -32,8 +32,23 @@ ENV/
 *.swo
 
 # Models (downloaded at runtime)
-models/
+models/*
 !models/.gitkeep
+*.pt
+*_openvino_model/
+
+# Generated outputs
+cache/
+reports/*
+!reports/.gitkeep
+test_output/
+
+# Test results (intermediate outputs, can be regenerated)
+test_real_images/results/
+test_real_images/output*/
+
+# Archive/temporary files
+archive/
 
 # Test outputs
 tests/output/
