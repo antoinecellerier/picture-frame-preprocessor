@@ -1,5 +1,9 @@
 #!/usr/bin/env python3
-"""Cache Grounding DINO detections with Intel PyTorch Extension optimization."""
+"""Cache Grounding DINO detections.
+
+Note: Previously used IPEX optimization, but IPEX is now deprecated.
+Intel CPU optimizations are now built into PyTorch directly.
+"""
 
 import json
 import argparse
@@ -8,13 +12,12 @@ from PIL import Image, ImageOps
 import sys
 from transformers import AutoProcessor, AutoModelForZeroShotObjectDetection
 import torch
-import intel_extension_for_pytorch as ipex
 from tqdm import tqdm
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 def cache_grounding_dino_optimized(ground_truth_path, confidence_threshold=0.25, cache_dir='cache'):
-    """Run Grounding DINO with Intel optimizations."""
+    """Run Grounding DINO (PyTorch with built-in Intel CPU optimizations)."""
 
     with open(ground_truth_path, 'r') as f:
         ground_truth = json.load(f)
@@ -24,7 +27,7 @@ def cache_grounding_dino_optimized(ground_truth_path, confidence_threshold=0.25,
 
     input_dir = Path('test_real_images/input')
 
-    print("Loading Grounding DINO model with Intel optimizations...")
+    print("Loading Grounding DINO model...")
     model_id = "IDEA-Research/grounding-dino-tiny"
 
     processor = AutoProcessor.from_pretrained(model_id)
@@ -34,11 +37,8 @@ def cache_grounding_dino_optimized(ground_truth_path, confidence_threshold=0.25,
     model = model.to(device)
     model.eval()
 
-    # Apply Intel PyTorch Extension optimization
-    print("Applying IPEX optimizations...")
-    model = ipex.optimize(model)
-
-    print(f"✓ Model loaded and optimized on {device}")
+    # PyTorch automatically uses MKLDNN for Intel CPU optimizations
+    print(f"✓ Model loaded on {device} (using PyTorch built-in Intel optimizations)")
 
     # Art-specific text prompts
     text_prompts = [
@@ -118,7 +118,7 @@ def cache_grounding_dino_optimized(ground_truth_path, confidence_threshold=0.25,
         'model_name': 'grounding_dino_optimized',
         'confidence_threshold': confidence_threshold,
         'text_prompts': text_prompts,
-        'optimizations': ['ipex', 'amp'],
+        'optimizations': ['mkldnn', 'amp'],
         'detections': all_detections
     }
 

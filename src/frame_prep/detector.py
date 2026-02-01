@@ -5,11 +5,16 @@ from typing import List, Optional, Tuple
 from dataclasses import dataclass
 from PIL import Image
 import numpy as np
+from pathlib import Path
 
 # Optimize OpenVINO threading for CPU inference
 # Use 8 threads per model instance for good balance
 os.environ.setdefault('OMP_NUM_THREADS', '8')
 os.environ.setdefault('OPENVINO_INFERENCE_NUM_THREADS', '8')
+
+# Project root directory (two levels up from this file)
+PROJECT_ROOT = Path(__file__).parent.parent.parent
+MODELS_DIR = PROJECT_ROOT / 'models'
 
 
 @dataclass
@@ -57,20 +62,27 @@ class ArtFeatureDetector:
             try:
                 from ultralytics import YOLO
 
+                # Ensure models directory exists
+                MODELS_DIR.mkdir(parents=True, exist_ok=True)
+
                 # Try OpenVINO model first if enabled
                 if self.use_openvino:
-                    openvino_path = f'{self.model_name}_openvino_model'
-                    if os.path.exists(openvino_path):
+                    # Check in models directory
+                    openvino_path = MODELS_DIR / f'{self.model_name}_openvino_model'
+
+                    if openvino_path.exists():
                         try:
-                            self._model = YOLO(openvino_path, task='detect')
+                            self._model = YOLO(str(openvino_path), task='detect')
                             self._model_type = 'openvino'
                             return
                         except Exception as e:
                             # Fall back to PyTorch if OpenVINO fails
                             pass
 
-                # Fall back to PyTorch model
-                self._model = YOLO(f'{self.model_name}.pt')
+                # Load PyTorch model from models directory
+                # If it doesn't exist, Ultralytics will download it to this path
+                model_path = MODELS_DIR / f'{self.model_name}.pt'
+                self._model = YOLO(str(model_path))
                 self._model_type = 'pytorch'
 
             except Exception as e:
@@ -113,7 +125,8 @@ class ArtFeatureDetector:
                 # Get bounding box coordinates
                 x1, y1, x2, y2 = map(int, box.xyxy[0].tolist())
                 cls_id = int(box.cls[0])
-                class_name = result.names[cls_id]
+                # Handle cases where class_id is out of range (can happen with RT-DETR)
+                class_name = result.names.get(cls_id, f'class_{cls_id}')
                 area = (x2 - x1) * (y2 - y1)
 
                 detections.append(Detection(
@@ -457,8 +470,13 @@ class OptimizedEnsembleDetector:
         if self._yolo_world is None:
             from ultralytics import YOLOWorld
 
-            # Load YOLO-World with improved prompts
-            self._yolo_world = YOLOWorld('yolov8m-worldv2.pt')
+            # Ensure models directory exists
+            MODELS_DIR.mkdir(parents=True, exist_ok=True)
+
+            # Load YOLO-World with improved prompts from models directory
+            # If it doesn't exist, Ultralytics will download it to this path
+            yolo_world_path = MODELS_DIR / 'yolov8m-worldv2.pt'
+            self._yolo_world = YOLOWorld(str(yolo_world_path))
 
             # Improved contextual + expanded prompts (23 classes)
             art_classes = [
@@ -483,15 +501,6 @@ class OptimizedEnsembleDetector:
             self._grounding_dino = AutoModelForZeroShotObjectDetection.from_pretrained(model_id)
             self._grounding_dino = self._grounding_dino.to("cpu")
             self._grounding_dino.eval()
-
-            # Apply IPEX optimization if available
-            # NOTE: IPEX disabled due to version incompatibility with PyTorch 2.10+
-            # try:
-            #     import intel_extension_for_pytorch as ipex
-            #     self._grounding_dino = ipex.optimize(self._grounding_dino)
-            # except (ImportError, RuntimeError, Exception):
-            #     # IPEX not available or version mismatch - continue without optimization
-            #     pass
 
             # Art-specific prompts for Grounding DINO
             self._dino_prompts = [

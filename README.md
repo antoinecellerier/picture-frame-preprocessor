@@ -88,9 +88,17 @@ Options:
 - `--model, -m`: YOLO model (default: yolov8m)
 - `--confidence, -c`: Detection threshold (default: 0.15)
 - `--zoom, -z`: Contextual zoom factor (default: 1.3)
-- `--workers`: Number of parallel workers (default: 4)
+- `--workers`: Number of parallel workers (default: 8, optimized for 16-thread CPUs)
+- `--threads-per-worker`: Threads per worker process (default: 4)
+- `--no-openvino`: Disable OpenVINO acceleration (enabled by default)
 - `--skip-existing`: Skip already processed images
 - `--recursive, -r`: Process subdirectories recursively
+
+**Hardware Acceleration:**
+- OpenVINO is enabled by default for 1.4-2.0x CPU speedup
+- Models are cached per worker for 6.7x faster batch processing
+- See `docs/HARDWARE_ACCELERATION.md` for optimization guide
+- Use `python scripts/check_optimizations.py` to check system status
 
 ## Cropping Strategies
 

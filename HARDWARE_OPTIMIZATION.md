@@ -113,19 +113,15 @@ for i in range(0, len(images), batch_size):
 2. Enable AVX-512 in PyTorch
 3. Use Intel Extension for PyTorch
 
+**⚠️ DEPRECATED:** IPEX is no longer maintained. Intel CPU optimizations are now built into PyTorch.
+
 **Implementation:**
 ```bash
-# Install Intel PyTorch extension
-pip install intel-extension-for-pytorch
-
-# In code:
-import intel_extension_for_pytorch as ipex
-model = ipex.optimize(model)
+# No installation needed - PyTorch includes Intel optimizations (MKLDNN) by default
 ```
 
-**Expected Speedup:** 1.2-1.8x for transformer models
-**Tradeoff:** Intel-specific, may not work on AMD
-**Recommended:** Worth testing for Grounding DINO
+**Reference:** https://github.com/intel/intel-extension-for-pytorch/issues/867
+**Recommendation:** Use OpenVINO for maximum Intel CPU performance
 
 ---
 

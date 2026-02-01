@@ -119,31 +119,24 @@ print(core.available_devices)
 
 ---
 
-## Alternative: Intel Extension for PyTorch (IPEX)
+## ⚠️ DEPRECATED: Intel Extension for PyTorch (IPEX)
 
-### Better GPU Utilization
-Intel's PyTorch extension optimizes for Iris Xe:
+**IPEX has been deprecated as of 2024.** Intel optimizations have been upstreamed into PyTorch.
 
+**Reference:** https://github.com/intel/intel-extension-for-pytorch/issues/867
+
+### What this means:
+- **CPU optimizations**: Now built into PyTorch via MKLDNN (automatic)
+- **GPU (XPU) support**: Limited Intel GPU support may still require IPEX, but development has ceased
+- **Recommendation**: Use OpenVINO for Intel CPU optimization instead
+
+### Migration:
+If you have IPEX installed, you can remove it:
 ```bash
-source venv/bin/activate
-pip install intel-extension-for-pytorch
+pip uninstall intel-extension-for-pytorch
 ```
 
-### Usage:
-```python
-import intel_extension_for_pytorch as ipex
-import torch
-
-# For Grounding DINO or other PyTorch models
-model = model.to('cpu')  # IPEX optimizes CPU execution
-model = ipex.optimize(model)
-
-# With Intel GPU (if supported)
-model = model.to('xpu')  # XPU = Intel GPU
-model = ipex.optimize(model)
-```
-
-**Expected Speedup:** 1.5-2x for transformer models like Grounding DINO
+PyTorch's built-in optimizations will continue to work automatically.
 
 ---
 
@@ -173,15 +166,7 @@ python -c "import openvino as ov; print(ov.Core().available_devices)"
 **Expected speedup:** 1.5-2x
 **Power cost:** Low (CPU optimizations)
 
-**Implementation:**
-```bash
-source venv/bin/activate
-pip install intel-extension-for-pytorch
-
-# Add to Grounding DINO code:
-import intel_extension_for_pytorch as ipex
-model = ipex.optimize(model)
-```
+**⚠️ DEPRECATED - Use OpenVINO instead**
 
 #### Option 3: NPU (GNA) ❌ **Not Recommended**
 **Best for:** Tiny models, audio processing
