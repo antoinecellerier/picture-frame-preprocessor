@@ -136,6 +136,47 @@ def check_accuracy(detections, ground_truth_boxes, iou_threshold=0.3):
     return best_iou >= iou_threshold, best_iou
 
 
+def generate_result_image(image_path, detections, cropper, max_width=400):
+    """Generate the cropped result image for comparison."""
+    try:
+        img = Image.open(image_path).convert('RGB')
+        img = ImageOps.exif_transpose(img)
+
+        # Run the actual cropping logic
+        cropped = cropper.crop_image(img, detections, strategy='smart')
+
+        # Get crop info
+        zoom_applied = cropper.last_zoom_applied
+
+        # Resize for display
+        scale = 1.0
+        if cropped.width > max_width:
+            scale = max_width / cropped.width
+            new_size = (int(cropped.width * scale), int(cropped.height * scale))
+            cropped = cropped.resize(new_size, Image.LANCZOS)
+
+        # Add zoom annotation
+        draw = ImageDraw.Draw(cropped)
+        try:
+            font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 12)
+        except:
+            font = ImageFont.load_default()
+
+        zoom_text = f"Zoom: {zoom_applied:.2f}x"
+        text_bbox = draw.textbbox((5, 5), zoom_text, font=font)
+        draw.rectangle([text_bbox[0]-2, text_bbox[1]-2, text_bbox[2]+2, text_bbox[3]+2],
+                       fill=(0, 0, 0, 180))
+        draw.text((5, 5), zoom_text, fill=(255, 255, 255), font=font)
+
+        buffer = io.BytesIO()
+        cropped.save(buffer, format='JPEG', quality=90)
+        img_data = base64.b64encode(buffer.getvalue()).decode()
+        return f"data:image/jpeg;base64,{img_data}", zoom_applied
+    except Exception as e:
+        print(f"Error generating result for {image_path}: {e}")
+        return None, 1.0
+
+
 def generate_report():
     """Generate interactive HTML report."""
     print("Loading ground truth annotations...")
@@ -145,8 +186,29 @@ def generate_report():
     input_dir = Path('test_real_images/input')
     results = []
 
+    # Configuration parameters
+    config = {
+        'confidence_threshold': 0.25,
+        'merge_threshold': 0.2,
+        'target_width': 1080,
+        'target_height': 1920,
+        'zoom_factor': 1.3,
+        'use_saliency_fallback': True,
+    }
+
     # Create detector once (reused for all images, with caching)
-    detector = OptimizedEnsembleDetector(confidence_threshold=0.25, merge_threshold=0.2)
+    detector = OptimizedEnsembleDetector(
+        confidence_threshold=config['confidence_threshold'],
+        merge_threshold=config['merge_threshold']
+    )
+
+    # Create cropper for generating result images
+    cropper = SmartCropper(
+        target_width=config['target_width'],
+        target_height=config['target_height'],
+        zoom_factor=config['zoom_factor'],
+        use_saliency_fallback=config['use_saliency_fallback']
+    )
 
     print(f"\nProcessing {len(ground_truth)} test images...")
 
@@ -189,9 +251,18 @@ def generate_report():
             gt_boxes
         )
 
+        # Generate result/cropped image
+        result_image, zoom_applied = generate_result_image(
+            image_path,
+            detection_result['all_detections'],
+            cropper
+        )
+
         results.append({
             'filename': filename,
             'image_with_boxes': img_with_boxes,
+            'result_image': result_image,
+            'zoom_applied': zoom_applied,
             'detections': detection_result['all_detections'],
             'primary': detection_result['primary'],
             'detection_count': detection_result['count'],
@@ -243,6 +314,66 @@ def generate_report():
         .header p {{
             opacity: 0.9;
             font-size: 16px;
+        }}
+
+        .config-summary {{
+            background: white;
+            padding: 25px;
+            border-radius: 10px;
+            margin-bottom: 30px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+        }}
+
+        .config-summary h2 {{
+            font-size: 20px;
+            color: #1f2937;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }}
+
+        .config-grid {{
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+        }}
+
+        .config-section {{
+            background: #f9fafb;
+            padding: 20px;
+            border-radius: 8px;
+            border-left: 4px solid #667eea;
+        }}
+
+        .config-section h3 {{
+            font-size: 14px;
+            color: #667eea;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 12px;
+        }}
+
+        .config-item {{
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid #e5e7eb;
+        }}
+
+        .config-item:last-child {{
+            border-bottom: none;
+        }}
+
+        .config-label {{
+            color: #6b7280;
+            font-size: 13px;
+        }}
+
+        .config-value {{
+            color: #1f2937;
+            font-weight: 600;
+            font-size: 13px;
         }}
 
         .stats {{
@@ -387,9 +518,51 @@ def generate_report():
             color: #374151;
         }}
 
+        .images-container {{
+            display: flex;
+            gap: 10px;
+            background: #1f2937;
+            padding: 10px;
+        }}
+
+        .image-wrapper {{
+            flex: 1;
+            position: relative;
+        }}
+
+        .image-wrapper.detection {{
+            flex: 2;
+        }}
+
+        .image-wrapper.result {{
+            flex: 1;
+            max-width: 300px;
+        }}
+
+        .image-label {{
+            position: absolute;
+            top: 8px;
+            left: 8px;
+            background: rgba(0,0,0,0.7);
+            color: white;
+            padding: 4px 10px;
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }}
+
         .result-image {{
             width: 100%;
             display: block;
+            border-radius: 4px;
+        }}
+
+        .detection-image {{
+            width: 100%;
+            display: block;
+            border-radius: 4px;
         }}
 
         .result-details {{
@@ -533,6 +706,65 @@ def generate_report():
         <p>Updated Adaptive Zoom Logic - {datetime.now().strftime('%Y-%m-%d %H:%M')}</p>
     </div>
 
+    <div class="config-summary">
+        <h2>⚙️ Configuration Summary</h2>
+        <div class="config-grid">
+            <div class="config-section">
+                <h3>Detection Strategy</h3>
+                <div class="config-item">
+                    <span class="config-label">Ensemble</span>
+                    <span class="config-value">OptimizedEnsembleDetector</span>
+                </div>
+                <div class="config-item">
+                    <span class="config-label">Models</span>
+                    <span class="config-value">YOLO-World + Grounding DINO</span>
+                </div>
+                <div class="config-item">
+                    <span class="config-label">YOLO-World Model</span>
+                    <span class="config-value">yolov8m-worldv2</span>
+                </div>
+                <div class="config-item">
+                    <span class="config-label">Grounding DINO</span>
+                    <span class="config-value">grounding-dino-tiny</span>
+                </div>
+            </div>
+            <div class="config-section">
+                <h3>Detection Parameters</h3>
+                <div class="config-item">
+                    <span class="config-label">Confidence Threshold</span>
+                    <span class="config-value">{config['confidence_threshold']}</span>
+                </div>
+                <div class="config-item">
+                    <span class="config-label">Merge Threshold (IoU)</span>
+                    <span class="config-value">{config['merge_threshold']}</span>
+                </div>
+                <div class="config-item">
+                    <span class="config-label">Primary Selection</span>
+                    <span class="config-value">Center-weighted scoring</span>
+                </div>
+            </div>
+            <div class="config-section">
+                <h3>Cropping Strategy</h3>
+                <div class="config-item">
+                    <span class="config-label">Strategy</span>
+                    <span class="config-value">Smart (detection-anchored)</span>
+                </div>
+                <div class="config-item">
+                    <span class="config-label">Target Dimensions</span>
+                    <span class="config-value">{config['target_width']}×{config['target_height']} (9:16)</span>
+                </div>
+                <div class="config-item">
+                    <span class="config-label">Max Zoom Factor</span>
+                    <span class="config-value">{config['zoom_factor']}x</span>
+                </div>
+                <div class="config-item">
+                    <span class="config-label">Saliency Fallback</span>
+                    <span class="config-value">{'Enabled' if config['use_saliency_fallback'] else 'Disabled'}</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <div class="stats">
         <div class="stat-card">
             <div class="stat-value">{accuracy:.1f}%</div>
@@ -596,6 +828,15 @@ def generate_report():
         if result['has_ground_truth'] and result['detection_count'] > 0:
             iou_info = f"<span>IoU: {result['best_iou']:.3f}</span>"
 
+        # Generate result image HTML if available
+        result_img_html = ""
+        if result['result_image']:
+            result_img_html = f"""
+                <div class="image-wrapper result">
+                    <span class="image-label">Result ({result['zoom_applied']:.2f}x)</span>
+                    <img src="{result['result_image']}" class="result-image" alt="Result">
+                </div>"""
+
         html += f"""
         <div class="result-card {status_class}" data-status="{status_class}" data-index="{idx}">
             <div class="result-header">
@@ -603,11 +844,18 @@ def generate_report():
                 <div class="result-meta">
                     <span class="badge {status_class}">{status_label}</span>
                     <span>Detections: {result['detection_count']}</span>
+                    <span>Zoom: {result['zoom_applied']:.2f}x</span>
                     {iou_info}
                 </div>
             </div>
 
-            <img src="{result['image_with_boxes']}" class="result-image" alt="{result['filename']}">
+            <div class="images-container">
+                <div class="image-wrapper detection">
+                    <span class="image-label">Detection</span>
+                    <img src="{result['image_with_boxes']}" class="detection-image" alt="{result['filename']}">
+                </div>
+                {result_img_html}
+            </div>
 
             <div class="result-details">
                 <div class="detection-info">

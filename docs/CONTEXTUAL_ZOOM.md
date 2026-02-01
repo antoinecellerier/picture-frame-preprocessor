@@ -141,9 +141,34 @@ def calculate_contextual_zoom(subject_ratio, max_zoom):
 
 To verify contextual zoom is working:
 
-1. Check ML visualization HTML
-2. Look for subject size info
-3. Compare zoom applied:
-   - Large subjects → minimal/no zoom
-   - Small subjects → noticeable zoom
-   - Matches the ratios above
+### Using the Interactive Detection Report
+
+```bash
+python scripts/generate_interactive_report.py
+```
+
+The report (`reports/interactive_detection_report.html`) provides:
+
+1. **Configuration Summary**: Shows max zoom factor and other parameters
+2. **Side-by-side Comparison**: Each image displays:
+   - Detection view: Original with bounding boxes
+   - Result view: Cropped output with zoom factor label (e.g., "1.30x")
+3. **Metadata**: Zoom factor shown in each card's header
+
+### What to Look For
+
+| Detected Subject | Expected Zoom | Visual Check |
+|------------------|---------------|--------------|
+| Large (fills frame) | 1.00x | No zoom applied |
+| Medium | 1.00x - 1.20x | Slight tightening |
+| Small | 1.20x - 1.30x | Noticeable zoom |
+| Tiny | 1.30x (max) | Maximum zoom |
+
+### Verifying Behavior
+
+1. Open the report in browser
+2. Filter by detection count to find images with varying subject sizes
+3. Compare zoom values:
+   - Large subjects → `1.00x` (no zoom)
+   - Small subjects → `1.30x` (max zoom)
+4. Verify cropped result appropriately frames the subject

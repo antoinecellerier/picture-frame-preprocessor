@@ -254,20 +254,26 @@ python scripts/batch_process.py \
   --output-dir test_images/output
 ```
 
-### Create Interactive Quality Report
+### Create Interactive Detection Report
+```bash
+python scripts/generate_interactive_report.py
+```
+
+**Features:**
+- ⚙️ Configuration summary (models, parameters, thresholds)
+- 🖼️ Side-by-side detection and result images
+- 📏 Zoom factor displayed for each result
+- ✅ Ground truth comparison with IoU scores
+- 👍 Rate results: Good/Poor/Zoom Issue
+- 📥 Export feedback as JSON
+
+### Create Quality Report (Alternative)
 ```bash
 python scripts/generate_quality_report.py \
   --input-dir test_images/input \
   --output-dir test_images/output \
   --html quality_report.html
 ```
-
-**Features:**
-- ⭐ Rate crops 1-5 stars
-- 💬 Add comments
-- 📊 Live statistics
-- 💾 Export feedback as JSON
-- 🔄 Auto-saves progress
 
 See [docs/TESTING_GUIDE.md](docs/TESTING_GUIDE.md) for detailed instructions.
 

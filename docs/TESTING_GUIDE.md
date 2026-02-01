@@ -28,7 +28,42 @@ python scripts/generate_test_set.py \
 - Reproducible test sets with seed parameter
 - Quick sampling from large image collections
 
-### 2. Generate Quality Report (`scripts/generate_quality_report.py`)
+### 2. Generate Interactive Detection Report (`scripts/generate_interactive_report.py`)
+
+Creates a comprehensive HTML report showing detection results alongside cropped outputs for quality assessment.
+
+**Usage:**
+```bash
+python scripts/generate_interactive_report.py
+```
+
+**Features:**
+- **Configuration Summary**: Shows all detection and cropping parameters at the top
+  - Detection Strategy: Models used (YOLO-World + Grounding DINO)
+  - Detection Parameters: Confidence threshold, merge threshold
+  - Cropping Strategy: Target dimensions, zoom factor, fallback settings
+- **Side-by-side Comparison**: Each image shows:
+  - Detection view (left): Original image with bounding boxes
+  - Result view (right): Actual cropped output with zoom factor
+- **Ground Truth Comparison**: Compares detections against annotated ground truth
+- **Accuracy Metrics**: IoU scores and overall accuracy percentage
+- **Feedback System**: Rate results as Good/Poor/Zoom Issue with comments
+- **Export**: Save feedback as JSON for analysis
+
+**Output:** `reports/interactive_detection_report.html`
+
+**Configuration Parameters Displayed:**
+| Section | Parameter | Description |
+|---------|-----------|-------------|
+| Detection | Ensemble | OptimizedEnsembleDetector |
+| Detection | Models | YOLO-World (yolov8m-worldv2) + Grounding DINO (tiny) |
+| Detection | Confidence Threshold | Minimum detection confidence (default: 0.25) |
+| Detection | Merge Threshold | IoU threshold for merging boxes (default: 0.2) |
+| Cropping | Target Dimensions | Output size (default: 1080×1920, 9:16 aspect) |
+| Cropping | Max Zoom Factor | Maximum zoom applied (default: 1.3x) |
+| Cropping | Saliency Fallback | Use saliency when no detections (default: enabled) |
+
+### 3. Generate Quality Report (`scripts/generate_quality_report.py`)
 
 Creates an interactive HTML report for assessing crop quality with rating system.
 
