@@ -2,7 +2,7 @@
 
 from typing import List, Tuple, Optional
 from PIL import Image
-from .detector import Detection
+from .detector import Detection, ArtFeatureDetector
 from .analyzer import CompositionAnalyzer
 
 
@@ -32,9 +32,13 @@ class SmartCropper:
         self.use_saliency_fallback = use_saliency_fallback
         self.analyzer = CompositionAnalyzer()
 
+        # Primary subject selector (uses center-weighting and class priorities)
+        self._subject_selector = ArtFeatureDetector()
+
         # Store last crop info for reporting
         self.last_crop_box: Optional[Tuple[int, int, int, int]] = None
         self.last_zoom_applied: float = 1.0
+        self.last_primary_detection: Optional[Detection] = None
 
     def crop_image(
         self,
@@ -86,8 +90,15 @@ class SmartCropper:
 
         width, height = image.size
 
-        # Use primary detection as anchor
-        primary = detections[0]
+        # Use primary subject selection (center-weighted, class-prioritized)
+        # instead of just taking highest confidence detection
+        self._subject_selector._last_image_size = (width, height)
+        primary = self._subject_selector.get_primary_subject(detections)
+        if primary is None:
+            primary = detections[0]  # Fallback to highest confidence
+
+        # Store for reporting
+        self.last_primary_detection = primary
         anchor_x, anchor_y = primary.center
 
         # Calculate crop window

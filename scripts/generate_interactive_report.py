@@ -34,7 +34,7 @@ def calculate_iou(box1, box2):
     return intersection / union if union > 0 else 0.0
 
 
-def draw_boxes_on_image(image_path, detections, ground_truth_boxes=None, max_width=800):
+def draw_boxes_on_image(image_path, detections, ground_truth_boxes=None, primary=None, max_width=800):
     """Draw detected and ground truth bounding boxes on image."""
     try:
         img = Image.open(image_path).convert('RGB')
@@ -66,19 +66,21 @@ def draw_boxes_on_image(image_path, detections, ground_truth_boxes=None, max_wid
 
         # Draw detected boxes in green
         if detections:
-            primary_det = detections[0]  # First detection is primary
-            for i, det in enumerate(detections[:5]):  # Show up to 5 detections
+            for det in detections[:5]:  # Show up to 5 detections
                 bbox = [int(coord * scale) for coord in det.bbox]
                 x1, y1, x2, y2 = bbox
 
-                # Primary detection gets thicker border
-                width = 4 if i == 0 else 2
-                color = (0, 255, 0) if i == 0 else (0, 200, 0)
+                # Check if this is the primary detection (by bbox match)
+                is_primary = primary is not None and det.bbox == primary.bbox
+
+                # Primary detection gets thicker border and brighter color
+                width = 4 if is_primary else 2
+                color = (0, 255, 0) if is_primary else (0, 200, 0)
 
                 draw.rectangle([x1, y1, x2, y2], outline=color, width=width)
 
                 label = f"{det.class_name} {det.confidence:.2f}"
-                if i == 0:
+                if is_primary:
                     label = "PRIMARY: " + label
 
                 text_bbox = draw.textbbox((x1, y1-20), label, font=font)
@@ -108,25 +110,35 @@ def run_detection(image_path, detector):
         except TypeError:
             detections = detector.detect(img, verbose=False)
 
+        # Get primary by smart selection algorithm
         primary = detector.get_primary_subject(detections) if detections else None
+
+        # Get primary by confidence (old method) for comparison
+        primary_by_confidence = detections[0] if detections else None
+
+        # Check if selection algorithm chose a different primary
+        selection_changed = False
+        if primary and primary_by_confidence:
+            selection_changed = primary.bbox != primary_by_confidence.bbox
 
         return {
             'all_detections': detections,
             'primary': primary,
+            'primary_by_confidence': primary_by_confidence,
+            'selection_changed': selection_changed,
             'count': len(detections)
         }
     except Exception as e:
         print(f"Error detecting in {image_path}: {e}")
-        return {'all_detections': [], 'primary': None, 'count': 0}
+        return {'all_detections': [], 'primary': None, 'primary_by_confidence': None,
+                'selection_changed': False, 'count': 0}
 
 
-def check_accuracy(detections, ground_truth_boxes, iou_threshold=0.3):
-    """Check if detection matches ground truth."""
-    if not detections or not ground_truth_boxes:
+def check_accuracy(primary, ground_truth_boxes, iou_threshold=0.3):
+    """Check if primary detection matches ground truth."""
+    if not primary or not ground_truth_boxes:
         return False, 0.0
 
-    # Check if primary detection overlaps with any ground truth box
-    primary = detections[0]
     best_iou = 0.0
 
     for gt_box in ground_truth_boxes:
@@ -235,11 +247,11 @@ def generate_report():
         # Run detection with optimized ensemble (uses caching)
         detection_result = run_detection(image_path, detector)
 
-        # Check accuracy
+        # Check accuracy using smart primary selection
         is_correct = False
         best_iou = 0.0
-        if gt_boxes and detection_result['all_detections']:
-            is_correct, best_iou = check_accuracy(detection_result['all_detections'], gt_boxes)
+        if gt_boxes and detection_result['primary']:
+            is_correct, best_iou = check_accuracy(detection_result['primary'], gt_boxes)
             total_with_gt += 1
             if is_correct:
                 correct_count += 1
@@ -248,7 +260,8 @@ def generate_report():
         img_with_boxes = draw_boxes_on_image(
             image_path,
             detection_result['all_detections'],
-            gt_boxes
+            gt_boxes,
+            primary=detection_result['primary']
         )
 
         # Generate result/cropped image
@@ -265,6 +278,8 @@ def generate_report():
             'zoom_applied': zoom_applied,
             'detections': detection_result['all_detections'],
             'primary': detection_result['primary'],
+            'primary_by_confidence': detection_result['primary_by_confidence'],
+            'selection_changed': detection_result['selection_changed'],
             'detection_count': detection_result['count'],
             'has_ground_truth': len(gt_boxes) > 0,
             'is_correct': is_correct,
@@ -273,9 +288,11 @@ def generate_report():
         })
 
     accuracy = (correct_count / total_with_gt * 100) if total_with_gt > 0 else 0
+    selection_changed_count = sum(1 for r in results if r['selection_changed'])
 
     print(f"\n✓ Processing complete!")
     print(f"  Accuracy: {correct_count}/{total_with_gt} ({accuracy:.1f}%)")
+    print(f"  Primary selection changed: {selection_changed_count}/{len(results)} images")
     print(f"\nGenerating HTML report...")
 
     # Generate HTML
@@ -782,6 +799,10 @@ def generate_report():
             <div class="stat-value">{sum(1 for r in results if r['detection_count'] > 0)}</div>
             <div class="stat-label">Images with Detections</div>
         </div>
+        <div class="stat-card">
+            <div class="stat-value">{selection_changed_count}</div>
+            <div class="stat-label">Selection Changed</div>
+        </div>
     </div>
 
     <div class="legend">
@@ -823,10 +844,17 @@ def generate_report():
         primary_info = "No detections"
         if result['primary']:
             primary_info = f"{result['primary'].class_name} (conf: {result['primary'].confidence:.3f})"
+            # Show if selection algorithm chose differently than confidence-based
+            if result['selection_changed'] and result['primary_by_confidence']:
+                primary_info += f"<br><span style='color: #059669; font-size: 12px;'>✓ Changed from: {result['primary_by_confidence'].class_name} (conf: {result['primary_by_confidence'].confidence:.3f})</span>"
 
         iou_info = ""
         if result['has_ground_truth'] and result['detection_count'] > 0:
             iou_info = f"<span>IoU: {result['best_iou']:.3f}</span>"
+
+        selection_badge = ""
+        if result['selection_changed']:
+            selection_badge = "<span class='badge' style='background: #d1fae5; color: #065f46;'>Selection Changed</span>"
 
         # Generate result image HTML if available
         result_img_html = ""
@@ -843,6 +871,7 @@ def generate_report():
                 <div class="result-title">{result['filename']}</div>
                 <div class="result-meta">
                     <span class="badge {status_class}">{status_label}</span>
+                    {selection_badge}
                     <span>Detections: {result['detection_count']}</span>
                     <span>Zoom: {result['zoom_applied']:.2f}x</span>
                     {iou_info}
