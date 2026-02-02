@@ -681,10 +681,16 @@ class OptimizedEnsembleDetector:
                 cls_id = int(box.cls[0])
                 area = (bbox[2] - bbox[0]) * (bbox[3] - bbox[1])
 
+                # Get actual class name from the model's names dict or our art_classes
+                if cls_id < len(self._art_classes):
+                    class_name = self._art_classes[cls_id]
+                else:
+                    class_name = r.names.get(cls_id, f"yolo:{cls_id}")
+
                 detections.append(Detection(
                     bbox=bbox,
                     confidence=conf,
-                    class_name=f"yolo:{cls_id}",
+                    class_name=class_name,
                     area=area
                 ))
 
