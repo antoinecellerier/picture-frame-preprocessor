@@ -351,15 +351,16 @@ class ArtFeatureDetector:
         }
 
         # Classes to strongly avoid (not art, distractions)
+        # Note: 'sign' removed - street art often uses signs as medium
         avoid_classes = {
             # Trash/utility
             'trash', 'trash can', 'trash bin', 'garbage', 'garbage can',
             'recycling', 'recycling bin', 'dumpster', 'waste bin',
             # Structural/background
-            'traffic light', 'stop sign', 'parking meter',
+            'traffic light', 'parking meter',
             'window', 'door', 'wall', 'floor', 'ceiling',
             # Small incidental elements
-            'signature', 'text', 'sign', 'label', 'plaque',
+            'signature', 'text', 'label',
             'light', 'lamp', 'outlet', 'switch',
         }
 
@@ -586,22 +587,31 @@ class OptimizedEnsembleDetector:
         self._dino_processor = None
 
         # YOLO-World class prompts (included in cache key)
+        # Note: removed graffiti/stencil/bird statue - caused false positives
         self._art_classes = [
+            # Museum/gallery art
             'museum exhibit', 'gallery display', 'art installation',
             'sculpture on pedestal', 'statue on display',
             'framed artwork', 'wall-mounted art',
             'decorative sculpture', 'artistic piece',
+            # Sculptures and statues
             'sculpture', 'statue', 'figurine', 'bust',
+            # Paintings and wall art
             'painting', 'artwork', 'canvas',
             'mosaic', 'tile art', 'mural', 'wall art',
-            'relief sculpture', 'pottery', 'vase'
+            'relief sculpture', 'pottery', 'vase',
+            # Street art specific (focused on painted art, not graffiti)
+            'street art', 'painted figure', 'painted mural',
+            'art on wall', 'decorated sign',
         ]
 
         # Grounding DINO prompts (included in cache key)
         self._dino_prompts = [
             'sculpture', 'statue', 'painting', 'art installation',
             'mosaic', 'artwork', 'mural', 'art piece',
-            'exhibit', 'artistic object', 'wall art', 'decorative art'
+            'exhibit', 'artistic object', 'wall art', 'decorative art',
+            # Street art (no graffiti/stencil)
+            'street art', 'painted figure', 'figurine',
         ]
 
     def _load_yolo_world(self):

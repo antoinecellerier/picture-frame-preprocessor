@@ -204,7 +204,7 @@ def generate_report():
         'merge_threshold': 0.2,
         'target_width': 1080,
         'target_height': 1920,
-        'zoom_factor': 1.3,
+        'zoom_factor': 8.0,  # Very aggressive max zoom for tiny subjects
         'use_saliency_fallback': True,
     }
 

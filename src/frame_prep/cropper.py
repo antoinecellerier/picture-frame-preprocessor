@@ -13,7 +13,7 @@ class SmartCropper:
         self,
         target_width: int,
         target_height: int,
-        zoom_factor: float = 1.3,
+        zoom_factor: float = 8.0,
         use_saliency_fallback: bool = True
     ):
         """
@@ -22,7 +22,7 @@ class SmartCropper:
         Args:
             target_width: Target width in pixels
             target_height: Target height in pixels
-            zoom_factor: Zoom multiplier for tighter crops (default: 1.3)
+            zoom_factor: Max zoom multiplier for tighter crops (default: 8.0, very aggressive for tiny subjects)
             use_saliency_fallback: Use saliency when no detections (default: True)
         """
         self.target_width = target_width
