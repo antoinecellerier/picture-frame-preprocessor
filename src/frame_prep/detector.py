@@ -428,24 +428,28 @@ class ArtFeatureDetector:
                 score *= center_bonus
 
             # Size bonus (larger objects are more likely to be the subject)
+            # More aggressive than before to prefer main subjects over small details
             size_ratio = det.area / img_area if img_area > 0 else 0
 
             # Progressive size bonus:
-            # - Very small (<2%): slight penalty
-            # - Small (2-10%): neutral to slight bonus
-            # - Medium (10-40%): good bonus
-            # - Large (40-60%): best bonus
+            # - Tiny (<1%): strong penalty - likely small detail, not main subject
+            # - Very small (1-3%): moderate penalty
+            # - Small (3-10%): neutral to slight bonus
+            # - Medium (10-30%): good bonus
+            # - Large (30-60%): best bonus - likely the main subject
             # - Too large (>60%): reduced bonus (likely background)
-            if size_ratio < 0.02:
-                size_bonus = 0.7  # Penalty for tiny objects
+            if size_ratio < 0.01:
+                size_bonus = 0.3  # Strong penalty for tiny objects
+            elif size_ratio < 0.03:
+                size_bonus = 0.6  # Moderate penalty
             elif size_ratio < 0.10:
-                size_bonus = 1.0 + size_ratio * 2  # 1.0 to 1.2
-            elif size_ratio < 0.40:
-                size_bonus = 1.2 + size_ratio  # 1.3 to 1.6
+                size_bonus = 1.0 + size_ratio * 3  # 1.0 to 1.3
+            elif size_ratio < 0.30:
+                size_bonus = 1.3 + size_ratio * 2  # 1.5 to 1.9
             elif size_ratio < 0.60:
-                size_bonus = 1.6  # Peak bonus for large central subjects
+                size_bonus = 2.0  # Strong bonus for large central subjects
             else:
-                size_bonus = 1.2  # Reduced for very large (might be background)
+                size_bonus = 1.3  # Reduced for very large (might be background)
 
             score *= size_bonus
 
