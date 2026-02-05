@@ -385,13 +385,15 @@ class ArtFeatureDetector:
             class_lower = class_name.lower()
 
             # Check high-priority art classes (exact or substring match)
+            # Only check if art_class is contained in class_lower (not reverse)
+            # to avoid false positives like 'car' matching 'carving'
             for art_class in high_priority_art_classes:
-                if art_class in class_lower or class_lower in art_class:
+                if art_class in class_lower:
                     return 4.0  # Highest priority for explicit art
 
             # Check avoid classes
             for avoid_class in avoid_classes:
-                if avoid_class in class_lower or class_lower in avoid_class:
+                if avoid_class in class_lower:
                     return 0.05  # Strongly deprioritize
 
             # Check COCO art-related classes

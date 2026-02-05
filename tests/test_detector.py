@@ -56,9 +56,10 @@ def test_get_primary_subject_with_person():
     detector = ArtFeatureDetector()
 
     # Art detection: people are viewers, not subjects
-    # 'dog' is in art_related_classes (animal sculptures) with 2.5x multiplier
-    # 'person' has 0.5x multiplier (deprioritized)
-    # 'car' has 1.5x multiplier (other objects)
+    # 'dog' is in art_related_classes with 2.5x multiplier
+    # 'person' has 0.4x multiplier (deprioritized)
+    # 'car' has 1.5x multiplier (default/other objects)
+    # Size bonus is 1.3x for all (same area, no image size set)
     detections = [
         Detection(bbox=(0, 0, 100, 100), confidence=0.9, class_name='car', area=10000),
         Detection(bbox=(100, 100, 200, 200), confidence=0.7, class_name='person', area=10000),
@@ -66,7 +67,7 @@ def test_get_primary_subject_with_person():
     ]
 
     primary = detector.get_primary_subject(detections)
-    # 'dog' wins: 0.6 * 2.5 = 1.5 > 'car': 0.9 * 1.5 = 1.35 > 'person': 0.7 * 0.5 = 0.35
+    # 'dog' wins: 0.6 * 2.5 * 1.3 = 1.95 > 'car': 0.9 * 1.5 * 1.3 = 1.755
     assert primary.class_name == 'dog'
 
 
@@ -75,14 +76,15 @@ def test_get_primary_subject_no_person():
     detector = ArtFeatureDetector()
 
     # 'dog' is art-related (animal sculptures) with 2.5x multiplier
-    # 'car' has 1.5x multiplier (other objects)
+    # 'car' has 1.5x multiplier (default/other objects)
+    # Size bonus is 1.3x for all (same area, no image size set)
     detections = [
         Detection(bbox=(0, 0, 100, 100), confidence=0.9, class_name='car', area=10000),
         Detection(bbox=(100, 100, 200, 200), confidence=0.7, class_name='dog', area=10000),
     ]
 
     primary = detector.get_primary_subject(detections)
-    # 'dog' wins: 0.7 * 2.5 = 1.75 > 'car': 0.9 * 1.5 = 1.35
+    # 'dog' wins: 0.7 * 2.5 * 1.3 = 2.275 > 'car': 0.9 * 1.5 * 1.3 = 1.755
     assert primary.class_name == 'dog'
     assert primary.confidence == 0.7
 
@@ -91,8 +93,8 @@ def test_get_primary_subject_highest_confidence():
     """Test get_primary_subject with same class multipliers."""
     detector = ArtFeatureDetector()
 
-    # Both are 'other' objects with 1.5x multiplier
-    # Higher confidence wins
+    # Both are default/other objects with 1.5x multiplier
+    # Same size bonus (1.3x), so higher confidence wins
     detections = [
         Detection(bbox=(0, 0, 100, 100), confidence=0.9, class_name='car', area=10000),
         Detection(bbox=(100, 100, 200, 200), confidence=0.7, class_name='truck', area=10000),
