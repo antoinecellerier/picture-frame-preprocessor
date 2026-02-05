@@ -17,24 +17,20 @@ This directory contains test images and evaluation data for the picture frame pr
   - `intermediate_outputs/` - Various test runs with different models
   - `html_reports/` - Large HTML quality assessment reports
 
-- **output_optimized/** - Final processed images using optimized ensemble (98.4% accuracy)
+- **output_optimized/** - Final processed images using optimized ensemble (now the default)
 
 ## Regenerating Results
 
 All generated outputs can be recreated:
 
 ```bash
-# Regenerate optimized output
+# Regenerate output (uses optimized ensemble by default)
 python scripts/batch_process.py \
   --input-dir test_real_images/input \
-  --output-dir test_real_images/output_optimized \
-  --optimized
+  --output-dir test_real_images/output_optimized
 
-# Regenerate quality reports
-python scripts/generate_quality_report.py
-
-# Regenerate comparison reports
-python scripts/generate_final_report.py
+# Regenerate interactive detection report
+python scripts/generate_interactive_report.py
 ```
 
 ## Safe to Delete

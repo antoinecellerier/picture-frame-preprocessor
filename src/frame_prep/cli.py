@@ -60,14 +60,14 @@ def cli():
     help='Detection confidence threshold (default: 0.15 for more detections)'
 )
 @click.option(
-    '--ensemble',
+    '--single-model',
     is_flag=True,
-    help='Use ensemble detector (YOLOv8m + RT-DETR-L) for good accuracy (63.5%)'
+    help='Use single YOLOv8 model instead of default optimized ensemble (faster, lower accuracy)'
 )
 @click.option(
-    '--optimized',
+    '--ensemble',
     is_flag=True,
-    help='Use optimized ensemble (YOLO-World + Grounding DINO) for BEST accuracy (96.8%)'
+    help='Use ensemble detector (YOLOv8m + RT-DETR-L) instead of default optimized ensemble'
 )
 @click.option(
     '--zoom', '-z',
@@ -86,34 +86,36 @@ def cli():
     is_flag=True,
     help='Verbose output'
 )
-def process(input, output, width, height, strategy, model, confidence, ensemble, optimized, zoom, quality, verbose):
+def process(input, output, width, height, strategy, model, confidence, single_model, ensemble, zoom, quality, verbose):
     """Process a single image for e-ink display."""
 
     try:
         # Initialize components
-        if optimized:
-            # Use optimized ensemble for BEST accuracy (96.8%)
-            detector = OptimizedEnsembleDetector(
-                confidence_threshold=0.25,  # Optimized threshold
-                merge_threshold=0.2  # Optimized merge threshold
+        if single_model:
+            # Use single YOLO model (faster, lower accuracy)
+            detector = ArtFeatureDetector(
+                model_name=model,
+                confidence_threshold=confidence
             )
             if verbose:
-                click.echo("Using OPTIMIZED ensemble: YOLO-World + Grounding DINO (96.8% accuracy)")
+                click.echo(f"Using single model: {model}")
         elif ensemble:
-            # Use ensemble detector for good accuracy (63.5%)
+            # Use ensemble detector (YOLOv8m + RT-DETR-L)
             detector = EnsembleDetector(
                 models=['yolov8m', 'rtdetr-l'],
                 confidence_threshold=confidence,
                 merge_threshold=0.4
             )
             if verbose:
-                click.echo("Using ensemble detector: YOLOv8m + RT-DETR-L (63.5% accuracy)")
+                click.echo("Using ensemble detector: YOLOv8m + RT-DETR-L")
         else:
-            # Use single model detector
-            detector = ArtFeatureDetector(
-                model_name=model,
-                confidence_threshold=confidence
+            # Default: optimized ensemble (YOLO-World + Grounding DINO)
+            detector = OptimizedEnsembleDetector(
+                confidence_threshold=0.25,
+                merge_threshold=0.2
             )
+            if verbose:
+                click.echo("Using optimized ensemble: YOLO-World + Grounding DINO")
         cropper = SmartCropper(
             target_width=width,
             target_height=height,

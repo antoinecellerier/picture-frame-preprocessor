@@ -126,7 +126,7 @@ def calculate_contextual_zoom(subject_ratio, max_zoom):
 - If saliency fails, center crop (no zoom)
 
 ### Multiple Detections
-- Uses primary (highest confidence) detection
+- Selects primary subject via center-weighting and class priorities (not just highest confidence)
 - Centers on primary, zoom based on its size
 
 ### Very Large Subjects

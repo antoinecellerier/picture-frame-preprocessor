@@ -59,7 +59,7 @@ python scripts/generate_interactive_report.py
 | Detection | Models | YOLO-World (yolov8m-worldv2) + Grounding DINO (tiny) |
 | Detection | Confidence Threshold | Minimum detection confidence (default: 0.25) |
 | Detection | Merge Threshold | IoU threshold for merging boxes (default: 0.2) |
-| Cropping | Target Dimensions | Output size (default: 1080×1920, 9:16 aspect) |
+| Cropping | Target Dimensions | Output size (default: 480×800) |
 | Cropping | Max Zoom Factor | Maximum zoom applied (default: 1.3x) |
 | Cropping | Saliency Fallback | Use saliency when no detections (default: enabled) |
 

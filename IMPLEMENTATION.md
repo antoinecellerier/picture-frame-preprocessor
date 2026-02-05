@@ -21,14 +21,18 @@ The Picture Frame Preprocessor has been successfully implemented according to th
    - ProcessingResult dataclass for detailed results
 
 3. **ML Detector** (`src/frame_prep/detector.py`)
-   - YOLOv8 wrapper for object detection
-   - Lazy model loading
-   - Detection filtering by confidence threshold
-   - Primary subject prioritization (people first)
+   - Multiple detector backends:
+     - `ArtFeatureDetector`: Single-model YOLOv8 detection
+     - `EnsembleDetector`: YOLOv8m + RT-DETR-L ensemble
+     - `OptimizedEnsembleDetector`: YOLO-World + Grounding DINO (best accuracy)
+   - Lazy model loading with detection caching
+   - Center-weighted primary subject selection with class priorities
+   - Art-specific class lists and avoid-class filtering
 
 4. **Smart Cropper** (`src/frame_prep/cropper.py`)
    - Three cropping strategies: smart, saliency, center
-   - ML-guided cropping using detections
+   - ML-guided cropping with contextual zoom
+   - Center-weighted primary subject selection
    - Proper aspect ratio calculations
    - Edge case handling (subjects near borders)
 
@@ -60,14 +64,14 @@ The Picture Frame Preprocessor has been successfully implemented according to th
 
 ### Testing
 
-Comprehensive test suite with 29 tests covering:
+Comprehensive test suite with 35 tests covering:
 - Cropper logic and edge cases
-- Detection filtering and prioritization
+- Detection filtering, prioritization, and ensemble merging
 - Image preprocessing pipeline
 - Utility functions
 - EXIF preservation
 
-**Test Results**: ✅ 29/29 passed
+**Test Results**: ✅ 35 tests
 
 ## Verification
 
@@ -104,17 +108,21 @@ python scripts/batch_process.py \
 
 ## Features Implemented
 
-- ✅ ML-powered smart cropping (YOLOv8)
+- ✅ ML-powered smart cropping (YOLOv8, Ensemble, OptimizedEnsemble)
+- ✅ YOLO-World + Grounding DINO optimized ensemble
 - ✅ Saliency-based fallback cropping
 - ✅ Center crop fallback
+- ✅ Contextual zoom based on subject size
 - ✅ CLI with comprehensive options
 - ✅ Batch processing with parallel workers
+- ✅ Detection caching for batch performance
 - ✅ EXIF metadata preservation
 - ✅ Portrait detection (skip crop if not needed)
 - ✅ Progress tracking (tqdm)
 - ✅ Error handling and logging
 - ✅ Skip existing files option
-- ✅ Comprehensive test suite
+- ✅ OpenVINO acceleration
+- ✅ Comprehensive test suite (35 tests)
 - ✅ Detailed documentation
 
 ## Project Structure
@@ -131,14 +139,24 @@ picture-frame-preprocessor/
 │   ├── __init__.py
 │   ├── cli.py                  # CLI entry point
 │   ├── preprocessor.py         # Core pipeline
-│   ├── detector.py             # YOLOv8 wrapper
-│   ├── cropper.py              # Cropping strategies
+│   ├── detector.py             # Detection models (YOLOv8, Ensemble, OptimizedEnsemble)
+│   ├── cropper.py              # Cropping strategies with contextual zoom
 │   ├── analyzer.py             # Saliency analysis
 │   └── utils.py                # Utilities
 │
 ├── scripts/                    # Helper scripts
-│   ├── batch_process.py        # Batch processing
-│   └── download_models.py      # Model downloader
+│   ├── batch_process.py              # Batch processing
+│   ├── download_models.py            # Model downloader
+│   ├── generate_test_set.py          # Generate random test sets
+│   ├── generate_interactive_report.py # Interactive detection report
+│   ├── generate_quality_report.py    # Quality assessment report
+│   ├── check_optimizations.py        # System optimization check
+│   └── export_to_openvino.py         # OpenVINO model export
+│
+├── docs/                       # Documentation
+│   ├── TESTING_GUIDE.md
+│   ├── CONTEXTUAL_ZOOM.md
+│   └── HARDWARE_ACCELERATION.md
 │
 ├── tests/                      # Test suite
 │   ├── __init__.py
@@ -237,7 +255,7 @@ To use with ML detection:
 - ✅ Integrates with workflow (OneDrive → preprocessor → e-ink frame)
 - ✅ Processing performance acceptable
 - ✅ Error handling robust (batch continues on failures)
-- ✅ Comprehensive tests (29 tests, all passing)
+- ✅ Comprehensive tests (35 tests)
 
 ## Notes
 

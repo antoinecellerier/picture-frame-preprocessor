@@ -15,32 +15,31 @@ python scripts/download_models.py
 ### Single Image
 
 ```bash
-# Recommended: Smart ML detection with contextual zoom (default, best quality)
+# Default: optimized ensemble (YOLO-World + Grounding DINO, best accuracy)
 frame-prep process -i input.jpg -o output_dir/ -v
 
 # Customize zoom (1.0 = no zoom, 2.0 = max zoom)
 frame-prep process -i input.jpg -o output_dir/ --zoom 1.5 -v
 
-# Use even better model for maximum quality
-frame-prep process -i input.jpg -o output_dir/ --model yolov8l -v
+# Faster single-model mode (lower accuracy)
+frame-prep process -i input.jpg -o output_dir/ --single-model -v
 ```
 
 ### Batch Processing
 
 ```bash
-# Process entire directory (uses yolov8m, 0.15 confidence, 1.3x zoom)
+# Process entire directory (uses optimized ensemble by default)
 python scripts/batch_process.py \
   -i input_dir/ \
   -o output_dir/ \
   --workers 4
 
-# Customize for maximum quality
+# Faster with single model
 python scripts/batch_process.py \
   -i input_dir/ \
   -o output_dir/ \
-  --model yolov8l \
-  --zoom 1.5 \
-  --workers 2
+  --single-model \
+  --workers 4
 
 # Skip already processed images
 python scripts/batch_process.py \
@@ -52,14 +51,15 @@ python scripts/batch_process.py \
 
 ## Cropping Strategies
 
-- **smart** (default): YOLOv8m ML + contextual zoom - **recommended for quality**
-  - Detects subjects with yolov8m (better than yolov8n)
+- **smart** (default): ML detection + contextual zoom - **recommended for quality**
+  - Default: YOLO-World + Grounding DINO optimized ensemble (best accuracy)
+  - `--single-model`: Single YOLOv8m (faster, lower accuracy)
   - Applies contextual zoom (only zooms small subjects)
   - Falls back to saliency when no detections
 - **saliency** (fallback): OpenCV saliency detection with conservative zoom
 - **center** (fallback): Simple center crop (last resort)
 
-**Note:** Smart is the default with optimized settings. Just run without flags.
+**Note:** Smart with optimized ensemble is the default. Just run without flags.
 
 ## Common Workflows
 
@@ -92,8 +92,8 @@ python scripts/download_models.py
 # Reduce workers for memory-constrained systems
 python scripts/batch_process.py -i input/ -o output/ --workers 2
 
-# Use faster model if speed is critical
-python scripts/batch_process.py -i input/ -o output/ --model yolov8s
+# Use single model if speed is critical
+python scripts/batch_process.py -i input/ -o output/ --single-model
 
 # Disable zoom for faster processing
 python scripts/batch_process.py -i input/ -o output/ --zoom 1.0

@@ -45,19 +45,19 @@ The optimized ensemble failed on only 1 image out of 63:
 
 ## Production Recommendations
 
-### For Maximum Accuracy (Recommended)
+### For Maximum Accuracy (Default)
 ```bash
-frame-prep process --input image.jpg --output out/ --optimized
+frame-prep process --input image.jpg --output out/
 ```
-- Use optimized ensemble for best results (98.4% accuracy)
+- Uses optimized ensemble by default (98.4% accuracy)
 - Suitable for offline batch processing
 - ~13 seconds per image
 
-### For Real-Time Processing
+### For Faster Processing
 ```bash
-frame-prep process --input image.jpg --output out/ --model yolo-world
+frame-prep process --input image.jpg --output out/ --single-model
 ```
-- Use YOLO-World for faster processing (52.4% accuracy)
+- Use single YOLOv8m for faster processing
 - ~0.7 seconds per image
 - Good for interactive applications
 
@@ -91,7 +91,7 @@ Generated reports are available in `reports/` directory:
 
 To regenerate reports:
 ```bash
-python scripts/generate_final_report.py
+python scripts/generate_interactive_report.py
 ```
 
 ## Next Steps

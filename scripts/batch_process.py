@@ -71,10 +71,11 @@ def init_worker(config):
     # use_openvino defaults to True for best CPU performance
     use_openvino = config.get('use_openvino', True)
 
-    if config.get('optimized', False):
-        _detector = OptimizedEnsembleDetector(
-            confidence_threshold=0.25,
-            merge_threshold=0.2
+    if config.get('single_model', False):
+        _detector = ArtFeatureDetector(
+            model_name=config['model'],
+            confidence_threshold=config['confidence'],
+            use_openvino=use_openvino
         )
     elif config.get('ensemble', False):
         _detector = EnsembleDetector(
@@ -84,10 +85,10 @@ def init_worker(config):
             use_openvino=use_openvino
         )
     else:
-        _detector = ArtFeatureDetector(
-            model_name=config['model'],
-            confidence_threshold=config['confidence'],
-            use_openvino=use_openvino
+        # Default: optimized ensemble (YOLO-World + Grounding DINO)
+        _detector = OptimizedEnsembleDetector(
+            confidence_threshold=0.25,
+            merge_threshold=0.2
         )
 
     # Create cropper once per worker
@@ -225,14 +226,14 @@ def main():
         help='Detection confidence threshold (default: 0.15 for more detections)'
     )
     parser.add_argument(
-        '--ensemble',
+        '--single-model',
         action='store_true',
-        help='Use ensemble detector (YOLOv8m + RT-DETR-L) for good accuracy (63.5%%)'
+        help='Use single YOLOv8 model instead of default optimized ensemble (faster, lower accuracy)'
     )
     parser.add_argument(
-        '--optimized',
+        '--ensemble',
         action='store_true',
-        help='Use optimized ensemble (YOLO-World + Grounding DINO) for BEST accuracy (96.8%%)'
+        help='Use ensemble detector (YOLOv8m + RT-DETR-L) instead of default optimized ensemble'
     )
     parser.add_argument(
         '--zoom', '-z',
@@ -307,8 +308,8 @@ def main():
         'strategy': args.strategy,
         'model': args.model,
         'confidence': args.confidence,
+        'single_model': args.single_model,
         'ensemble': args.ensemble,
-        'optimized': args.optimized,
         'zoom': args.zoom,
         'quality': args.quality,
         'skip_existing': args.skip_existing,
@@ -333,8 +334,8 @@ def main():
         optimizations.append("OpenVINO")
     optimizations.append(f"{args.threads_per_worker} threads/worker")
 
-    if args.optimized:
-        print("🚀 Optimized mode: Loading models once per worker (6.7x faster!)")
+    if not args.single_model and not args.ensemble:
+        print("🚀 Optimized ensemble: YOLO-World + Grounding DINO (models cached per worker)")
     print(f"⚡ Optimizations: {', '.join(optimizations)}\n")
 
     with ProcessPoolExecutor(max_workers=args.workers, initializer=init_worker, initargs=(config,)) as executor:

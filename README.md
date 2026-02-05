@@ -4,11 +4,12 @@ Intelligent image preprocessor for e-ink picture frames. Converts art and street
 
 ## Features
 
-- **ML-Powered Smart Cropping**: Uses YOLOv8 to detect subjects and crop intelligently
+- **ML-Powered Smart Cropping**: Ensemble detection (YOLO-World + Grounding DINO) to detect art subjects and crop intelligently
 - **OpenVINO Acceleration**: Automatic GPU/NPU acceleration on Intel hardware (1.4x faster)
 - **Contextual Zoom**: Automatically zooms based on subject size to remove excessive background
 - **Portrait & Landscape**: Intelligently crops both orientations to exact aspect ratio
 - **Multiple Strategies**: Smart (ML), saliency-based, or center cropping
+- **Multiple Detectors**: Single-model (YOLOv8), ensemble (YOLOv8m + RT-DETR-L), or optimized ensemble (YOLO-World + Grounding DINO)
 - **Batch Processing**: Process entire directories with parallel workers and ML analysis caching
 - **EXIF Preservation**: Maintains image metadata and handles rotation
 - **Flexible Output**: Configurable dimensions and quality
@@ -59,8 +60,10 @@ Options:
 - `--width, -w`: Target width in pixels (default: 480)
 - `--height, -h`: Target height in pixels (default: 800)
 - `--strategy, -s`: Cropping strategy: smart, saliency, center (default: smart)
-- `--model, -m`: YOLO model variant (default: yolov8m for better art detection)
-- `--confidence, -c`: Detection confidence threshold (default: 0.15 for more detections)
+- `--single-model`: Use single YOLOv8 model instead of default ensemble (faster, lower accuracy)
+- `--ensemble`: Use YOLOv8m + RT-DETR-L ensemble instead of default
+- `--model, -m`: YOLO model variant for `--single-model` mode (default: yolov8m)
+- `--confidence, -c`: Detection confidence threshold (default: 0.15)
 - `--zoom, -z`: Contextual zoom factor (default: 1.3, range: 1.0-2.0)
 - `--quality, -q`: JPEG quality 1-100 (default: 95)
 - `--verbose, -v`: Verbose output
@@ -85,7 +88,9 @@ Options:
 - `--width, -w`: Target width (default: 480)
 - `--height`: Target height (default: 800)
 - `--strategy, -s`: Cropping strategy (default: smart)
-- `--model, -m`: YOLO model (default: yolov8m)
+- `--single-model`: Use single YOLOv8 model instead of default ensemble (faster, lower accuracy)
+- `--ensemble`: Use YOLOv8m + RT-DETR-L ensemble instead of default
+- `--model, -m`: YOLO model variant for `--single-model` mode (default: yolov8m)
 - `--confidence, -c`: Detection threshold (default: 0.15)
 - `--zoom, -z`: Contextual zoom factor (default: 1.3)
 - `--workers`: Number of parallel workers (default: 8, optimized for 16-thread CPUs)
@@ -103,17 +108,27 @@ Options:
 ## Cropping Strategies
 
 ### Smart (Default - Recommended)
-**Uses YOLOv8m ML model to detect subjects and intelligently crops with contextual zoom.** This is the default and recommended strategy for best quality results.
+**Uses ML detection to detect subjects and intelligently crops with contextual zoom.** This is the default and recommended strategy for best quality results.
+
+**Detector options:**
+- Default: YOLO-World + Grounding DINO optimized ensemble (best accuracy)
+- `--single-model`: Single YOLOv8m model (faster, lower accuracy)
+- `--ensemble`: YOLOv8m + RT-DETR-L ensemble (moderate accuracy)
 
 **Features:**
-- Detects people, objects in art/streetart scenes
+- Detects people, art, sculptures, murals, and other subjects
+- Center-weighted primary subject selection with class priorities
 - Contextual zoom: Only zooms when subject is small (removes excessive background)
-- Falls back to saliency detection when YOLO finds nothing
-- Optimized for art: Better model (yolov8m), lower threshold (0.15)
+- Falls back to saliency detection when no detections found
+- Optimized for art: Lower threshold (0.15), art-specific class priorities
 
 **Use this for quality.** Simply omit the `--strategy` flag:
 ```bash
+# Default: optimized ensemble (YOLO-World + Grounding DINO)
 frame-prep process -i input.jpg -o output/ -v
+
+# Faster with single model (lower accuracy)
+frame-prep process -i input.jpg -o output/ --single-model -v
 ```
 
 ### Saliency (Fallback)
@@ -128,8 +143,8 @@ Simple center crop. Last resort fallback when other strategies unavailable.
 2. **Check Aspect Ratio**: Determines if image needs cropping to reach target 3:5 ratio
    - Landscape (too wide) → Crop width horizontally to focus on subjects
    - Portrait (too tall) → Crop height vertically to focus on subjects
-3. **Detect Subjects**: Runs YOLOv8m with OpenVINO acceleration to find people, objects (or saliency fallback)
-4. **Calculate Crop**: Centers crop window on primary detection
+3. **Detect Subjects**: Runs YOLO-World + Grounding DINO ensemble by default to find art subjects (or saliency fallback)
+4. **Calculate Crop**: Centers crop window on primary subject (selected via center-weighting and class priorities)
 5. **Contextual Zoom**: Analyzes subject size, zooms only if needed to focus on art
 6. **Apply Crop**: Crops to exact portrait aspect ratio with zoom applied
 7. **Resize**: Scales to exact target dimensions (480x800)
@@ -197,16 +212,15 @@ python scripts/download_models.py
 
 ### Slow Processing
 
+- Use `--single-model` for faster processing (single YOLOv8m instead of ensemble)
 - Use fewer workers (`--workers 2`)
-- Use faster model (`--model yolov8s` or `--model yolov8n`)
-- Note: yolov8m is default for better art detection quality
 - Use simpler strategy (`--strategy center`)
 
 ### Poor Crop Results
 
-- Adjust confidence threshold (`--confidence 0.15`)
-- Try different strategy (`--strategy saliency`)
-- Use larger model (`--model yolov8s`)
+- The default optimized ensemble should give best results
+- Try `--strategy saliency` for images where ML detection struggles
+- With `--single-model`, try adjusting `--confidence 0.15`
 
 ## Project Structure
 
@@ -219,17 +233,22 @@ picture-frame-preprocessor/
 │   ├── __init__.py
 │   ├── cli.py              # Click CLI entry point
 │   ├── preprocessor.py     # Core pipeline orchestration
-│   ├── detector.py         # YOLOv8 wrapper
-│   ├── cropper.py          # Intelligent cropping
+│   ├── detector.py         # Detection models (YOLOv8, Ensemble, OptimizedEnsemble)
+│   ├── cropper.py          # Intelligent cropping with contextual zoom
 │   ├── analyzer.py         # Saliency analysis
 │   └── utils.py            # Shared utilities
 ├── scripts/
-│   ├── batch_process.py        # Directory batch processing
-│   ├── download_models.py      # Initialize models
-│   ├── generate_test_set.py    # Generate random test sets
-│   └── generate_quality_report.py  # Interactive quality assessment HTML
+│   ├── batch_process.py              # Directory batch processing
+│   ├── download_models.py            # Initialize models
+│   ├── generate_test_set.py          # Generate random test sets
+│   ├── generate_interactive_report.py # Interactive detection report (HTML)
+│   ├── generate_quality_report.py    # Quality assessment report (HTML)
+│   ├── check_optimizations.py        # Check system optimization status
+│   └── export_to_openvino.py         # Export models to OpenVINO format
 ├── docs/
-│   └── TESTING_GUIDE.md        # Quality assessment guide
+│   ├── TESTING_GUIDE.md              # Quality assessment guide
+│   ├── CONTEXTUAL_ZOOM.md            # Zoom logic documentation
+│   └── HARDWARE_ACCELERATION.md      # Hardware optimization guide
 └── tests/
     └── fixtures/sample_images/
 ```
