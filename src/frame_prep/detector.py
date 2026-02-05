@@ -790,13 +790,15 @@ class OptimizedEnsembleDetector:
 
     def detect(self, image: Image.Image, verbose: bool = False, image_path: Union[str, Path, None] = None) -> List[Detection]:
         """
-        Run both detectors and merge results with two-pass center detection.
+        Run both detectors and merge results with conditional two-pass detection.
 
-        Uses a two-pass approach:
-        1. First pass: detect on full image
-        2. Second pass: detect on center-cropped region (60% of image)
-           - Small central objects become larger relative to frame
-           - Improves both detection and labeling accuracy
+        Uses a conditional two-pass approach:
+        1. First pass: detect on full image with both models
+        2. Second pass (only if needed): detect on center-cropped region (60%)
+           - Skipped when pass 1 already found a viable art candidate in the
+             central area, saving ~2x processing time for the majority of images
+           - Triggered when no good central candidate exists, helping detect
+             small or hard-to-find subjects
 
         Args:
             image: PIL Image to process
@@ -821,10 +823,18 @@ class OptimizedEnsembleDetector:
         if verbose:
             print(f"  Pass 1 (full): {len(all_detections)} detections")
 
-        # === PASS 2: Center-cropped detection (optional) ===
+        # === PASS 2: Center-cropped detection (conditional) ===
+        # Only run the expensive second pass if pass 1 didn't find viable
+        # candidates in the central area of the image.
         if self.two_pass:
-            center_detections = self._detect_center_crop(image, image_hash, path_hash, verbose)
-            all_detections.extend(center_detections)
+            if self._has_viable_central_candidate(all_detections, image.size):
+                if verbose:
+                    print("  Pass 2 skipped: viable central candidate found in pass 1")
+            else:
+                if verbose:
+                    print("  Pass 2 triggered: no viable central candidate in pass 1")
+                center_detections = self._detect_center_crop(image, image_hash, path_hash, verbose)
+                all_detections.extend(center_detections)
 
         if verbose:
             print(f"  Total before merge: {len(all_detections)}")
@@ -836,6 +846,70 @@ class OptimizedEnsembleDetector:
             print(f"  Total after merge: {len(merged_detections)}")
 
         return merged_detections
+
+    def _has_viable_central_candidate(self, detections: List[Detection], image_size: tuple) -> bool:
+        """
+        Check if pass 1 found a viable art candidate in the central area.
+
+        A candidate is viable if it's an art-related class (not person/avoid),
+        has reasonable confidence, and its center falls within the middle 60%
+        of the image (the same region pass 2 would crop).
+        """
+        if not detections:
+            return False
+
+        width, height = image_size
+        img_area = width * height
+
+        # Central region bounds (same 60% crop as pass 2)
+        crop_ratio = 0.6
+        left = width * (1 - crop_ratio) / 2
+        top = height * (1 - crop_ratio) / 2
+        right = width - left
+        bottom = height - top
+
+        # Classes that indicate a viable art subject
+        art_keywords = {
+            'artwork', 'painting', 'mural', 'mosaic', 'fresco',
+            'sculpture', 'statue', 'figurine', 'bust',
+            'art', 'exhibit', 'display', 'gallery',
+            'vase', 'pottery', 'relief', 'carving',
+        }
+
+        # Classes to skip — not viable subjects
+        skip_classes = {'person', 'trash', 'traffic light', 'parking meter'}
+
+        for det in detections:
+            cx, cy = det.center
+
+            # Must be in central region
+            if not (left <= cx <= right and top <= cy <= bottom):
+                continue
+
+            # Must not be a skip class
+            class_lower = det.class_name.lower()
+            if any(skip in class_lower for skip in skip_classes):
+                continue
+
+            # Must have reasonable confidence
+            if det.confidence < 0.3:
+                continue
+
+            # Must not be tiny (< 1% of image) — too small to be a real subject
+            size_ratio = det.area / img_area if img_area > 0 else 0
+            if size_ratio < 0.01:
+                continue
+
+            # Check if it's art-related or at least not a known non-art class
+            is_art = any(kw in class_lower for kw in art_keywords)
+            is_large = size_ratio >= 0.05
+
+            # Accept if it's art-related, or if it's a large central detection
+            # (large central objects from open-vocab models are likely subjects)
+            if is_art or is_large:
+                return True
+
+        return False
 
     def _detect_center_crop(self, image: Image.Image, image_hash: str, path_hash: str, verbose: bool) -> List[Detection]:
         """

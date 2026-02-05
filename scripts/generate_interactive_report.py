@@ -97,7 +97,7 @@ def draw_boxes_on_image(image_path, detections, ground_truth_boxes=None, primary
         return None
 
 
-def run_detection(image_path, detector):
+def run_detection(image_path, detector, verbose=False):
     """Run detection on an image and return results."""
     try:
         img = Image.open(image_path)
@@ -106,9 +106,9 @@ def run_detection(image_path, detector):
 
         # Pass image_path for cache lookups
         try:
-            detections = detector.detect(img, verbose=False, image_path=image_path)
+            detections = detector.detect(img, verbose=verbose, image_path=image_path)
         except TypeError:
-            detections = detector.detect(img, verbose=False)
+            detections = detector.detect(img, verbose=verbose)
 
         # Get primary by smart selection algorithm
         primary = detector.get_primary_subject(detections) if detections else None
@@ -211,7 +211,8 @@ def generate_report():
     # Create detector once (reused for all images, with caching)
     detector = OptimizedEnsembleDetector(
         confidence_threshold=config['confidence_threshold'],
-        merge_threshold=config['merge_threshold']
+        merge_threshold=config['merge_threshold'],
+        two_pass=True
     )
 
     # Create cropper for generating result images
@@ -244,8 +245,8 @@ def generate_report():
         for det_data in gt_entry.get('correct_detections', []):
             gt_boxes.append(det_data['bbox'])
 
-        # Run detection with optimized ensemble (uses caching)
-        detection_result = run_detection(image_path, detector)
+        # Run detection with optimized ensemble (uses caching, verbose for two-pass info)
+        detection_result = run_detection(image_path, detector, verbose=True)
 
         # Check accuracy using smart primary selection
         is_correct = False
