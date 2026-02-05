@@ -308,3 +308,68 @@ Make it executable:
 chmod +x test_pipeline.sh
 ./test_pipeline.sh
 ```
+
+## Feedback Analysis History
+
+### Configuration Comparison (2026-02-02)
+
+| Configuration | Accuracy | Bad Count | Processing Time | Notes |
+|---------------|----------|-----------|-----------------|-------|
+| yolov8m + single-pass | ~85% | 8-10 | Fast (baseline) | **Current default** |
+| yolov8l + single-pass | 86.9% | 7 | ~40% slower | Marginal improvement |
+| yolov8l + two-pass (60% center) | 93.75% | 4 | ~3-4x slower | Best accuracy but too slow |
+| Lower conf (0.20) | 85.7% | 8 | Same | More detections but no net gain |
+
+**Conclusion:** Two-pass detection with center crop significantly improves accuracy (93.75% vs ~85%) but the processing time increase (~3-4x) is not worth the tradeoff for typical use cases. The two-pass code is retained but disabled by default.
+
+**Two-pass detection notes:**
+- Crops center 60% of image and runs detection again
+- Maps coordinates back to original image space
+- Helps detect small central subjects that get lost in full-image context
+- Improves both detection AND labeling (objects are larger relative to frame)
+
+### 2026-02-02 Feedback Summary (Latest)
+
+**Accuracy: 82.8%** (53/64 good) with YOLO-World class name mapping enabled.
+
+**Key Insight:** Most failures are **prioritization issues**, not detection failures. The correct art pieces are detected but wrong ones are selected as primary.
+
+**Current Configuration:**
+- Confidence threshold: 0.25
+- Max zoom factor: 8.0x (aggressive for tiny subjects)
+- Primary subject selection: Center-weighted with class priorities and size scoring
+- YOLO-World returns actual class names for proper prioritization
+
+**Prioritization Failures (from feedback):**
+
+| Image | Issue | Correct Detection Exists |
+|-------|-------|-------------------------|
+| #3 | Collage ("sculpture statue") not prioritized over other detections | Yes |
+| #11 | Full-height mural ("painted figure", "painting") not selected | Yes |
+| #18 | Central "painted figure" or "art installation street art" missed | Yes |
+| #53 | "sculpture statue figurine" in center lost to street lamp on right | Yes |
+
+**Actionable Improvements:**
+
+1. **Add to avoid_classes:** `'street lamp', 'lamp post', 'light pole'`
+2. **Boost priority for:** `'painted figure'`, `'mural'`, `'art installation'`
+3. **Increase center-weighting:** Central detections should beat edge detections more decisively
+4. **Multi-class detection:** YOLO-World may return multiple classes per box - investigate using all matches
+
+**Classes Removed (caused false positives):**
+- `graffiti` - triggered on plain walls
+- `stencil` - too generic
+- `bird statue` - confused with other objects
+
+**Successful Tuning Changes:**
+1. YOLO-World now returns actual class names (not `yolo:X` IDs) enabling proper prioritization
+2. Size scoring with aggressive penalties for tiny objects (< 1% of frame)
+3. Center-weighting to prefer subjects near image center
+4. Class priority system distinguishing high-value art from noise
+
+**Future Improvement Ideas:**
+1. Strengthen center-weighting to more decisively prefer central subjects
+2. Add "collage" to high-priority art classes
+3. Investigate YOLO-World multi-class scores per detection
+4. Consider training a custom model on art-specific dataset
+5. Implement multi-subject mode for images with multiple art pieces

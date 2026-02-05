@@ -66,7 +66,7 @@ def draw_boxes_on_image(image_path, detections, ground_truth_boxes=None, primary
 
         # Draw detected boxes in green
         if detections:
-            for det in detections[:5]:  # Show up to 5 detections
+            for det in detections:  # Show all detections
                 bbox = [int(coord * scale) for coord in det.bbox]
                 x1, y1, x2, y2 = bbox
 
