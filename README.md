@@ -162,7 +162,7 @@ See [docs/CONTEXTUAL_ZOOM.md](docs/CONTEXTUAL_ZOOM.md) for details.
 
 ## Workflow Integration
 
-### With OneDrive Album Downloader
+### With [OneDrive Album Downloader](https://github.com/antoinecellerier/onedrive-album-download)
 
 ```bash
 # Download from OneDrive
@@ -179,7 +179,7 @@ python scripts/batch_process.py \
 # Images now ready for e-ink display
 ```
 
-### With librespot-epd-nowplaying
+### With [librespot-epd-nowplaying](https://github.com/antoinecellerier/librespot-epd-nowplaying)
 
 Processed images are ready for use with the e-ink frame's idle mode display.
 
@@ -312,6 +312,11 @@ pytest tests/
 ```bash
 black src/ scripts/ tests/
 ```
+
+## Related Projects
+
+- [onedrive-album-download](https://github.com/antoinecellerier/onedrive-album-download) - Download photo albums from OneDrive
+- [librespot-epd-nowplaying](https://github.com/antoinecellerier/librespot-epd-nowplaying) - Spotify now-playing display for e-ink frames
 
 ## License
 
