@@ -8,6 +8,7 @@ from .preprocessor import ImagePreprocessor
 from .detector import ArtFeatureDetector, EnsembleDetector, OptimizedEnsembleDetector
 from .cropper import SmartCropper
 from .utils import get_output_path, ensure_directory
+from . import defaults
 
 
 @click.group()
@@ -32,21 +33,21 @@ def cli():
 )
 @click.option(
     '--width', '-w',
-    default=480,
+    default=defaults.TARGET_WIDTH,
     type=int,
-    help='Target width in pixels (default: 480)'
+    help=f'Target width in pixels (default: {defaults.TARGET_WIDTH})'
 )
 @click.option(
     '--height', '-h',
-    default=800,
+    default=defaults.TARGET_HEIGHT,
     type=int,
-    help='Target height in pixels (default: 800)'
+    help=f'Target height in pixels (default: {defaults.TARGET_HEIGHT})'
 )
 @click.option(
     '--strategy', '-s',
     type=click.Choice(['smart', 'saliency', 'center'], case_sensitive=False),
-    default='smart',
-    help='Cropping strategy (default: smart)'
+    default=defaults.STRATEGY,
+    help=f'Cropping strategy (default: {defaults.STRATEGY})'
 )
 @click.option(
     '--model', '-m',
@@ -55,9 +56,9 @@ def cli():
 )
 @click.option(
     '--confidence', '-c',
-    default=0.15,
+    default=defaults.CONFIDENCE_THRESHOLD,
     type=float,
-    help='Detection confidence threshold (default: 0.15 for more detections)'
+    help=f'Detection confidence threshold (default: {defaults.CONFIDENCE_THRESHOLD})'
 )
 @click.option(
     '--single-model',
@@ -71,15 +72,15 @@ def cli():
 )
 @click.option(
     '--zoom', '-z',
-    default=1.3,
+    default=defaults.ZOOM_FACTOR,
     type=float,
-    help='Zoom factor to focus on subjects (default: 1.3)'
+    help=f'Zoom factor to focus on subjects (default: {defaults.ZOOM_FACTOR})'
 )
 @click.option(
     '--quality', '-q',
-    default=95,
+    default=defaults.JPEG_QUALITY,
     type=int,
-    help='JPEG quality 1-100 (default: 95)'
+    help=f'JPEG quality 1-100 (default: {defaults.JPEG_QUALITY})'
 )
 @click.option(
     '--no-two-pass',
@@ -116,9 +117,9 @@ def process(input, output, width, height, strategy, model, confidence, single_mo
         else:
             # Default: optimized ensemble (YOLO-World + Grounding DINO)
             detector = OptimizedEnsembleDetector(
-                confidence_threshold=0.25,
-                merge_threshold=0.2,
-                two_pass=not no_two_pass
+                confidence_threshold=defaults.CONFIDENCE_THRESHOLD,
+                merge_threshold=defaults.MERGE_THRESHOLD,
+                two_pass=defaults.TWO_PASS and not no_two_pass
             )
             if verbose:
                 click.echo("Using optimized ensemble: YOLO-World + Grounding DINO")

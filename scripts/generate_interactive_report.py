@@ -14,6 +14,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from frame_prep.detector import ArtFeatureDetector, EnsembleDetector, OptimizedEnsembleDetector
 from frame_prep.cropper import SmartCropper
+from frame_prep import defaults
 
 
 def calculate_iou(box1, box2):
@@ -198,30 +199,39 @@ def generate_report():
     input_dir = Path('test_real_images/input')
     results = []
 
-    # Configuration parameters
-    config = {
-        'confidence_threshold': 0.25,
-        'merge_threshold': 0.2,
-        'target_width': 1080,
-        'target_height': 1920,
-        'zoom_factor': 8.0,  # Very aggressive max zoom for tiny subjects
-        'use_saliency_fallback': True,
-    }
-
     # Create detector once (reused for all images, with caching)
     detector = OptimizedEnsembleDetector(
-        confidence_threshold=config['confidence_threshold'],
-        merge_threshold=config['merge_threshold'],
-        two_pass=True
+        confidence_threshold=defaults.CONFIDENCE_THRESHOLD,
+        merge_threshold=defaults.MERGE_THRESHOLD,
+        two_pass=defaults.TWO_PASS
     )
 
     # Create cropper for generating result images
     cropper = SmartCropper(
-        target_width=config['target_width'],
-        target_height=config['target_height'],
-        zoom_factor=config['zoom_factor'],
-        use_saliency_fallback=config['use_saliency_fallback']
+        target_width=defaults.TARGET_WIDTH,
+        target_height=defaults.TARGET_HEIGHT,
+        zoom_factor=defaults.ZOOM_FACTOR,
+        use_saliency_fallback=defaults.USE_SALIENCY_FALLBACK
     )
+
+    # Build config dict for report display and feedback export traceability
+    config = {
+        'detector': 'OptimizedEnsembleDetector',
+        'models': {
+            'yolo_world': 'yolov8m-worldv2',
+            'grounding_dino': 'IDEA-Research/grounding-dino-tiny',
+        },
+        'confidence_threshold': defaults.CONFIDENCE_THRESHOLD,
+        'merge_threshold': defaults.MERGE_THRESHOLD,
+        'two_pass': defaults.TWO_PASS,
+        'primary_selection': 'center-weighted scoring',
+        'target_width': defaults.TARGET_WIDTH,
+        'target_height': defaults.TARGET_HEIGHT,
+        'zoom_factor': defaults.ZOOM_FACTOR,
+        'use_saliency_fallback': defaults.USE_SALIENCY_FALLBACK,
+        'yolo_world_prompts': detector._art_classes,
+        'grounding_dino_prompts': detector._dino_prompts,
+    }
 
     print(f"\nProcessing {len(ground_truth)} test images...")
 
@@ -757,8 +767,12 @@ def generate_report():
                     <span class="config-value">{config['merge_threshold']}</span>
                 </div>
                 <div class="config-item">
+                    <span class="config-label">Two-Pass Detection</span>
+                    <span class="config-value">{'Enabled' if config['two_pass'] else 'Disabled'}</span>
+                </div>
+                <div class="config-item">
                     <span class="config-label">Primary Selection</span>
-                    <span class="config-value">Center-weighted scoring</span>
+                    <span class="config-value">{config['primary_selection']}</span>
                 </div>
             </div>
             <div class="config-section">
@@ -769,7 +783,7 @@ def generate_report():
                 </div>
                 <div class="config-item">
                     <span class="config-label">Target Dimensions</span>
-                    <span class="config-value">{config['target_width']}×{config['target_height']} (9:16)</span>
+                    <span class="config-value">{config['target_width']}x{config['target_height']}</span>
                 </div>
                 <div class="config-item">
                     <span class="config-label">Max Zoom Factor</span>
@@ -919,10 +933,39 @@ def generate_report():
         </div>
 """
 
+    # Build per-image metadata for JS (detection context for feedback export)
+    image_metadata = []
+    for idx, result in enumerate(results):
+        det_list = []
+        for det in (result['detections'] or []):
+            det_list.append({
+                'class_name': det.class_name,
+                'confidence': round(float(det.confidence), 4),
+                'bbox': [int(c) for c in det.bbox],
+            })
+        primary_data = None
+        if result['primary']:
+            primary_data = {
+                'class_name': result['primary'].class_name,
+                'confidence': round(float(result['primary'].confidence), 4),
+                'bbox': [int(c) for c in result['primary'].bbox],
+            }
+        image_metadata.append({
+            'filename': result['filename'],
+            'detection_count': result['detection_count'],
+            'detections': det_list,
+            'primary': primary_data,
+            'is_correct': result['is_correct'],
+            'best_iou': round(result['best_iou'], 4),
+            'ground_truth_boxes': result['ground_truth_boxes'],
+        })
+
     html += """
     </div>
 
     <script>
+        const imageMetadata = """ + json.dumps(image_metadata) + """;
+        const reportConfig = """ + json.dumps(config) + """;
         const feedbackData = {};
 
         function filterResults(filter) {
@@ -942,10 +985,11 @@ def generate_report():
         }
 
         function setFeedback(index, rating) {
-            if (!feedbackData[index]) {
-                feedbackData[index] = {};
+            const fname = imageMetadata[index].filename;
+            if (!feedbackData[fname]) {
+                feedbackData[fname] = {};
             }
-            feedbackData[index].rating = rating;
+            feedbackData[fname].rating = rating;
 
             // Update button states
             const card = document.querySelector(`[data-index="${index}"]`);
@@ -962,28 +1006,44 @@ def generate_report():
         }
 
         function updateComment(index, comment) {
-            if (!feedbackData[index]) {
-                feedbackData[index] = {};
+            const fname = imageMetadata[index].filename;
+            if (!feedbackData[fname]) {
+                feedbackData[fname] = {};
             }
-            feedbackData[index].comment = comment;
+            feedbackData[fname].comment = comment;
         }
 
         function exportFeedback() {
             const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-            const filename = `detection_feedback_${timestamp}.json`;
+            const outFilename = `detection_feedback_${timestamp}.json`;
+
+            // Build full export with per-image detection context
+            const feedbackWithContext = {};
+            for (const [fname, fb] of Object.entries(feedbackData)) {
+                const meta = imageMetadata.find(m => m.filename === fname);
+                feedbackWithContext[fname] = {
+                    ...fb,
+                    detections: meta ? meta.detections : [],
+                    primary: meta ? meta.primary : null,
+                    is_correct: meta ? meta.is_correct : null,
+                    best_iou: meta ? meta.best_iou : null,
+                    ground_truth_boxes: meta ? meta.ground_truth_boxes : [],
+                };
+            }
 
             const exportData = {
                 generated_at: new Date().toISOString(),
-                total_images: """ + str(len(results)) + """,
+                config: reportConfig,
+                total_images: imageMetadata.length,
                 feedback_count: Object.keys(feedbackData).length,
-                feedback: feedbackData
+                feedback: feedbackWithContext
             };
 
             const blob = new Blob([JSON.stringify(exportData, null, 2)], {type: 'application/json'});
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
-            a.download = filename;
+            a.download = outFilename;
             a.click();
             URL.revokeObjectURL(url);
 

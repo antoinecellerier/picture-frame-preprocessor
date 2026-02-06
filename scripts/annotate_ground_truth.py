@@ -21,6 +21,7 @@ from io import BytesIO
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from frame_prep.detector import OptimizedEnsembleDetector
+from frame_prep import defaults
 
 GROUND_TRUTH_PATH = Path('test_real_images/ground_truth_annotations.json')
 
@@ -123,9 +124,9 @@ def main():
     # Create detector once (reused for all images)
     print("Loading detector models...")
     detector = OptimizedEnsembleDetector(
-        confidence_threshold=0.25,
-        merge_threshold=0.2,
-        two_pass=True
+        confidence_threshold=defaults.CONFIDENCE_THRESHOLD,
+        merge_threshold=defaults.MERGE_THRESHOLD,
+        two_pass=defaults.TWO_PASS
     )
 
     # Build pre-loaded annotations lookup for --reannotate mode
