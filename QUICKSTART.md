@@ -95,6 +95,9 @@ python scripts/batch_process.py -i input/ -o output/ --workers 2
 # Use single model if speed is critical
 python scripts/batch_process.py -i input/ -o output/ --single-model
 
+# Disable two-pass detection for faster processing
+python scripts/batch_process.py -i input/ -o output/ --no-two-pass
+
 # Disable zoom for faster processing
 python scripts/batch_process.py -i input/ -o output/ --zoom 1.0
 ```

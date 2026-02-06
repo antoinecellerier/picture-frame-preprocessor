@@ -88,7 +88,8 @@ def init_worker(config):
         # Default: optimized ensemble (YOLO-World + Grounding DINO)
         _detector = OptimizedEnsembleDetector(
             confidence_threshold=0.25,
-            merge_threshold=0.2
+            merge_threshold=0.2,
+            two_pass=config.get('two_pass', True)
         )
 
     # Create cropper once per worker
@@ -269,6 +270,11 @@ def main():
         help='Disable OpenVINO acceleration (use PyTorch instead)'
     )
     parser.add_argument(
+        '--no-two-pass',
+        action='store_true',
+        help='Disable two-pass center-crop detection (faster, may miss small centered subjects)'
+    )
+    parser.add_argument(
         '--threads-per-worker',
         type=int,
         default=4,
@@ -314,6 +320,7 @@ def main():
         'quality': args.quality,
         'skip_existing': args.skip_existing,
         'use_openvino': not args.no_openvino,
+        'two_pass': not args.no_two_pass,
         'threads_per_worker': args.threads_per_worker
     }
 

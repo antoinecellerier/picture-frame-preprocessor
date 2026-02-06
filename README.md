@@ -64,6 +64,7 @@ Options:
 - `--ensemble`: Use YOLOv8m + RT-DETR-L ensemble instead of default
 - `--model, -m`: YOLO model variant for `--single-model` mode (default: yolov8m)
 - `--confidence, -c`: Detection confidence threshold (default: 0.15)
+- `--no-two-pass`: Disable two-pass center-crop detection (faster, may miss small centered subjects)
 - `--zoom, -z`: Contextual zoom factor (default: 1.3, range: 1.0-2.0)
 - `--quality, -q`: JPEG quality 1-100 (default: 95)
 - `--verbose, -v`: Verbose output
@@ -95,6 +96,7 @@ Options:
 - `--zoom, -z`: Contextual zoom factor (default: 1.3)
 - `--workers`: Number of parallel workers (default: 8, optimized for 16-thread CPUs)
 - `--threads-per-worker`: Threads per worker process (default: 4)
+- `--no-two-pass`: Disable two-pass center-crop detection (faster, may miss small centered subjects)
 - `--no-openvino`: Disable OpenVINO acceleration (enabled by default)
 - `--skip-existing`: Skip already processed images
 - `--recursive, -r`: Process subdirectories recursively

@@ -82,11 +82,16 @@ def cli():
     help='JPEG quality 1-100 (default: 95)'
 )
 @click.option(
+    '--no-two-pass',
+    is_flag=True,
+    help='Disable two-pass center-crop detection (faster, may miss small centered subjects)'
+)
+@click.option(
     '--verbose', '-v',
     is_flag=True,
     help='Verbose output'
 )
-def process(input, output, width, height, strategy, model, confidence, single_model, ensemble, zoom, quality, verbose):
+def process(input, output, width, height, strategy, model, confidence, single_model, ensemble, zoom, quality, no_two_pass, verbose):
     """Process a single image for e-ink display."""
 
     try:
@@ -112,7 +117,8 @@ def process(input, output, width, height, strategy, model, confidence, single_mo
             # Default: optimized ensemble (YOLO-World + Grounding DINO)
             detector = OptimizedEnsembleDetector(
                 confidence_threshold=0.25,
-                merge_threshold=0.2
+                merge_threshold=0.2,
+                two_pass=not no_two_pass
             )
             if verbose:
                 click.echo("Using optimized ensemble: YOLO-World + Grounding DINO")

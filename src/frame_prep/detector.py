@@ -584,7 +584,7 @@ class OptimizedEnsembleDetector:
         self,
         confidence_threshold: float = 0.25,
         merge_threshold: float = 0.2,
-        two_pass: bool = False
+        two_pass: bool = True
     ):
         """
         Initialize optimized ensemble detector.
