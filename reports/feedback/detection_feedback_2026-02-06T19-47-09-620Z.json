@@ -1,0 +1,420 @@
+{
+  "generated_at": "2026-02-06T19:47:09.620Z",
+  "total_images": 122,
+  "feedback_count": 120,
+  "feedback": {
+    "0": {
+      "rating": "good"
+    },
+    "1": {
+      "rating": "good"
+    },
+    "2": {
+      "rating": "good"
+    },
+    "3": {
+      "rating": "bad",
+      "comment": "should have selected the \"sculpture statue\" elements"
+    },
+    "4": {
+      "rating": "good"
+    },
+    "5": {
+      "rating": "good"
+    },
+    "6": {
+      "rating": "good"
+    },
+    "7": {
+      "rating": "good"
+    },
+    "8": {
+      "rating": "bad",
+      "comment": "should have selected the 2 elements in the center"
+    },
+    "9": {
+      "rating": "good"
+    },
+    "10": {
+      "rating": "bad",
+      "comment": "should have selected the mosaic + figurine + painted figure as a set"
+    },
+    "11": {
+      "rating": "good"
+    },
+    "12": {
+      "rating": "good"
+    },
+    "13": {
+      "rating": "other",
+      "comment": "Detection was good but since the subject is so wide, it should refine the focal area to the lion's head on the right."
+    },
+    "14": {
+      "rating": "good"
+    },
+    "15": {
+      "rating": "bad",
+      "comment": "The crop looks good but the detection should have been \"painted figurene\""
+    },
+    "16": {
+      "rating": "bad",
+      "comment": "the detection should have focused on the massive ant statue in the center, not the background engineering diagram"
+    },
+    "17": {
+      "rating": "good"
+    },
+    "18": {
+      "rating": "good"
+    },
+    "20": {
+      "rating": "bad",
+      "comment": "should have selected the \"painted figure figurine\" in the center"
+    },
+    "21": {
+      "rating": "good"
+    },
+    "22": {
+      "rating": "other",
+      "comment": "The picture doesn't make for an interesting crop, mostly due to massive reflections on the glass in front of the artwork. If reflections are detected, we should filter out the image."
+    },
+    "23": {
+      "rating": "bad",
+      "comment": "at least one of the four statues should have been selected"
+    },
+    "24": {
+      "rating": "bad",
+      "comment": "The small mosaic minion in the middle should have been detected"
+    },
+    "25": {
+      "rating": "bad",
+      "comment": "The \"framed artwork\" should have been selected. Historical buildings by themselves do not make for interesting art topics."
+    },
+    "26": {
+      "rating": "good",
+      "comment": "detection was ok even if too wide."
+    },
+    "27": {
+      "rating": "good"
+    },
+    "28": {
+      "rating": "good"
+    },
+    "29": {
+      "rating": "good"
+    },
+    "30": {
+      "rating": "bad",
+      "comment": "Detection should have selected both \"painted figure\" boxes in the center."
+    },
+    "31": {
+      "rating": "good"
+    },
+    "32": {
+      "rating": "good"
+    },
+    "33": {
+      "rating": "good"
+    },
+    "34": {
+      "rating": "other",
+      "comment": "Detection was good but the artwork being so wide, we should focus on the areas with the figurine's face on the right."
+    },
+    "35": {
+      "rating": "good"
+    },
+    "36": {
+      "rating": "good"
+    },
+    "37": {
+      "rating": "bad",
+      "comment": "Should have selected the \"decorated sign\""
+    },
+    "38": {
+      "rating": "good"
+    },
+    "39": {
+      "rating": "good"
+    },
+    "40": {
+      "rating": "good"
+    },
+    "41": {
+      "rating": "bad",
+      "comment": "should have selected the chalk drawing of a woman's face in the center."
+    },
+    "42": {
+      "rating": "good"
+    },
+    "43": {
+      "rating": "good"
+    },
+    "44": {
+      "rating": "good"
+    },
+    "45": {
+      "rating": "good"
+    },
+    "46": {
+      "rating": "other",
+      "comment": "Detection was ok but since the subject is wide, it would be best if we could focus on the woman's face on the right hand side."
+    },
+    "47": {
+      "rating": "good"
+    },
+    "48": {
+      "rating": "good"
+    },
+    "49": {
+      "rating": "good"
+    },
+    "50": {
+      "rating": "good"
+    },
+    "51": {
+      "rating": "good"
+    },
+    "52": {
+      "rating": "good"
+    },
+    "53": {
+      "rating": "good"
+    },
+    "54": {
+      "rating": "good"
+    },
+    "55": {
+      "rating": "other",
+      "comment": "Detected my reflection in the picture. When glass reflections are detected, we should just filter out the content."
+    },
+    "56": {
+      "rating": "other",
+      "comment": "We could generate 3 crops from this image from each of the 3 columns with murals."
+    },
+    "57": {
+      "rating": "good"
+    },
+    "58": {
+      "rating": "good"
+    },
+    "59": {
+      "rating": "good"
+    },
+    "61": {
+      "rating": "good"
+    },
+    "62": {
+      "rating": "good"
+    },
+    "63": {
+      "rating": "bad",
+      "comment": "Most of the painted figures on the foreground concrete pillar were missed. The crop still looks good though."
+    },
+    "64": {
+      "rating": "bad",
+      "comment": "Should have selected the \"sculpture on pedestal\" ... which is a mosaic"
+    },
+    "65": {
+      "rating": "good"
+    },
+    "66": {
+      "rating": "bad",
+      "comment": "Should have detected the huge mural in the center identified as \"painted figurine\" (it's small on the photo due to the picture being taken from far away)"
+    },
+    "67": {
+      "rating": "good"
+    },
+    "68": {
+      "rating": "good"
+    },
+    "69": {
+      "rating": "good",
+      "comment": "Detected the full mural rather than just some of the details I had picked in the ground truth which is fine"
+    },
+    "70": {
+      "rating": "good"
+    },
+    "71": {
+      "rating": "good",
+      "comment": "Missed the left most face but this mad the crop fit on the narrow view so it's good."
+    },
+    "72": {
+      "rating": "good"
+    },
+    "73": {
+      "rating": "good"
+    },
+    "74": {
+      "rating": "bad",
+      "comment": "Should have detected the sonic \"tile art\" in the center"
+    },
+    "75": {
+      "rating": "bad",
+      "comment": "Should have detected the ghost mosaic \"decorative art\" instead of a street name sign."
+    },
+    "76": {
+      "rating": "other",
+      "comment": "Poor detection but the picture in itself isn't super interesting."
+    },
+    "77": {
+      "rating": "bad",
+      "comment": "Should have detected the full PARIS mural"
+    },
+    "78": {
+      "rating": "other",
+      "comment": "Pictures from museum exhibit labels are not interesting. should be filtered out."
+    },
+    "79": {
+      "comment": "Pictures from museum exhibit labels are not interesting. should be filtered out."
+    },
+    "80": {
+      "rating": "bad",
+      "comment": "Should have detected the mosaic tile art in the center."
+    },
+    "81": {
+      "rating": "good",
+      "comment": "It's decent even if the target could have been a bit closer to the painted green happy face."
+    },
+    "82": {
+      "rating": "good"
+    },
+    "83": {
+      "rating": "good"
+    },
+    "84": {
+      "rating": "bad",
+      "comment": "Should have picked the \"mosaic mural art\""
+    },
+    "85": {
+      "rating": "good"
+    },
+    "86": {
+      "rating": "good"
+    },
+    "87": {
+      "rating": "bad",
+      "comment": "Should have detected the tiny small pig face mosaic at the bottom of the archway"
+    },
+    "88": {
+      "rating": "bad",
+      "comment": "should have picked the \"sculpture painted figurine\" masked rabbit mosaic."
+    },
+    "89": {
+      "rating": "good"
+    },
+    "90": {
+      "rating": "bad",
+      "comment": "Should have slected the \"painted figure figurine\" pigeon sculpture."
+    },
+    "91": {
+      "rating": "good"
+    },
+    "92": {
+      "rating": "good"
+    },
+    "93": {
+      "rating": "bad",
+      "comment": "Should have focused on the painted figures."
+    },
+    "94": {
+      "rating": "bad",
+      "comment": "should have focused on the \"figure figne\" pigeon sculpture next to a real pigeon in the center."
+    },
+    "95": {
+      "rating": "bad",
+      "comment": "Should have picked the \"art installation\" in the center"
+    },
+    "96": {
+      "rating": "bad",
+      "comment": "Should have picked the \"mosaic\" invader tile art in the center."
+    },
+    "97": {
+      "rating": "good"
+    },
+    "98": {
+      "rating": "bad",
+      "comment": "should have picked the \"sculpture statue painted figure\" mosaic in the center."
+    },
+    "99": {
+      "rating": "good"
+    },
+    "100": {
+      "rating": "zoom",
+      "comment": "Detection is perfect but the zoom is elsewhere. Is the report maybe not drawing all detected boxes?"
+    },
+    "101": {
+      "rating": "bad",
+      "comment": "should have picked the \"sculpture statue figurine\" owl metal looking sculpture in the center."
+    },
+    "102": {
+      "rating": "bad",
+      "comment": "should have detected the rocket tile art in the center."
+    },
+    "103": {
+      "rating": "bad",
+      "comment": "should have selected the rocket tile art in the center."
+    },
+    "104": {
+      "rating": "good"
+    },
+    "105": {
+      "rating": "good"
+    },
+    "106": {
+      "rating": "bad",
+      "comment": "should have picked the mosaic in the center."
+    },
+    "107": {
+      "rating": "bad",
+      "comment": "should have picked the genie in a bottle mosaic in the center \"figure\" and \"painted figure figurine\""
+    },
+    "108": {
+      "rating": "bad",
+      "comment": "Should have picked the \"painted figure\" painted tile in the center"
+    },
+    "109": {
+      "rating": "bad",
+      "comment": "Should have picked the spaceship mosaic \"sculpture\" in the center."
+    },
+    "110": {
+      "rating": "good"
+    },
+    "111": {
+      "rating": "bad",
+      "comment": "should have picked the invader \"mosaic\" in the center."
+    },
+    "112": {
+      "rating": "bad",
+      "comment": "Should have picked the hard to make out mosaic aliens holding hands in the center."
+    },
+    "113": {
+      "rating": "good"
+    },
+    "114": {
+      "rating": "bad",
+      "comment": "should have picked the painted figurines in the center, not a street name sign."
+    },
+    "115": {
+      "rating": "good"
+    },
+    "116": {
+      "rating": "bad",
+      "comment": "should have picked the stylized geometric seahorse mural identified as \"sculpture statue\" in the center."
+    },
+    "117": {
+      "rating": "good"
+    },
+    "118": {
+      "rating": "good"
+    },
+    "119": {
+      "rating": "good"
+    },
+    "120": {
+      "rating": "good"
+    },
+    "121": {
+      "rating": "other",
+      "comment": "This is a picture of a car. Could be filtered out."
+    }
+  }
+}

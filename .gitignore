@@ -41,6 +41,7 @@ models/*
 cache/
 reports/*
 !reports/.gitkeep
+!reports/feedback/
 test_output/
 
 # Test results (intermediate outputs, can be regenerated)

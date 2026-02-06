@@ -905,6 +905,9 @@ def generate_report():
                         <button class="feedback-btn" onclick="setFeedback({idx}, 'zoom')">
                             🔍 Zoom Issue
                         </button>
+                        <button class="feedback-btn" onclick="setFeedback({idx}, 'other')">
+                            💬 Other
+                        </button>
                     </div>
                     <textarea
                         class="feedback-textarea"
@@ -952,7 +955,8 @@ def generate_report():
             const ratingMap = {
                 'good': 0,
                 'bad': 1,
-                'zoom': 2
+                'zoom': 2,
+                'other': 3
             };
             buttons[ratingMap[rating]].classList.add('selected');
         }
@@ -985,6 +989,11 @@ def generate_report():
 
             alert(`Exported feedback for ${Object.keys(feedbackData).length} images`);
         }
+
+        // Pre-mark correct detections as "good"
+        document.querySelectorAll('.result-card[data-status="correct"]').forEach(card => {
+            setFeedback(parseInt(card.dataset.index), 'good');
+        });
 
         // Keyboard shortcuts
         document.addEventListener('keydown', (e) => {

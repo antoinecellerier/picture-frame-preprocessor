@@ -139,6 +139,103 @@
     ]
   },
   {
+    "filename": "20210116_140023.jpg",
+    "original_width": 4032,
+    "original_height": 3024,
+    "scale": 0.22321428571428573,
+    "correct_detections": [
+      {
+        "model": "ensemble",
+        "class_name": "art",
+        "confidence": 0.2546439468860626,
+        "bbox": [
+          1133,
+          672,
+          3208,
+          2316
+        ]
+      }
+    ],
+    "manual_boxes": []
+  },
+  {
+    "filename": "20210213_154948.jpg",
+    "original_width": 4032,
+    "original_height": 3024,
+    "scale": 0.22321428571428573,
+    "correct_detections": [],
+    "manual_boxes": [
+      {
+        "bbox": [
+          1584,
+          1534,
+          2543,
+          2237
+        ]
+      }
+    ]
+  },
+  {
+    "filename": "20210303_151750.jpg",
+    "original_width": 4032,
+    "original_height": 3024,
+    "scale": 0.22321428571428573,
+    "correct_detections": [
+      {
+        "model": "ensemble",
+        "class_name": "framed artwork",
+        "confidence": 0.7334867119789124,
+        "bbox": [
+          1877,
+          1761,
+          2943,
+          2934
+        ]
+      }
+    ],
+    "manual_boxes": []
+  },
+  {
+    "filename": "20210424_155333.jpg",
+    "original_width": 4032,
+    "original_height": 3024,
+    "scale": 0.22321428571428573,
+    "correct_detections": [
+      {
+        "model": "ensemble",
+        "class_name": "sculpture statue",
+        "confidence": 0.2674834430217743,
+        "bbox": [
+          1420,
+          349,
+          1729,
+          1048
+        ]
+      },
+      {
+        "model": "ensemble",
+        "class_name": "painted figure",
+        "confidence": 0.2979333698749542,
+        "bbox": [
+          2356,
+          739,
+          2787,
+          1398
+        ]
+      }
+    ],
+    "manual_boxes": [
+      {
+        "bbox": [
+          1132,
+          1080,
+          2861,
+          2783
+        ]
+      }
+    ]
+  },
+  {
     "filename": "20210529_150851.jpg",
     "original_width": 4032,
     "original_height": 3024,
@@ -154,6 +251,187 @@
         ]
       }
     ]
+  },
+  {
+    "filename": "20210529_153247.jpg",
+    "original_width": 4032,
+    "original_height": 3024,
+    "scale": 0.22321428571428573,
+    "correct_detections": [],
+    "manual_boxes": [
+      {
+        "bbox": [
+          267,
+          459,
+          3712,
+          2605
+        ]
+      }
+    ]
+  },
+  {
+    "filename": "20210530_135908.jpg",
+    "original_width": 4032,
+    "original_height": 3024,
+    "scale": 0.22321428571428573,
+    "correct_detections": [
+      {
+        "model": "ensemble",
+        "class_name": "mural",
+        "confidence": 0.3210258185863495,
+        "bbox": [
+          305,
+          1756,
+          3933,
+          2728
+        ]
+      },
+      {
+        "model": "ensemble",
+        "class_name": "painted figure",
+        "confidence": 0.28349360823631287,
+        "bbox": [
+          2930,
+          1770,
+          3786,
+          2379
+        ]
+      }
+    ],
+    "manual_boxes": []
+  },
+  {
+    "filename": "20210606_141906.jpg",
+    "original_width": 4032,
+    "original_height": 3024,
+    "scale": 0.22321428571428573,
+    "correct_detections": [],
+    "manual_boxes": [
+      {
+        "bbox": [
+          155,
+          222,
+          1011,
+          1830
+        ]
+      },
+      {
+        "bbox": [
+          2055,
+          536,
+          3730,
+          2897
+        ]
+      }
+    ]
+  },
+  {
+    "filename": "20210626_143410.jpg",
+    "original_width": 4032,
+    "original_height": 3024,
+    "scale": 0.22321428571428573,
+    "correct_detections": [
+      {
+        "model": "ensemble",
+        "class_name": "painted figurene",
+        "confidence": 0.3028668761253357,
+        "bbox": [
+          1429,
+          641,
+          2809,
+          1460
+        ]
+      }
+    ],
+    "manual_boxes": []
+  },
+  {
+    "filename": "20210626_160627.jpg",
+    "original_width": 4032,
+    "original_height": 3024,
+    "scale": 0.22321428571428573,
+    "correct_detections": [],
+    "manual_boxes": [
+      {
+        "bbox": [
+          424,
+          1103,
+          3331,
+          2389
+        ]
+      }
+    ]
+  },
+  {
+    "filename": "20210626_170725.jpg",
+    "original_width": 4032,
+    "original_height": 3024,
+    "scale": 0.22321428571428573,
+    "correct_detections": [
+      {
+        "model": "ensemble",
+        "class_name": "mural",
+        "confidence": 0.49703076481819153,
+        "bbox": [
+          672,
+          511,
+          3714,
+          2262
+        ]
+      }
+    ],
+    "manual_boxes": []
+  },
+  {
+    "filename": "20210626_172859.jpg",
+    "original_width": 4032,
+    "original_height": 3024,
+    "scale": 0.22321428571428573,
+    "correct_detections": [
+      {
+        "model": "ensemble",
+        "class_name": "framed artwork",
+        "confidence": 0.5318965911865234,
+        "bbox": [
+          2585,
+          1555,
+          3288,
+          2733
+        ]
+      },
+      {
+        "model": "ensemble",
+        "class_name": "mosaic",
+        "confidence": 0.38602930307388306,
+        "bbox": [
+          3351,
+          1487,
+          3929,
+          2124
+        ]
+      },
+      {
+        "model": "ensemble",
+        "class_name": "mural wall art",
+        "confidence": 0.2866572439670563,
+        "bbox": [
+          1075,
+          1393,
+          2374,
+          2912
+        ]
+      }
+    ],
+    "manual_boxes": []
+  },
+  {
+    "filename": "20210808_162451.jpg",
+    "original_width": 4032,
+    "original_height": 3024,
+    "scale": 0.22321428571428573,
+    "correct_detections": [],
+    "manual_boxes": [],
+    "not_art": true
   },
   {
     "filename": "20210815_163856.jpg",
@@ -208,6 +486,113 @@
           507,
           3264,
           2895
+        ]
+      }
+    ]
+  },
+  {
+    "filename": "20210910_203723.jpg",
+    "original_width": 3024,
+    "original_height": 4032,
+    "scale": 0.2976190476190476,
+    "correct_detections": [],
+    "manual_boxes": [],
+    "not_art": true
+  },
+  {
+    "filename": "20210910_204401.jpg",
+    "original_width": 4032,
+    "original_height": 3024,
+    "scale": 0.22321428571428573,
+    "correct_detections": [
+      {
+        "model": "ensemble",
+        "class_name": "statue on display",
+        "confidence": 0.3771178424358368,
+        "bbox": [
+          2993,
+          273,
+          3611,
+          2787
+        ]
+      },
+      {
+        "model": "ensemble",
+        "class_name": "art installation street art",
+        "confidence": 0.322419136762619,
+        "bbox": [
+          515,
+          130,
+          3741,
+          2957
+        ]
+      },
+      {
+        "model": "ensemble",
+        "class_name": "sculpture statue",
+        "confidence": 0.30130672454833984,
+        "bbox": [
+          1348,
+          139,
+          1900,
+          2733
+        ]
+      },
+      {
+        "model": "ensemble",
+        "class_name": "sculpture statue painted figure",
+        "confidence": 0.2930038571357727,
+        "bbox": [
+          2191,
+          332,
+          2657,
+          2540
+        ]
+      },
+      {
+        "model": "ensemble",
+        "class_name": "sculpture statue",
+        "confidence": 0.2850874662399292,
+        "bbox": [
+          587,
+          242,
+          1183,
+          3002
+        ]
+      }
+    ],
+    "manual_boxes": []
+  },
+  {
+    "filename": "20210911_152658.jpg",
+    "original_width": 3024,
+    "original_height": 4032,
+    "scale": 0.2976190476190476,
+    "correct_detections": [],
+    "manual_boxes": [
+      {
+        "bbox": [
+          1501,
+          1161,
+          1880,
+          1521
+        ]
+      }
+    ]
+  },
+  {
+    "filename": "20220109_160326.jpg",
+    "original_width": 4032,
+    "original_height": 3024,
+    "scale": 0.22321428571428573,
+    "correct_detections": [],
+    "manual_boxes": [
+      {
+        "bbox": [
+          1857,
+          2099,
+          2592,
+          2950
         ]
       }
     ]
@@ -272,6 +657,60 @@
     ]
   },
   {
+    "filename": "20220424_143915.jpg",
+    "original_width": 4032,
+    "original_height": 3024,
+    "scale": 0.22321428571428573,
+    "correct_detections": [],
+    "manual_boxes": [
+      {
+        "bbox": [
+          1902,
+          1141,
+          3658,
+          2548
+        ]
+      }
+    ]
+  },
+  {
+    "filename": "20220605_141224.jpg",
+    "original_width": 4032,
+    "original_height": 3024,
+    "scale": 0.22321428571428573,
+    "correct_detections": [],
+    "manual_boxes": [
+      {
+        "bbox": [
+          2655,
+          481,
+          3721,
+          2591
+        ]
+      }
+    ]
+  },
+  {
+    "filename": "20220626_134231.jpg",
+    "original_width": 4032,
+    "original_height": 3024,
+    "scale": 0.22321428571428573,
+    "correct_detections": [
+      {
+        "model": "ensemble",
+        "class_name": "artwork",
+        "confidence": 0.2773610055446625,
+        "bbox": [
+          600,
+          748,
+          3647,
+          2558
+        ]
+      }
+    ],
+    "manual_boxes": []
+  },
+  {
     "filename": "20220626_134318.jpg",
     "original_width": 3024,
     "original_height": 4032,
@@ -287,6 +726,43 @@
         ]
       }
     ]
+  },
+  {
+    "filename": "DSC_0001_BURST20241121142123881.JPG",
+    "original_width": 3264,
+    "original_height": 2448,
+    "scale": 0.2757352941176471,
+    "correct_detections": [],
+    "manual_boxes": [
+      {
+        "bbox": [
+          278,
+          1094,
+          2465,
+          2447
+        ]
+      }
+    ]
+  },
+  {
+    "filename": "DSC_0153.JPG",
+    "original_width": 3264,
+    "original_height": 2448,
+    "scale": 0.2757352941176471,
+    "correct_detections": [
+      {
+        "model": "ensemble",
+        "class_name": "mural",
+        "confidence": 0.4024423360824585,
+        "bbox": [
+          207,
+          392,
+          3177,
+          1857
+        ]
+      }
+    ],
+    "manual_boxes": []
   },
   {
     "filename": "DSC_0154.JPG",
@@ -321,6 +797,26 @@
         ]
       }
     ]
+  },
+  {
+    "filename": "DSC_0274.JPG",
+    "original_width": 4000,
+    "original_height": 3000,
+    "scale": 0.225,
+    "correct_detections": [
+      {
+        "model": "ensemble",
+        "class_name": "decorated sign",
+        "confidence": 0.28612735867500305,
+        "bbox": [
+          720,
+          320,
+          3280,
+          2684
+        ]
+      }
+    ],
+    "manual_boxes": []
   },
   {
     "filename": "DSC_0312.JPG",
@@ -404,6 +900,23 @@
           358,
           3936,
           2812
+        ]
+      }
+    ]
+  },
+  {
+    "filename": "DSC_0493.JPG",
+    "original_width": 4000,
+    "original_height": 3000,
+    "scale": 0.225,
+    "correct_detections": [],
+    "manual_boxes": [
+      {
+        "bbox": [
+          1105,
+          768,
+          3149,
+          2777
         ]
       }
     ]
@@ -999,6 +1512,23 @@
     ]
   },
   {
+    "filename": "DSC_3065.JPG",
+    "original_width": 4000,
+    "original_height": 3000,
+    "scale": 0.225,
+    "correct_detections": [],
+    "manual_boxes": [
+      {
+        "bbox": [
+          665,
+          414,
+          2963,
+          2707
+        ]
+      }
+    ]
+  },
+  {
     "filename": "DSC_3089.JPG",
     "original_width": 4000,
     "original_height": 3000,
@@ -1103,6 +1633,15 @@
     ]
   },
   {
+    "filename": "DSC_3167.JPG",
+    "original_width": 3264,
+    "original_height": 2448,
+    "scale": 0.2757352941176471,
+    "correct_detections": [],
+    "manual_boxes": [],
+    "not_art": true
+  },
+  {
     "filename": "DSC_3201.JPG",
     "original_width": 4000,
     "original_height": 3000,
@@ -1182,6 +1721,26 @@
     ]
   },
   {
+    "filename": "DSC_3401.JPG",
+    "original_width": 4000,
+    "original_height": 3000,
+    "scale": 0.225,
+    "correct_detections": [
+      {
+        "model": "ensemble",
+        "class_name": "sculpture on pedestal",
+        "confidence": 0.45635560154914856,
+        "bbox": [
+          1182,
+          1582,
+          1427,
+          1956
+        ]
+      }
+    ],
+    "manual_boxes": []
+  },
+  {
     "filename": "DSC_3412.JPG",
     "original_width": 3000,
     "original_height": 4000,
@@ -1194,6 +1753,23 @@
           1885,
           2152,
           2858
+        ]
+      }
+    ]
+  },
+  {
+    "filename": "DSC_3614.JPG",
+    "original_width": 4000,
+    "original_height": 3000,
+    "scale": 0.225,
+    "correct_detections": [],
+    "manual_boxes": [
+      {
+        "bbox": [
+          2029,
+          1188,
+          2252,
+          1966
         ]
       }
     ]
@@ -1452,12 +2028,158 @@
     ]
   },
   {
+    "filename": "DSC_4020.JPG",
+    "original_width": 2448,
+    "original_height": 3264,
+    "scale": 0.36764705882352944,
+    "correct_detections": [
+      {
+        "model": "ensemble",
+        "class_name": "tile art",
+        "confidence": 0.45179033279418945,
+        "bbox": [
+          1197,
+          1216,
+          1412,
+          1431
+        ]
+      },
+      {
+        "model": "ensemble",
+        "class_name": "artistic object",
+        "confidence": 0.28117311000823975,
+        "bbox": [
+          370,
+          1801,
+          715,
+          2326
+        ]
+      }
+    ],
+    "manual_boxes": []
+  },
+  {
+    "filename": "DSC_4042.JPG",
+    "original_width": 4000,
+    "original_height": 3000,
+    "scale": 0.225,
+    "correct_detections": [
+      {
+        "model": "ensemble",
+        "class_name": "decorative art",
+        "confidence": 0.27731648087501526,
+        "bbox": [
+          2178,
+          569,
+          2573,
+          1133
+        ]
+      }
+    ],
+    "manual_boxes": []
+  },
+  {
+    "filename": "DSC_4048.JPG",
+    "original_width": 4000,
+    "original_height": 3000,
+    "scale": 0.225,
+    "correct_detections": [],
+    "manual_boxes": [
+      {
+        "bbox": [
+          1389,
+          578,
+          1834,
+          956
+        ]
+      }
+    ]
+  },
+  {
+    "filename": "DSC_4059.JPG",
+    "original_width": 4000,
+    "original_height": 3000,
+    "scale": 0.225,
+    "correct_detections": [],
+    "manual_boxes": [
+      {
+        "bbox": [
+          172,
+          877,
+          3696,
+          2272
+        ]
+      }
+    ]
+  },
+  {
     "filename": "DSC_4063.JPG",
     "original_width": 4000,
     "original_height": 3000,
     "scale": 0.225,
     "correct_detections": [],
-    "manual_boxes": []
+    "manual_boxes": [],
+    "not_art": true
+  },
+  {
+    "filename": "DSC_4074.JPG",
+    "original_width": 4000,
+    "original_height": 3000,
+    "scale": 0.225,
+    "correct_detections": [],
+    "manual_boxes": [],
+    "not_art": true
+  },
+  {
+    "filename": "DSC_4089.JPG",
+    "original_width": 3264,
+    "original_height": 2448,
+    "scale": 0.2757352941176471,
+    "correct_detections": [],
+    "manual_boxes": [
+      {
+        "bbox": [
+          934,
+          1042,
+          2051,
+          1477
+        ]
+      }
+    ]
+  },
+  {
+    "filename": "DSC_4101_0.JPG",
+    "original_width": 4000,
+    "original_height": 3000,
+    "scale": 0.225,
+    "correct_detections": [],
+    "manual_boxes": [
+      {
+        "bbox": [
+          2043,
+          1358,
+          2589,
+          1856
+        ]
+      }
+    ]
+  },
+  {
+    "filename": "DSC_4103_0.JPG",
+    "original_width": 4000,
+    "original_height": 3000,
+    "scale": 0.225,
+    "correct_detections": [],
+    "manual_boxes": [
+      {
+        "bbox": [
+          1225,
+          835,
+          2732,
+          2315
+        ]
+      }
+    ]
   },
   {
     "filename": "DSC_4107.JPG",
@@ -1489,6 +2211,26 @@
     ]
   },
   {
+    "filename": "DSC_4115.JPG",
+    "original_width": 3000,
+    "original_height": 4000,
+    "scale": 0.3,
+    "correct_detections": [
+      {
+        "model": "ensemble",
+        "class_name": "mosaic mural art",
+        "confidence": 0.2632429301738739,
+        "bbox": [
+          1357,
+          1280,
+          1833,
+          1630
+        ]
+      }
+    ],
+    "manual_boxes": []
+  },
+  {
     "filename": "DSC_4135.JPG",
     "original_width": 4000,
     "original_height": 3000,
@@ -1504,6 +2246,60 @@
         ]
       }
     ]
+  },
+  {
+    "filename": "DSC_4158.JPG",
+    "original_width": 4000,
+    "original_height": 3000,
+    "scale": 0.225,
+    "correct_detections": [],
+    "manual_boxes": [
+      {
+        "bbox": [
+          1349,
+          463,
+          2860,
+          2485
+        ]
+      }
+    ]
+  },
+  {
+    "filename": "DSC_4162.JPG",
+    "original_width": 3000,
+    "original_height": 4000,
+    "scale": 0.3,
+    "correct_detections": [],
+    "manual_boxes": [
+      {
+        "bbox": [
+          1552,
+          2853,
+          1712,
+          3003
+        ]
+      }
+    ]
+  },
+  {
+    "filename": "DSC_4163.JPG",
+    "original_width": 3000,
+    "original_height": 4000,
+    "scale": 0.3,
+    "correct_detections": [
+      {
+        "model": "ensemble",
+        "class_name": "sculpture painted figure",
+        "confidence": 0.29244154691696167,
+        "bbox": [
+          1263,
+          1607,
+          1513,
+          1923
+        ]
+      }
+    ],
+    "manual_boxes": []
   },
   {
     "filename": "DSC_4166.JPG",
@@ -1557,6 +2353,26 @@
     ]
   },
   {
+    "filename": "DSC_4168.JPG",
+    "original_width": 2448,
+    "original_height": 3264,
+    "scale": 0.36764705882352944,
+    "correct_detections": [
+      {
+        "model": "ensemble",
+        "class_name": "painted figure figurine",
+        "confidence": 0.3687940835952759,
+        "bbox": [
+          955,
+          1695,
+          1194,
+          1907
+        ]
+      }
+    ],
+    "manual_boxes": []
+  },
+  {
     "filename": "DSC_4198.JPG",
     "original_width": 3000,
     "original_height": 4000,
@@ -1591,6 +2407,208 @@
     ]
   },
   {
+    "filename": "DSC_4205.JPG",
+    "original_width": 4000,
+    "original_height": 3000,
+    "scale": 0.225,
+    "correct_detections": [
+      {
+        "model": "ensemble",
+        "class_name": "statue on display",
+        "confidence": 0.5960995554924011,
+        "bbox": [
+          556,
+          1253,
+          960,
+          2067
+        ]
+      },
+      {
+        "model": "ensemble",
+        "class_name": "painted figure figurine",
+        "confidence": 0.38115018606185913,
+        "bbox": [
+          947,
+          1218,
+          1449,
+          2058
+        ]
+      },
+      {
+        "model": "ensemble",
+        "class_name": "figure figurine",
+        "confidence": 0.34352487325668335,
+        "bbox": [
+          3169,
+          1147,
+          3751,
+          2062
+        ]
+      }
+    ],
+    "manual_boxes": []
+  },
+  {
+    "filename": "DSC_4291.JPG",
+    "original_width": 2448,
+    "original_height": 3264,
+    "scale": 0.36764705882352944,
+    "correct_detections": [
+      {
+        "model": "ensemble",
+        "class_name": "figure figne",
+        "confidence": 0.2614223062992096,
+        "bbox": [
+          1170,
+          1749,
+          1469,
+          1918
+        ]
+      }
+    ],
+    "manual_boxes": []
+  },
+  {
+    "filename": "DSC_4294.JPG",
+    "original_width": 3264,
+    "original_height": 2448,
+    "scale": 0.2757352941176471,
+    "correct_detections": [
+      {
+        "model": "ensemble",
+        "class_name": "art installation",
+        "confidence": 0.25604569911956787,
+        "bbox": [
+          1280,
+          627,
+          1948,
+          1338
+        ]
+      }
+    ],
+    "manual_boxes": []
+  },
+  {
+    "filename": "DSC_4302.JPG",
+    "original_width": 4000,
+    "original_height": 3000,
+    "scale": 0.225,
+    "correct_detections": [
+      {
+        "model": "ensemble",
+        "class_name": "mosaic",
+        "confidence": 0.28218185901641846,
+        "bbox": [
+          1951,
+          960,
+          2173,
+          1116
+        ]
+      }
+    ],
+    "manual_boxes": []
+  },
+  {
+    "filename": "DSC_4303.JPG",
+    "original_width": 4000,
+    "original_height": 3000,
+    "scale": 0.225,
+    "correct_detections": [
+      {
+        "model": "ensemble",
+        "class_name": "sculpture statue",
+        "confidence": 0.2804878354072571,
+        "bbox": [
+          1862,
+          991,
+          2164,
+          1480
+        ]
+      }
+    ],
+    "manual_boxes": []
+  },
+  {
+    "filename": "DSC_4304.JPG",
+    "original_width": 4000,
+    "original_height": 3000,
+    "scale": 0.225,
+    "correct_detections": [
+      {
+        "model": "ensemble",
+        "class_name": "sculpture statue painted figure",
+        "confidence": 0.3543691635131836,
+        "bbox": [
+          1809,
+          1036,
+          2307,
+          1747
+        ]
+      }
+    ],
+    "manual_boxes": []
+  },
+  {
+    "filename": "DSC_4304~2.JPG",
+    "original_width": 2522,
+    "original_height": 1892,
+    "scale": 0.3568596352101507,
+    "correct_detections": [
+      {
+        "model": "ensemble",
+        "class_name": "sculpture statue painted figure",
+        "confidence": 0.3309595286846161,
+        "bbox": [
+          1040,
+          754,
+          1440,
+          1334
+        ]
+      }
+    ],
+    "manual_boxes": [
+      {
+        "bbox": [
+          982,
+          596,
+          1156,
+          725
+        ]
+      }
+    ]
+  },
+  {
+    "filename": "DSC_4305.JPG",
+    "original_width": 3264,
+    "original_height": 2448,
+    "scale": 0.2757352941176471,
+    "correct_detections": [
+      {
+        "model": "ensemble",
+        "class_name": "statue painted figure",
+        "confidence": 0.34620168805122375,
+        "bbox": [
+          2085,
+          519,
+          2303,
+          1008
+        ]
+      },
+      {
+        "model": "ensemble",
+        "class_name": "decorative art",
+        "confidence": 0.2675648629665375,
+        "bbox": [
+          823,
+          1077,
+          1161,
+          1690
+        ]
+      }
+    ],
+    "manual_boxes": []
+  },
+  {
     "filename": "DSC_4306.JPG",
     "original_width": 3264,
     "original_height": 2448,
@@ -1606,6 +2624,43 @@
         ]
       }
     ]
+  },
+  {
+    "filename": "DSC_4311.JPG",
+    "original_width": 4000,
+    "original_height": 3000,
+    "scale": 0.225,
+    "correct_detections": [],
+    "manual_boxes": [
+      {
+        "bbox": [
+          2003,
+          1298,
+          2229,
+          1503
+        ]
+      }
+    ]
+  },
+  {
+    "filename": "DSC_4312.JPG",
+    "original_width": 3264,
+    "original_height": 2448,
+    "scale": 0.2757352941176471,
+    "correct_detections": [
+      {
+        "model": "ensemble",
+        "class_name": "decorative",
+        "confidence": 0.25390830636024475,
+        "bbox": [
+          1549,
+          925,
+          1755,
+          1222
+        ]
+      }
+    ],
+    "manual_boxes": []
   },
   {
     "filename": "DSC_4328.JPG",
@@ -1654,6 +2709,83 @@
     ]
   },
   {
+    "filename": "DSC_4371.JPG",
+    "original_width": 4000,
+    "original_height": 3000,
+    "scale": 0.225,
+    "correct_detections": [
+      {
+        "model": "ensemble",
+        "class_name": "mosaic",
+        "confidence": 0.25659504532814026,
+        "bbox": [
+          2009,
+          1507,
+          2182,
+          1667
+        ]
+      }
+    ],
+    "manual_boxes": []
+  },
+  {
+    "filename": "DSC_4375.JPG",
+    "original_width": 4000,
+    "original_height": 3000,
+    "scale": 0.225,
+    "correct_detections": [],
+    "manual_boxes": [
+      {
+        "bbox": [
+          1794,
+          1289,
+          2220,
+          1836
+        ]
+      }
+    ]
+  },
+  {
+    "filename": "DSC_4379.JPG",
+    "original_width": 4000,
+    "original_height": 3000,
+    "scale": 0.225,
+    "correct_detections": [
+      {
+        "model": "ensemble",
+        "class_name": "painted figure",
+        "confidence": 0.38734862208366394,
+        "bbox": [
+          1933,
+          1178,
+          2351,
+          1489
+        ]
+      }
+    ],
+    "manual_boxes": []
+  },
+  {
+    "filename": "DSC_4381.JPG",
+    "original_width": 4000,
+    "original_height": 3000,
+    "scale": 0.225,
+    "correct_detections": [
+      {
+        "model": "ensemble",
+        "class_name": "sculpture",
+        "confidence": 0.2504558861255646,
+        "bbox": [
+          1858,
+          1622,
+          2116,
+          1951
+        ]
+      }
+    ],
+    "manual_boxes": []
+  },
+  {
     "filename": "DSC_4382.JPG",
     "original_width": 4000,
     "original_height": 3000,
@@ -1666,6 +2798,43 @@
           1267,
           2452,
           2018
+        ]
+      }
+    ]
+  },
+  {
+    "filename": "DSC_4385.JPG",
+    "original_width": 4000,
+    "original_height": 3000,
+    "scale": 0.225,
+    "correct_detections": [
+      {
+        "model": "ensemble",
+        "class_name": "mosaic",
+        "confidence": 0.2996068298816681,
+        "bbox": [
+          1791,
+          1160,
+          2133,
+          1560
+        ]
+      }
+    ],
+    "manual_boxes": []
+  },
+  {
+    "filename": "DSC_4388.JPG",
+    "original_width": 3264,
+    "original_height": 2448,
+    "scale": 0.2757352941176471,
+    "correct_detections": [],
+    "manual_boxes": [
+      {
+        "bbox": [
+          1489,
+          1067,
+          1663,
+          1245
         ]
       }
     ]
@@ -1788,6 +2957,26 @@
         ]
       }
     ]
+  },
+  {
+    "filename": "DSC_4414.JPG",
+    "original_width": 4000,
+    "original_height": 3000,
+    "scale": 0.225,
+    "correct_detections": [
+      {
+        "model": "ensemble",
+        "class_name": "sculpture statue",
+        "confidence": 0.3517005145549774,
+        "bbox": [
+          1547,
+          680,
+          2369,
+          2418
+        ]
+      }
+    ],
+    "manual_boxes": []
   },
   {
     "filename": "IMG-20230110-WA0001.jpg",
@@ -1915,5 +3104,14 @@
         ]
       }
     ]
+  },
+  {
+    "filename": "WP_20170624_15_17_38_Pro.jpg",
+    "original_width": 3264,
+    "original_height": 1840,
+    "scale": 0.2757352941176471,
+    "correct_detections": [],
+    "manual_boxes": [],
+    "not_art": true
   }
 ]
