@@ -27,6 +27,7 @@ class BatchStats:
     success: int = 0
     failed: int = 0
     skipped: int = 0
+    filtered: int = 0
     errors: List[str] = None
 
     def __post_init__(self):
@@ -355,7 +356,9 @@ def main():
 
                 try:
                     result = future.result()
-                    if result.success:
+                    if result.filtered:
+                        stats.filtered += 1
+                    elif result.success:
                         if result.strategy_used == 'skipped':
                             stats.skipped += 1
                         else:
@@ -375,6 +378,8 @@ def main():
     print("="*60)
     print(f"Total images:     {stats.total}")
     print(f"✓ Successful:     {stats.success}")
+    if stats.filtered > 0:
+        print(f"⊘ Filtered:       {stats.filtered} (non-art)")
     if stats.skipped > 0:
         print(f"⊘ Skipped:        {stats.skipped}")
     print(f"✗ Failed:         {stats.failed}")

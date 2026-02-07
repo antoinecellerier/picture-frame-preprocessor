@@ -9,6 +9,7 @@ from PIL.ExifTags import TAGS
 from .detector import ArtFeatureDetector
 from .cropper import SmartCropper
 from .utils import validate_image, ensure_directory
+from . import defaults
 
 
 @dataclass
@@ -25,6 +26,8 @@ class ProcessingResult:
     detections: List[Dict[str, Any]] = field(default_factory=list)  # Detection details
     crop_box: Optional[Tuple[int, int, int, int]] = None  # (left, top, right, bottom)
     zoom_applied: Optional[float] = None  # Contextual zoom factor used
+    filtered: bool = False  # True if image was filtered as non-art
+    art_score: Optional[float] = None  # Raw art score (confidence * class_multiplier)
 
 
 class ImagePreprocessor:
@@ -37,7 +40,8 @@ class ImagePreprocessor:
         detector: Optional[ArtFeatureDetector] = None,
         cropper: Optional[SmartCropper] = None,
         strategy: str = 'smart',
-        quality: int = 95
+        quality: int = 95,
+        filter_non_art: bool = defaults.FILTER_NON_ART
     ):
         """
         Initialize preprocessor.
@@ -49,11 +53,13 @@ class ImagePreprocessor:
             cropper: Image cropper (created if None)
             strategy: Default cropping strategy ('smart', 'saliency', 'center')
             quality: JPEG quality (1-100)
+            filter_non_art: Filter out non-art images by score threshold
         """
         self.target_width = target_width
         self.target_height = target_height
         self.strategy = strategy
         self.quality = quality
+        self.filter_non_art = filter_non_art
 
         self.detector = detector or ArtFeatureDetector()
         self.cropper = cropper or SmartCropper(target_width, target_height)
@@ -114,6 +120,7 @@ class ImagePreprocessor:
 
                     # Run detection if using smart strategy
                     detections = []
+                    art_score = None
                     if self.strategy == 'smart':
                         # Pass image_path for cache lookups (OptimizedEnsembleDetector)
                         try:
@@ -122,8 +129,27 @@ class ImagePreprocessor:
                             # Fallback for detectors that don't support image_path
                             detections = self.detector.detect(img, verbose=verbose)
 
+                        # Get primary subject and art score
+                        primary = None
+                        if detections and hasattr(self.detector, 'get_primary_subject_with_score'):
+                            primary, art_score = self.detector.get_primary_subject_with_score(detections)
+                        elif detections:
+                            primary = self.detector.get_primary_subject(detections)
+
+                        # Filter non-art images by score threshold
+                        if self.filter_non_art and art_score is not None and art_score < defaults.MIN_ART_SCORE:
+                            if verbose:
+                                print(f"Filtered as non-art (score: {art_score:.3f} < {defaults.MIN_ART_SCORE})")
+                            return ProcessingResult(
+                                success=True,
+                                input_path=input_path,
+                                filtered=True,
+                                art_score=art_score,
+                                detections_found=len(detections),
+                                original_dimensions=original_dimensions,
+                            )
+
                         # Capture detection details for ML analysis
-                        primary = self.detector.get_primary_subject(detections) if detections else None
                         for det in detections:
                             detections_list.append({
                                 'bbox': det.bbox,

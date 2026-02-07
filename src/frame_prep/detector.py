@@ -306,6 +306,126 @@ class ArtFeatureDetector:
 
         return detections
 
+    # === Class priority tiers for open-vocabulary models ===
+    # Tier 1: Specific art subjects - name a particular art form/medium
+    _specific_art_classes = {
+        # Paintings and 2D art
+        'painting', 'artwork', 'canvas', 'framed artwork',
+        'mosaic', 'tile art', 'fresco', 'mural',
+        'collage', 'mixed media',
+        # Sculptures and 3D art
+        'sculpture', 'statue', 'figurine', 'bust', 'figure',
+        'decorative sculpture', 'sculpture on pedestal', 'statue on display',
+        'sculpture statue', 'sculpture statue figurine',
+        # Specific art forms
+        'relief', 'relief sculpture', 'carving', 'engraving',
+        'pottery',
+        # Painted elements
+        'painted figure', 'painted mural', 'painted art',
+        # Descriptive art terms
+        'art piece', 'artistic object', 'artistic piece',
+        'decorative art', 'decorative piece',
+        'graffiti',
+    }
+
+    # Tier 2: Scene/location art labels - indicate art exists in the scene
+    # but don't identify the specific subject; often produce large bboxes
+    _scene_art_classes = {
+        'wall art', 'wall-mounted art', 'art on wall',
+        'street art',
+        'art installation',
+        'decorated sign',
+        'gallery piece',
+    }
+
+    # Tier 3: Generic catch-all scene labels - nearly always produce
+    # full-image bboxes and are never the right specific subject
+    _generic_scene_classes = {
+        'exhibit', 'display',
+    }
+
+    # COCO classes that are likely to BE art or contain art
+    _art_related_classes = {
+        'vase', 'potted plant', 'clock', 'tv', 'laptop',  # Often decorative/art
+        'kite',  # Often colorful art/patterns
+        'bird', 'horse', 'elephant', 'bear', 'cat', 'dog',  # Animal statues/sculptures
+        'boat', 'train', 'airplane',  # Vehicle sculptures/art
+        'bench', 'chair', 'couch', 'dining table',  # Furniture art/installations
+        'fire hydrant',  # Often painted/decorated as street art
+        'umbrella',  # Colorful installations
+        'bottle', 'cup', 'bowl',  # Glass/ceramic art
+    }
+
+    # Classes to strongly avoid (not art, distractions)
+    # Note: 'sign' removed - street art often uses signs as medium
+    _avoid_classes = {
+        # Trash/utility
+        'trash', 'trash can', 'trash bin', 'garbage', 'garbage can',
+        'recycling', 'recycling bin', 'dumpster', 'waste bin',
+        # Structural/background
+        'traffic light', 'parking meter',
+        'window', 'door', 'wall', 'floor', 'ceiling',
+        # Street furniture (not art)
+        'street lamp', 'lamp post', 'light pole', 'street light',
+        # Generic scene elements from open-vocab models
+        'street',
+        # Small incidental elements
+        'signature', 'text', 'label',
+        'light', 'lamp', 'outlet', 'switch',
+    }
+
+    @staticmethod
+    def _get_class_multiplier(class_name: str) -> float:
+        """Get priority multiplier based on class name.
+
+        Tiers (checked in order):
+        - Specific art (5.0x): mosaic, sculpture, painting, etc.
+        - Generic scene (0.3x): exhibit, display (full-image bboxes)
+        - Scene art (2.0x): mural, street art, wall art, etc.
+        - COCO art-related (2.5x): vase, bird, horse, etc.
+        - Person (0.4x)
+        - Avoid (0.05x): trash, traffic light, etc.
+        - Default (1.5x): unknown classes
+        """
+        class_lower = class_name.lower()
+
+        # Tier 1: Specific art subjects (highest priority)
+        for art_class in ArtFeatureDetector._specific_art_classes:
+            if art_class in class_lower:
+                return 5.0
+
+        # Standalone "art" class (from Grounding DINO) — specific enough
+        # to indicate actual art, but too short for safe substring matching
+        if class_lower == 'art':
+            return 3.5
+
+        # Tier 3: Generic catch-all labels (exact match only —
+        # compound names like "art installation exhibit" should fall
+        # through to scene_art via "art installation" substring)
+        if class_lower in ArtFeatureDetector._generic_scene_classes:
+            return 0.3
+
+        # Tier 2: Scene/location art labels
+        for sc in ArtFeatureDetector._scene_art_classes:
+            if sc in class_lower:
+                return 2.0
+
+        # Check avoid classes
+        for avoid_class in ArtFeatureDetector._avoid_classes:
+            if avoid_class in class_lower:
+                return 0.05  # Strongly deprioritize
+
+        # Check COCO art-related classes
+        if class_lower in ArtFeatureDetector._art_related_classes:
+            return 2.5
+
+        # Deprioritize people
+        if class_lower == 'person':
+            return 0.4
+
+        # Default for unknown classes (could be art from open-vocab models)
+        return 1.5
+
     def get_primary_subject(self, detections: List[Detection]) -> Optional[Detection]:
         """
         Get the most likely primary subject from detections.
@@ -321,75 +441,6 @@ class ArtFeatureDetector:
         if not detections:
             return None
 
-        # === Class priority tiers for open-vocabulary models ===
-        # Tier 1: Specific art subjects - name a particular art form/medium
-        # These should almost always win primary selection
-        specific_art_classes = {
-            # Paintings and 2D art
-            'painting', 'artwork', 'canvas', 'framed artwork',
-            'mosaic', 'tile art', 'fresco', 'mural',
-            'collage', 'mixed media',
-            # Sculptures and 3D art
-            'sculpture', 'statue', 'figurine', 'bust', 'figure',
-            'decorative sculpture', 'sculpture on pedestal', 'statue on display',
-            'sculpture statue', 'sculpture statue figurine',
-            # Specific art forms
-            'relief', 'relief sculpture', 'carving', 'engraving',
-            'pottery',
-            # Painted elements
-            'painted figure', 'painted mural', 'painted art',
-            # Descriptive art terms
-            'art piece', 'artistic object', 'artistic piece',
-            'decorative art', 'decorative piece',
-            'graffiti',
-        }
-
-        # Tier 2: Scene/location art labels - indicate art exists in the scene
-        # but don't identify the specific subject; often produce large bboxes
-        scene_art_classes = {
-            'wall art', 'wall-mounted art', 'art on wall',
-            'street art',
-            'art installation',
-            'decorated sign',
-            'gallery piece',
-        }
-
-        # Tier 3: Generic catch-all scene labels - nearly always produce
-        # full-image bboxes and are never the right specific subject
-        generic_scene_classes = {
-            'exhibit', 'display',
-        }
-
-        # COCO classes that are likely to BE art or contain art
-        art_related_classes = {
-            'vase', 'potted plant', 'clock', 'tv', 'laptop',  # Often decorative/art
-            'kite',  # Often colorful art/patterns
-            'bird', 'horse', 'elephant', 'bear', 'cat', 'dog',  # Animal statues/sculptures
-            'boat', 'train', 'airplane',  # Vehicle sculptures/art
-            'bench', 'chair', 'couch', 'dining table',  # Furniture art/installations
-            'fire hydrant',  # Often painted/decorated as street art
-            'umbrella',  # Colorful installations
-            'bottle', 'cup', 'bowl',  # Glass/ceramic art
-        }
-
-        # Classes to strongly avoid (not art, distractions)
-        # Note: 'sign' removed - street art often uses signs as medium
-        avoid_classes = {
-            # Trash/utility
-            'trash', 'trash can', 'trash bin', 'garbage', 'garbage can',
-            'recycling', 'recycling bin', 'dumpster', 'waste bin',
-            # Structural/background
-            'traffic light', 'parking meter',
-            'window', 'door', 'wall', 'floor', 'ceiling',
-            # Street furniture (not art)
-            'street lamp', 'lamp post', 'light pole', 'street light',
-            # Generic scene elements from open-vocab models
-            'street',
-            # Small incidental elements
-            'signature', 'text', 'label',
-            'light', 'lamp', 'outlet', 'switch',
-        }
-
         # Get image center if available
         img_center_x = None
         img_center_y = None
@@ -400,56 +451,7 @@ class ArtFeatureDetector:
             img_center_y = img_height / 2
             img_area = img_width * img_height
 
-        def get_class_multiplier(class_name: str) -> float:
-            """Get priority multiplier based on class name.
-
-            Tiers (checked in order):
-            - Specific art (5.0x): mosaic, sculpture, painting, etc.
-            - Generic scene (0.3x): exhibit, display (full-image bboxes)
-            - Scene art (2.0x): mural, street art, wall art, etc.
-            - COCO art-related (2.5x): vase, bird, horse, etc.
-            - Person (0.4x)
-            - Avoid (0.05x): trash, traffic light, etc.
-            - Default (1.5x): unknown classes
-            """
-            class_lower = class_name.lower()
-
-            # Tier 1: Specific art subjects (highest priority)
-            for art_class in specific_art_classes:
-                if art_class in class_lower:
-                    return 5.0
-
-            # Standalone "art" class (from Grounding DINO) — specific enough
-            # to indicate actual art, but too short for safe substring matching
-            if class_lower == 'art':
-                return 3.5
-
-            # Tier 3: Generic catch-all labels (exact match only —
-            # compound names like "art installation exhibit" should fall
-            # through to scene_art via "art installation" substring)
-            if class_lower in generic_scene_classes:
-                return 0.3
-
-            # Tier 2: Scene/location art labels
-            for sc in scene_art_classes:
-                if sc in class_lower:
-                    return 2.0
-
-            # Check avoid classes
-            for avoid_class in avoid_classes:
-                if avoid_class in class_lower:
-                    return 0.05  # Strongly deprioritize
-
-            # Check COCO art-related classes
-            if class_lower in art_related_classes:
-                return 2.5
-
-            # Deprioritize people
-            if class_lower == 'person':
-                return 0.4
-
-            # Default for unknown classes (could be art from open-vocab models)
-            return 1.5
+        get_class_multiplier = self._get_class_multiplier
 
         def calculate_score(det: Detection) -> float:
             """
@@ -506,6 +508,29 @@ class ArtFeatureDetector:
         scored_detections.sort(key=lambda x: x[1], reverse=True)
 
         return scored_detections[0][0]
+
+    def get_primary_subject_with_score(self, detections: List[Detection]) -> Tuple[Optional[Detection], float]:
+        """
+        Get the most likely primary subject and its composite score.
+
+        Returns:
+            Tuple of (primary Detection or None, score). Score is 0.0 if no detections.
+        """
+        if not detections:
+            return None, 0.0
+
+        # Reuse get_primary_subject's scoring by calling it and finding the score
+        # We need to replicate the scoring here to get the raw score
+        # (confidence * class_multiplier, without center/size bonuses)
+        primary = self.get_primary_subject(detections)
+        if primary is None:
+            return None, 0.0
+
+        # Compute the raw art score: confidence * class_multiplier only
+        # This is used for non-art filtering (center/size bonuses would
+        # inflate scores for non-art images where detections happen to be centered)
+        score = primary.confidence * self._get_class_multiplier(primary.class_name)
+        return primary, score
 
 
 class EnsembleDetector:
@@ -603,6 +628,12 @@ class EnsembleDetector:
 
         # Use first detector's get_primary_subject (it has center-weighting)
         return self._detectors[0].get_primary_subject(detections)
+
+    def get_primary_subject_with_score(self, detections: List[Detection]) -> Tuple[Optional[Detection], float]:
+        """Get primary subject and its raw art score. Delegates to first detector."""
+        if not detections:
+            return None, 0.0
+        return self._detectors[0].get_primary_subject_with_score(detections)
 
 
 class OptimizedEnsembleDetector:
@@ -1009,3 +1040,11 @@ class OptimizedEnsembleDetector:
         detector = ArtFeatureDetector()
         detector._last_image_size = self._last_image_size
         return detector.get_primary_subject(detections)
+
+    def get_primary_subject_with_score(self, detections: List[Detection]) -> Tuple[Optional[Detection], float]:
+        """Get primary subject and its raw art score."""
+        if not detections:
+            return None, 0.0
+        detector = ArtFeatureDetector()
+        detector._last_image_size = self._last_image_size
+        return detector.get_primary_subject_with_score(detections)

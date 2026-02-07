@@ -88,11 +88,16 @@ def cli():
     help='Disable two-pass center-crop detection (faster, may miss small centered subjects)'
 )
 @click.option(
+    '--no-filter',
+    is_flag=True,
+    help='Disable non-art image filtering (process all images regardless of art score)'
+)
+@click.option(
     '--verbose', '-v',
     is_flag=True,
     help='Verbose output'
 )
-def process(input, output, width, height, strategy, model, confidence, single_model, ensemble, zoom, quality, no_two_pass, verbose):
+def process(input, output, width, height, strategy, model, confidence, single_model, ensemble, zoom, quality, no_two_pass, no_filter, verbose):
     """Process a single image for e-ink display."""
 
     try:
@@ -135,7 +140,8 @@ def process(input, output, width, height, strategy, model, confidence, single_mo
             detector=detector,
             cropper=cropper,
             strategy=strategy,
-            quality=quality
+            quality=quality,
+            filter_non_art=defaults.FILTER_NON_ART and not no_filter
         )
 
         # Determine output path
@@ -154,7 +160,12 @@ def process(input, output, width, height, strategy, model, confidence, single_mo
         # Process image
         result = preprocessor.process_image(input, output_path, verbose=verbose)
 
-        if result.success:
+        if result.filtered:
+            click.secho(f"⊘ Filtered (not art, score: {result.art_score:.3f})", fg='yellow', bold=True)
+            if verbose:
+                click.echo(f"  Detections: {result.detections_found}")
+                click.echo(f"  Score threshold: {defaults.MIN_ART_SCORE}")
+        elif result.success:
             click.secho("✓ Success!", fg='green', bold=True)
             if verbose:
                 if result.detections_found > 0:

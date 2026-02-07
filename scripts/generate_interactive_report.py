@@ -15,6 +15,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 from frame_prep.detector import ArtFeatureDetector, EnsembleDetector, OptimizedEnsembleDetector
 from frame_prep.cropper import SmartCropper
 from frame_prep import defaults
+from frame_prep.defaults import MIN_ART_SCORE
 
 
 def calculate_iou(box1, box2):
@@ -111,8 +112,13 @@ def run_detection(image_path, detector, verbose=False):
         except TypeError:
             detections = detector.detect(img, verbose=verbose)
 
-        # Get primary by smart selection algorithm
-        primary = detector.get_primary_subject(detections) if detections else None
+        # Get primary by smart selection algorithm (with score)
+        primary = None
+        art_score = 0.0
+        if detections and hasattr(detector, 'get_primary_subject_with_score'):
+            primary, art_score = detector.get_primary_subject_with_score(detections)
+        elif detections:
+            primary = detector.get_primary_subject(detections)
 
         # Get primary by confidence (old method) for comparison
         primary_by_confidence = detections[0] if detections else None
@@ -127,12 +133,13 @@ def run_detection(image_path, detector, verbose=False):
             'primary': primary,
             'primary_by_confidence': primary_by_confidence,
             'selection_changed': selection_changed,
-            'count': len(detections)
+            'count': len(detections),
+            'art_score': art_score,
         }
     except Exception as e:
         print(f"Error detecting in {image_path}: {e}")
         return {'all_detections': [], 'primary': None, 'primary_by_confidence': None,
-                'selection_changed': False, 'count': 0}
+                'selection_changed': False, 'count': 0, 'art_score': 0.0}
 
 
 def check_accuracy(primary, ground_truth_boxes, iou_threshold=0.3):
@@ -241,12 +248,13 @@ def generate_report():
     for idx, gt_entry in enumerate(ground_truth, 1):
         filename = gt_entry['filename']
         image_path = input_dir / filename
+        is_not_art = gt_entry.get('not_art', False)
 
         if not image_path.exists():
             print(f"  [{idx}/{len(ground_truth)}] Skipping missing: {filename}")
             continue
 
-        print(f"  [{idx}/{len(ground_truth)}] Processing: {filename}")
+        print(f"  [{idx}/{len(ground_truth)}] Processing: {filename}" + (" [NOT ART]" if is_not_art else ""))
 
         # Get ground truth boxes
         gt_boxes = []
@@ -259,13 +267,17 @@ def generate_report():
         detection_result = run_detection(image_path, detector, verbose=True)
 
         # Check accuracy using smart primary selection
+        # Exclude not_art images from accuracy denominator
         is_correct = False
         best_iou = 0.0
-        if gt_boxes and detection_result['primary']:
+        if not is_not_art and gt_boxes and detection_result['primary']:
             is_correct, best_iou = check_accuracy(detection_result['primary'], gt_boxes)
             total_with_gt += 1
             if is_correct:
                 correct_count += 1
+        elif not is_not_art and gt_boxes:
+            # Has ground truth but no primary detection — counts as incorrect
+            total_with_gt += 1
 
         # Generate visualization
         img_with_boxes = draw_boxes_on_image(
@@ -275,12 +287,14 @@ def generate_report():
             primary=detection_result['primary']
         )
 
-        # Generate result/cropped image
-        result_image, zoom_applied = generate_result_image(
-            image_path,
-            detection_result['all_detections'],
-            cropper
-        )
+        # Generate result/cropped image (skip for not-art images)
+        result_image, zoom_applied = None, 1.0
+        if not is_not_art:
+            result_image, zoom_applied = generate_result_image(
+                image_path,
+                detection_result['all_detections'],
+                cropper
+            )
 
         results.append({
             'filename': filename,
@@ -295,14 +309,17 @@ def generate_report():
             'has_ground_truth': len(gt_boxes) > 0,
             'is_correct': is_correct,
             'best_iou': best_iou,
-            'ground_truth_boxes': gt_boxes
+            'ground_truth_boxes': gt_boxes,
+            'art_score': detection_result['art_score'],
+            'is_not_art': is_not_art,
         })
 
     accuracy = (correct_count / total_with_gt * 100) if total_with_gt > 0 else 0
     selection_changed_count = sum(1 for r in results if r['selection_changed'])
+    not_art_count = sum(1 for r in results if r.get('is_not_art'))
 
     print(f"\n✓ Processing complete!")
-    print(f"  Accuracy: {correct_count}/{total_with_gt} ({accuracy:.1f}%)")
+    print(f"  Accuracy: {correct_count}/{total_with_gt} ({accuracy:.1f}%) (excludes {not_art_count} not-art images)")
     print(f"  Primary selection changed: {selection_changed_count}/{len(results)} images")
     print(f"\nGenerating HTML report...")
 
@@ -501,6 +518,10 @@ def generate_report():
             border-left: 5px solid #6b7280;
         }}
 
+        .result-card.not-art {{
+            border-left: 5px solid #f59e0b;
+        }}
+
         .result-header {{
             padding: 20px;
             background: #f9fafb;
@@ -544,6 +565,11 @@ def generate_report():
         .badge.no-gt {{
             background: #e5e7eb;
             color: #374151;
+        }}
+
+        .badge.not-art {{
+            background: #fef3c7;
+            color: #92400e;
         }}
 
         .images-container {{
@@ -800,7 +826,7 @@ def generate_report():
     <div class="stats">
         <div class="stat-card">
             <div class="stat-value">{accuracy:.1f}%</div>
-            <div class="stat-label">Accuracy</div>
+            <div class="stat-label">Accuracy (excl. not-art)</div>
         </div>
         <div class="stat-card">
             <div class="stat-value">{correct_count}/{total_with_gt}</div>
@@ -811,8 +837,8 @@ def generate_report():
             <div class="stat-label">Total Images</div>
         </div>
         <div class="stat-card">
-            <div class="stat-value">{sum(1 for r in results if r['detection_count'] > 0)}</div>
-            <div class="stat-label">Images with Detections</div>
+            <div class="stat-value">{not_art_count}</div>
+            <div class="stat-label">Not Art</div>
         </div>
         <div class="stat-card">
             <div class="stat-value">{selection_changed_count}</div>
@@ -842,8 +868,9 @@ def generate_report():
         <div class="filter-group">
             <button class="filter-btn active" onclick="filterResults('all')">All ({len(results)})</button>
             <button class="filter-btn" onclick="filterResults('correct')">Correct ({sum(1 for r in results if r['is_correct'])})</button>
-            <button class="filter-btn" onclick="filterResults('incorrect')">Incorrect ({sum(1 for r in results if r['has_ground_truth'] and not r['is_correct'])})</button>
-            <button class="filter-btn" onclick="filterResults('no-gt')">No Ground Truth ({sum(1 for r in results if not r['has_ground_truth'])})</button>
+            <button class="filter-btn" onclick="filterResults('incorrect')">Incorrect ({sum(1 for r in results if r['has_ground_truth'] and not r['is_correct'] and not r.get('is_not_art'))})</button>
+            <button class="filter-btn" onclick="filterResults('not-art')">Not Art ({sum(1 for r in results if r.get('is_not_art'))})</button>
+            <button class="filter-btn" onclick="filterResults('no-gt')">No Ground Truth ({sum(1 for r in results if not r['has_ground_truth'] and not r.get('is_not_art'))})</button>
             <button class="export-btn" onclick="exportFeedback()">📥 Export Feedback</button>
         </div>
     </div>
@@ -853,8 +880,19 @@ def generate_report():
 
     # Add each result
     for idx, result in enumerate(results):
-        status_class = 'no-gt' if not result['has_ground_truth'] else ('correct' if result['is_correct'] else 'incorrect')
-        status_label = 'No Ground Truth' if not result['has_ground_truth'] else ('✓ Correct' if result['is_correct'] else '✗ Incorrect')
+        is_not_art = result.get('is_not_art', False)
+        if is_not_art:
+            status_class = 'not-art'
+            status_label = 'NOT ART'
+        elif not result['has_ground_truth']:
+            status_class = 'no-gt'
+            status_label = 'No Ground Truth'
+        elif result['is_correct']:
+            status_class = 'correct'
+            status_label = '✓ Correct'
+        else:
+            status_class = 'incorrect'
+            status_label = '✗ Incorrect'
 
         primary_info = "No detections"
         if result['primary']:
@@ -863,6 +901,12 @@ def generate_report():
             if result['selection_changed'] and result['primary_by_confidence']:
                 primary_info += f"<br><span style='color: #059669; font-size: 12px;'>✓ Changed from: {result['primary_by_confidence'].class_name} (conf: {result['primary_by_confidence'].confidence:.3f})</span>"
 
+        # Show art score
+        art_score = result.get('art_score', 0.0)
+        art_score_info = f"<span>Art score: {art_score:.3f}</span>"
+        if art_score < MIN_ART_SCORE:
+            art_score_info = f"<span style='color: #ef4444;'>Art score: {art_score:.3f} (below {MIN_ART_SCORE})</span>"
+
         iou_info = ""
         if result['has_ground_truth'] and result['detection_count'] > 0:
             iou_info = f"<span>IoU: {result['best_iou']:.3f}</span>"
@@ -870,6 +914,10 @@ def generate_report():
         selection_badge = ""
         if result['selection_changed']:
             selection_badge = "<span class='badge' style='background: #d1fae5; color: #065f46;'>Selection Changed</span>"
+
+        not_art_badge = ""
+        if is_not_art:
+            not_art_badge = "<span class='badge not-art'>NOT ART</span>"
 
         # Generate result image HTML if available
         result_img_html = ""
@@ -886,8 +934,10 @@ def generate_report():
                 <div class="result-title">{result['filename']}</div>
                 <div class="result-meta">
                     <span class="badge {status_class}">{status_label}</span>
+                    {not_art_badge}
                     {selection_badge}
                     <span>Detections: {result['detection_count']}</span>
+                    {art_score_info}
                     <span>Zoom: {result['zoom_applied']:.2f}x</span>
                     {iou_info}
                 </div>
@@ -958,6 +1008,8 @@ def generate_report():
             'is_correct': result['is_correct'],
             'best_iou': round(result['best_iou'], 4),
             'ground_truth_boxes': result['ground_truth_boxes'],
+            'art_score': round(result.get('art_score', 0.0), 4),
+            'is_not_art': result.get('is_not_art', False),
         })
 
     html += """
