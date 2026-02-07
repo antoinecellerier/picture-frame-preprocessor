@@ -311,9 +311,9 @@ class ArtFeatureDetector:
         Get the most likely primary subject from detections.
 
         Uses a scoring system that combines:
-        - Class priority (art > other objects > people > avoid)
+        - Class priority (specific art 5x > scene art 2x > COCO 2.5x > people > avoid)
         - Strong center-weighting (objects in center are strongly preferred)
-        - Size bonus (larger objects preferred, especially when centered)
+        - Size bonus (medium 5-25% preferred; very large >50% penalized)
 
         Art museums/galleries usually have people viewing the art, not as the subject.
         The art is typically centered in photos, while people are on the sides.
@@ -321,28 +321,46 @@ class ArtFeatureDetector:
         if not detections:
             return None
 
-        # High-priority art classes from open-vocabulary models (YOLO-World, Grounding DINO)
-        # These are the actual labels these models return for art
-        high_priority_art_classes = {
-            # Direct art terms
-            'artwork', 'painting', 'mural', 'mosaic', 'fresco',
-            'sculpture', 'statue', 'figurine', 'bust',
-            'art installation', 'art piece', 'artistic object',
-            'wall art', 'street art', 'graffiti',
-            'exhibit', 'display', 'gallery piece',
-            'decorative art', 'decorative piece',
-            'relief', 'carving', 'engraving',
+        # === Class priority tiers for open-vocabulary models ===
+        # Tier 1: Specific art subjects - name a particular art form/medium
+        # These should almost always win primary selection
+        specific_art_classes = {
+            # Paintings and 2D art
+            'painting', 'artwork', 'canvas', 'framed artwork',
+            'mosaic', 'tile art', 'fresco', 'mural',
             'collage', 'mixed media',
-            # Painted art (murals, figures on walls/signs)
+            # Sculptures and 3D art
+            'sculpture', 'statue', 'figurine', 'bust', 'figure',
+            'decorative sculpture', 'sculpture on pedestal', 'statue on display',
+            'sculpture statue', 'sculpture statue figurine',
+            # Specific art forms
+            'relief', 'relief sculpture', 'carving', 'engraving',
+            'pottery',
+            # Painted elements
             'painted figure', 'painted mural', 'painted art',
-            # Compound labels from models
-            'sculpture statue', 'art installation exhibit',
-            'framed artwork', 'wall-mounted art',
-            'museum exhibit', 'gallery display',
-            'sculpture statue figurine',
+            # Descriptive art terms
+            'art piece', 'artistic object', 'artistic piece',
+            'decorative art', 'decorative piece',
+            'graffiti',
         }
 
-        # Classes that are likely to BE art or contain art (COCO classes)
+        # Tier 2: Scene/location art labels - indicate art exists in the scene
+        # but don't identify the specific subject; often produce large bboxes
+        scene_art_classes = {
+            'wall art', 'wall-mounted art', 'art on wall',
+            'street art',
+            'art installation',
+            'decorated sign',
+            'gallery piece',
+        }
+
+        # Tier 3: Generic catch-all scene labels - nearly always produce
+        # full-image bboxes and are never the right specific subject
+        generic_scene_classes = {
+            'exhibit', 'display',
+        }
+
+        # COCO classes that are likely to BE art or contain art
         art_related_classes = {
             'vase', 'potted plant', 'clock', 'tv', 'laptop',  # Often decorative/art
             'kite',  # Often colorful art/patterns
@@ -365,6 +383,8 @@ class ArtFeatureDetector:
             'window', 'door', 'wall', 'floor', 'ceiling',
             # Street furniture (not art)
             'street lamp', 'lamp post', 'light pole', 'street light',
+            # Generic scene elements from open-vocab models
+            'street',
             # Small incidental elements
             'signature', 'text', 'label',
             'light', 'lamp', 'outlet', 'switch',
@@ -381,15 +401,39 @@ class ArtFeatureDetector:
             img_area = img_width * img_height
 
         def get_class_multiplier(class_name: str) -> float:
-            """Get priority multiplier based on class name."""
+            """Get priority multiplier based on class name.
+
+            Tiers (checked in order):
+            - Specific art (5.0x): mosaic, sculpture, painting, etc.
+            - Generic scene (0.3x): exhibit, display (full-image bboxes)
+            - Scene art (2.0x): mural, street art, wall art, etc.
+            - COCO art-related (2.5x): vase, bird, horse, etc.
+            - Person (0.4x)
+            - Avoid (0.05x): trash, traffic light, etc.
+            - Default (1.5x): unknown classes
+            """
             class_lower = class_name.lower()
 
-            # Check high-priority art classes (exact or substring match)
-            # Only check if art_class is contained in class_lower (not reverse)
-            # to avoid false positives like 'car' matching 'carving'
-            for art_class in high_priority_art_classes:
+            # Tier 1: Specific art subjects (highest priority)
+            for art_class in specific_art_classes:
                 if art_class in class_lower:
-                    return 4.0  # Highest priority for explicit art
+                    return 5.0
+
+            # Standalone "art" class (from Grounding DINO) — specific enough
+            # to indicate actual art, but too short for safe substring matching
+            if class_lower == 'art':
+                return 3.5
+
+            # Tier 3: Generic catch-all labels (exact match only —
+            # compound names like "art installation exhibit" should fall
+            # through to scene_art via "art installation" substring)
+            if class_lower in generic_scene_classes:
+                return 0.3
+
+            # Tier 2: Scene/location art labels
+            for sc in scene_art_classes:
+                if sc in class_lower:
+                    return 2.0
 
             # Check avoid classes
             for avoid_class in avoid_classes:
@@ -436,29 +480,22 @@ class ArtFeatureDetector:
                 center_bonus = 1.0 + 4.0 * (1.0 - normalized_dist ** 2)
                 score *= center_bonus
 
-            # Size bonus (larger objects are more likely to be the subject)
-            # More aggressive than before to prefer main subjects over small details
+            # Size bonus: prefer medium-sized detections (5-25% of image)
+            # Very large bboxes are usually scene-level labels, not specific subjects
             size_ratio = det.area / img_area if img_area > 0 else 0
 
-            # Progressive size bonus:
-            # - Tiny (<1%): strong penalty - likely small detail, not main subject
-            # - Very small (1-3%): moderate penalty
-            # - Small (3-10%): neutral to slight bonus
-            # - Medium (10-30%): good bonus
-            # - Large (30-60%): best bonus - likely the main subject
-            # - Too large (>60%): reduced bonus (likely background)
-            if size_ratio < 0.01:
-                size_bonus = 0.3  # Strong penalty for tiny objects
+            if size_ratio < 0.005:
+                size_bonus = 0.2  # Extremely tiny - almost never the main subject
+            elif size_ratio < 0.01:
+                size_bonus = 0.4  # Very tiny
             elif size_ratio < 0.03:
-                size_bonus = 0.6  # Moderate penalty
+                size_bonus = 0.7  # Small
             elif size_ratio < 0.10:
-                size_bonus = 1.0 + size_ratio * 3  # 1.0 to 1.3
-            elif size_ratio < 0.30:
-                size_bonus = 1.3 + size_ratio * 2  # 1.5 to 1.9
-            elif size_ratio < 0.60:
-                size_bonus = 2.0  # Strong bonus for large central subjects
+                size_bonus = 1.0 + size_ratio * 2  # 1.06 to 1.2
+            elif size_ratio < 0.50:
+                size_bonus = 1.2  # Medium to large - slight bonus
             else:
-                size_bonus = 1.3  # Reduced for very large (might be background)
+                size_bonus = 1.0  # Very large (>50%) - neutral, likely scene-level
 
             score *= size_bonus
 
@@ -871,15 +908,17 @@ class OptimizedEnsembleDetector:
         bottom = height - top
 
         # Classes that indicate a viable art subject
+        # Note: 'exhibit' and 'display' excluded — they produce full-image
+        # bboxes and should not prevent pass 2 from running
         art_keywords = {
             'artwork', 'painting', 'mural', 'mosaic', 'fresco',
             'sculpture', 'statue', 'figurine', 'bust',
-            'art', 'exhibit', 'display', 'gallery',
+            'art', 'gallery',
             'vase', 'pottery', 'relief', 'carving',
         }
 
         # Classes to skip — not viable subjects
-        skip_classes = {'person', 'trash', 'traffic light', 'parking meter'}
+        skip_classes = {'person', 'trash', 'traffic light', 'parking meter', 'street'}
 
         for det in detections:
             cx, cy = det.center

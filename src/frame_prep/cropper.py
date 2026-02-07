@@ -128,7 +128,13 @@ class SmartCropper:
         self.last_zoom_applied = contextual_zoom
 
         if contextual_zoom > 1.0:
-            cropped = self._apply_smart_zoom(cropped, contextual_zoom)
+            # Subject center relative to crop window
+            subject_cx = anchor_x - crop_window[0]
+            subject_cy = anchor_y - crop_window[1]
+            cropped = self._apply_smart_zoom(
+                cropped, contextual_zoom,
+                center=(subject_cx, subject_cy)
+            )
 
         return cropped
 
@@ -319,14 +325,16 @@ class SmartCropper:
     def _apply_smart_zoom(
         self,
         image: Image.Image,
-        zoom_factor: float
+        zoom_factor: float,
+        center: Optional[Tuple[int, int]] = None
     ) -> Image.Image:
         """
-        Apply centered zoom to focus tighter on subject.
+        Apply zoom centered on subject position.
 
         Args:
             image: PIL Image to zoom
             zoom_factor: Zoom multiplier (e.g., 1.3 = 30% zoom in)
+            center: (x, y) point to center zoom on. Defaults to image center.
 
         Returns:
             Zoomed and cropped image
@@ -337,11 +345,33 @@ class SmartCropper:
         zoom_width = int(width / zoom_factor)
         zoom_height = int(height / zoom_factor)
 
-        # Center the zoom
-        left = (width - zoom_width) // 2
-        top = (height - zoom_height) // 2
+        # Center zoom on subject position (or image center as fallback)
+        cx = center[0] if center else width // 2
+        cy = center[1] if center else height // 2
+
+        left = cx - zoom_width // 2
+        top = cy - zoom_height // 2
         right = left + zoom_width
         bottom = top + zoom_height
+
+        # Clamp to image bounds
+        if left < 0:
+            left = 0
+            right = zoom_width
+        if top < 0:
+            top = 0
+            bottom = zoom_height
+        if right > width:
+            right = width
+            left = width - zoom_width
+        if bottom > height:
+            bottom = height
+            top = height - zoom_height
+
+        left = max(0, left)
+        top = max(0, top)
+        right = min(width, right)
+        bottom = min(height, bottom)
 
         # Crop to zoomed area
         zoomed = image.crop((left, top, right, bottom))
