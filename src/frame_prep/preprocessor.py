@@ -28,6 +28,7 @@ class ProcessingResult:
     zoom_applied: Optional[float] = None  # Contextual zoom factor used
     filtered: bool = False  # True if image was filtered as non-art
     art_score: Optional[float] = None  # Raw art score (confidence * class_multiplier)
+    output_paths: List[str] = field(default_factory=list)  # Multi-crop output paths
 
 
 class ImagePreprocessor:
@@ -41,7 +42,8 @@ class ImagePreprocessor:
         cropper: Optional[SmartCropper] = None,
         strategy: str = 'smart',
         quality: int = 95,
-        filter_non_art: bool = defaults.FILTER_NON_ART
+        filter_non_art: bool = defaults.FILTER_NON_ART,
+        multi_crop: bool = False
     ):
         """
         Initialize preprocessor.
@@ -54,12 +56,14 @@ class ImagePreprocessor:
             strategy: Default cropping strategy ('smart', 'saliency', 'center')
             quality: JPEG quality (1-100)
             filter_non_art: Filter out non-art images by score threshold
+            multi_crop: Generate one crop per viable art subject
         """
         self.target_width = target_width
         self.target_height = target_height
         self.strategy = strategy
         self.quality = quality
         self.filter_non_art = filter_non_art
+        self.multi_crop = multi_crop
 
         self.detector = detector or ArtFeatureDetector()
         self.cropper = cropper or SmartCropper(target_width, target_height)
@@ -157,6 +161,39 @@ class ImagePreprocessor:
                                 'class_name': det.class_name,
                                 'is_primary': det == primary
                             })
+
+                    # Multi-crop path: one output per viable art subject
+                    if self.multi_crop and self.strategy == 'smart' and detections:
+                        multi_results = self.cropper.crop_all_subjects(img, detections)
+
+                        if len(multi_results) >= 2:
+                            output_paths = []
+                            base, ext = os.path.splitext(output_path)
+
+                            for i, (cropped, det, zoom) in enumerate(multi_results, 1):
+                                suffixed_path = f"{base}_{i}{ext}"
+                                resized = cropped
+                                if cropped.size != (self.target_width, self.target_height):
+                                    resized = cropped.resize(
+                                        (self.target_width, self.target_height),
+                                        Image.LANCZOS
+                                    )
+                                self.save_output(resized, suffixed_path, exif_data, verbose=verbose)
+                                output_paths.append(suffixed_path)
+                                if verbose:
+                                    print(f"  Multi-crop {i}: {det.class_name} ({det.confidence:.2f}), zoom {zoom:.2f}x -> {suffixed_path}")
+
+                            return ProcessingResult(
+                                success=True,
+                                input_path=input_path,
+                                output_path=output_paths[0],
+                                output_paths=output_paths,
+                                strategy_used='multi_crop',
+                                detections_found=len(detections),
+                                original_dimensions=original_dimensions,
+                                detections=detections_list,
+                                zoom_applied=multi_results[0][2]
+                            )
 
                     # Crop image
                     img = self.cropper.crop_image(img, detections, self.strategy)

@@ -379,6 +379,120 @@ class SmartCropper:
         # Resize back to original dimensions for consistent output
         return zoomed.resize((width, height), Image.LANCZOS)
 
+    # Secondary crops must clear this confidence bar to avoid false positives
+    MULTI_CROP_SECONDARY_CONFIDENCE = 0.30
+
+    def crop_all_subjects(
+        self,
+        image: Image.Image,
+        detections: List[Detection]
+    ) -> List[Tuple[Image.Image, Detection, float]]:
+        """
+        Crop each viable art subject independently for multi-crop output.
+
+        Filters to art-class detections, deduplicates by crop-window overlap,
+        and produces one crop per distinct image zone.  The first (highest-
+        confidence) subject uses the normal detection threshold; every
+        additional subject must also clear MULTI_CROP_SECONDARY_CONFIDENCE.
+
+        Args:
+            image: PIL Image
+            detections: List of Detection objects
+
+        Returns:
+            List of (cropped_image, detection, zoom_applied) sorted left-to-right
+        """
+        if not detections:
+            return []
+
+        width, height = image.size
+
+        # Filter to viable art detections (class_multiplier >= 1.5)
+        viable = [
+            d for d in detections
+            if ArtFeatureDetector._get_class_multiplier(d.class_name) >= 1.5
+        ]
+
+        if not viable:
+            return []
+
+        # Sort by confidence descending for deduplication (keep higher-scored)
+        viable.sort(key=lambda d: d.confidence, reverse=True)
+
+        # Compute crop window for each detection, then deduplicate by
+        # crop-window overlap so outputs target truly distinct image zones.
+        # The first candidate is always kept; subsequent ones must also
+        # exceed the secondary confidence threshold.
+        candidates: List[Tuple[Detection, Tuple[int, int, int, int]]] = []
+        for det in viable:
+            # Secondary candidates need higher confidence
+            if candidates and det.confidence < self.MULTI_CROP_SECONDARY_CONFIDENCE:
+                continue
+
+            cw = self._calculate_crop_window(
+                image_size=(width, height),
+                anchor_point=det.center
+            )
+            # Check against already-kept crop windows
+            overlaps = False
+            for _, existing_cw in candidates:
+                if self._calculate_iou(cw, existing_cw) > 0.3:
+                    overlaps = True
+                    break
+            if not overlaps:
+                candidates.append((det, cw))
+
+        # Sort left-to-right by detection center x-coordinate
+        candidates.sort(key=lambda pair: pair[0].center[0])
+
+        # Crop each detection independently
+        results: List[Tuple[Image.Image, Detection, float]] = []
+        for det, crop_window in candidates:
+            cropped = image.crop(crop_window)
+
+            crop_width = crop_window[2] - crop_window[0]
+            crop_height = crop_window[3] - crop_window[1]
+
+            contextual_zoom = self._calculate_contextual_zoom(
+                subject_bbox=det.bbox,
+                crop_width=crop_width,
+                crop_height=crop_height
+            )
+
+            if contextual_zoom > 1.0:
+                anchor_x, anchor_y = det.center
+                subject_cx = anchor_x - crop_window[0]
+                subject_cy = anchor_y - crop_window[1]
+                cropped = self._apply_smart_zoom(
+                    cropped, contextual_zoom,
+                    center=(subject_cx, subject_cy)
+                )
+
+            results.append((cropped, det, contextual_zoom))
+
+        return results
+
+    @staticmethod
+    def _calculate_iou(
+        box1: Tuple[int, int, int, int],
+        box2: Tuple[int, int, int, int]
+    ) -> float:
+        """Calculate IoU between two bounding boxes."""
+        x1 = max(box1[0], box2[0])
+        y1 = max(box1[1], box2[1])
+        x2 = min(box1[2], box2[2])
+        y2 = min(box1[3], box2[3])
+
+        if x2 <= x1 or y2 <= y1:
+            return 0.0
+
+        intersection = (x2 - x1) * (y2 - y1)
+        area1 = (box1[2] - box1[0]) * (box1[3] - box1[1])
+        area2 = (box2[2] - box2[0]) * (box2[3] - box2[1])
+        union = area1 + area2 - intersection
+
+        return intersection / union if union > 0 else 0.0
+
     def needs_cropping(self, image: Image.Image) -> bool:
         """
         Check if image needs cropping to reach target aspect ratio.

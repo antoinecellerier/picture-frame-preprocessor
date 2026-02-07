@@ -93,11 +93,16 @@ def cli():
     help='Disable non-art image filtering (process all images regardless of art score)'
 )
 @click.option(
+    '--multi-crop',
+    is_flag=True,
+    help='Generate one crop per viable art subject (e.g., multiple statues or mural panels)'
+)
+@click.option(
     '--verbose', '-v',
     is_flag=True,
     help='Verbose output'
 )
-def process(input, output, width, height, strategy, model, confidence, single_model, ensemble, zoom, quality, no_two_pass, no_filter, verbose):
+def process(input, output, width, height, strategy, model, confidence, single_model, ensemble, zoom, quality, no_two_pass, no_filter, multi_crop, verbose):
     """Process a single image for e-ink display."""
 
     try:
@@ -141,7 +146,8 @@ def process(input, output, width, height, strategy, model, confidence, single_mo
             cropper=cropper,
             strategy=strategy,
             quality=quality,
-            filter_non_art=defaults.FILTER_NON_ART and not no_filter
+            filter_non_art=defaults.FILTER_NON_ART and not no_filter,
+            multi_crop=multi_crop
         )
 
         # Determine output path
@@ -167,11 +173,16 @@ def process(input, output, width, height, strategy, model, confidence, single_mo
                 click.echo(f"  Score threshold: {defaults.MIN_ART_SCORE}")
         elif result.success:
             click.secho("✓ Success!", fg='green', bold=True)
+            if result.output_paths:
+                click.echo(f"  Multi-crop: {len(result.output_paths)} outputs")
+                for path in result.output_paths:
+                    click.echo(f"    {path}")
             if verbose:
                 if result.detections_found > 0:
                     click.echo(f"  Detections: {result.detections_found}")
                 click.echo(f"  Strategy: {result.strategy_used}")
-                click.echo(f"  Output: {result.output_path}")
+                if not result.output_paths:
+                    click.echo(f"  Output: {result.output_path}")
         else:
             click.secho("✗ Failed!", fg='red', bold=True)
             click.echo(f"  Error: {result.error_message}")

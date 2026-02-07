@@ -28,6 +28,7 @@ class BatchStats:
     failed: int = 0
     skipped: int = 0
     filtered: int = 0
+    output_files: int = 0  # Total output files (may exceed success when multi-crop)
     errors: List[str] = None
 
     def __post_init__(self):
@@ -108,7 +109,8 @@ def init_worker(config):
         detector=_detector,
         cropper=_cropper,
         strategy=config['strategy'],
-        quality=config['quality']
+        quality=config['quality'],
+        multi_crop=config.get('multi_crop', False)
     )
 
 
@@ -144,6 +146,7 @@ def process_single_image(args):
 
     # Save ML analysis data as JSON for quality reports
     if result.success and result.output_path:
+        # Use the base output_path (first crop for multi-crop) for analysis JSON
         json_path = result.output_path.rsplit('.', 1)[0] + '_analysis.json'
         analysis_data = {
             'filename': os.path.basename(input_path),
@@ -152,8 +155,10 @@ def process_single_image(args):
             'crop_box': result.crop_box,
             'zoom_applied': result.zoom_applied,
             'strategy_used': result.strategy_used,
-            'detections_found': result.detections_found
+            'detections_found': result.detections_found,
         }
+        if result.output_paths:
+            analysis_data['output_paths'] = result.output_paths
 
         try:
             with open(json_path, 'w') as f:
@@ -281,6 +286,11 @@ def main():
         default=4,
         help='Number of threads per worker process (default: 4, optimal for multi-process)'
     )
+    parser.add_argument(
+        '--multi-crop',
+        action='store_true',
+        help='Generate one crop per viable art subject (e.g., multiple statues or mural panels)'
+    )
 
     args = parser.parse_args()
 
@@ -322,7 +332,8 @@ def main():
         'skip_existing': args.skip_existing,
         'use_openvino': not args.no_openvino,
         'two_pass': not args.no_two_pass,
-        'threads_per_worker': args.threads_per_worker
+        'threads_per_worker': args.threads_per_worker,
+        'multi_crop': args.multi_crop
     }
 
     tasks = [
@@ -363,6 +374,10 @@ def main():
                             stats.skipped += 1
                         else:
                             stats.success += 1
+                            if result.output_paths:
+                                stats.output_files += len(result.output_paths)
+                            else:
+                                stats.output_files += 1
                     else:
                         stats.failed += 1
                         stats.errors.append(f"{input_path}: {result.error_message}")
@@ -378,6 +393,8 @@ def main():
     print("="*60)
     print(f"Total images:     {stats.total}")
     print(f"✓ Successful:     {stats.success}")
+    if stats.output_files > stats.success:
+        print(f"  Output files:   {stats.output_files} (multi-crop)")
     if stats.filtered > 0:
         print(f"⊘ Filtered:       {stats.filtered} (non-art)")
     if stats.skipped > 0:

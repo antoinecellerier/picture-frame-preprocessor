@@ -197,6 +197,52 @@ def generate_result_image(image_path, detections, cropper, max_width=400):
         return None, 1.0
 
 
+def generate_multi_crop_images(image_path, detections, cropper, max_width=250):
+    """Generate cropped images for all viable art subjects (multi-crop display).
+
+    Returns list of (data_uri, zoom_applied, class_name) tuples, or empty list
+    if fewer than 2 viable subjects.
+    """
+    try:
+        img = Image.open(image_path).convert('RGB')
+        img = ImageOps.exif_transpose(img)
+
+        multi_results = cropper.crop_all_subjects(img, detections)
+        if len(multi_results) < 2:
+            return []
+
+        output = []
+        for cropped, det, zoom_applied in multi_results:
+            # Resize for display
+            if cropped.width > max_width:
+                scale = max_width / cropped.width
+                new_size = (int(cropped.width * scale), int(cropped.height * scale))
+                cropped = cropped.resize(new_size, Image.LANCZOS)
+
+            # Add annotation
+            draw = ImageDraw.Draw(cropped)
+            try:
+                font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 12)
+            except Exception:
+                font = ImageFont.load_default()
+
+            label = f"{det.class_name} ({zoom_applied:.1f}x)"
+            text_bbox = draw.textbbox((5, 5), label, font=font)
+            draw.rectangle([text_bbox[0]-2, text_bbox[1]-2, text_bbox[2]+2, text_bbox[3]+2],
+                           fill=(0, 0, 0, 180))
+            draw.text((5, 5), label, fill=(255, 255, 255), font=font)
+
+            buffer = io.BytesIO()
+            cropped.save(buffer, format='JPEG', quality=90)
+            img_data = base64.b64encode(buffer.getvalue()).decode()
+            output.append((f"data:image/jpeg;base64,{img_data}", zoom_applied, det.class_name))
+
+        return output
+    except Exception as e:
+        print(f"Error generating multi-crop for {image_path}: {e}")
+        return []
+
+
 def generate_report():
     """Generate interactive HTML report."""
     print("Loading ground truth annotations...")
@@ -289,8 +335,15 @@ def generate_report():
 
         # Generate result/cropped image (skip for not-art images)
         result_image, zoom_applied = None, 1.0
+        multi_crop_images = []
         if not is_not_art:
             result_image, zoom_applied = generate_result_image(
+                image_path,
+                detection_result['all_detections'],
+                cropper
+            )
+            # Also generate multi-crop results for display
+            multi_crop_images = generate_multi_crop_images(
                 image_path,
                 detection_result['all_detections'],
                 cropper
@@ -301,6 +354,7 @@ def generate_report():
             'image_with_boxes': img_with_boxes,
             'result_image': result_image,
             'zoom_applied': zoom_applied,
+            'multi_crop_images': multi_crop_images,
             'detections': detection_result['all_detections'],
             'primary': detection_result['primary'],
             'primary_by_confidence': detection_result['primary_by_confidence'],
@@ -919,9 +973,22 @@ def generate_report():
         if is_not_art:
             not_art_badge = "<span class='badge not-art'>NOT ART</span>"
 
+        multi_crop_badge = ""
+        if multi_crop_images:
+            multi_crop_badge = f"<span class='badge' style='background: #dbeafe; color: #1e40af;'>Multi-crop: {len(multi_crop_images)}</span>"
+
         # Generate result image HTML if available
         result_img_html = ""
-        if result['result_image']:
+        multi_crop_images = result.get('multi_crop_images', [])
+        if multi_crop_images:
+            # Show multi-crop results side by side
+            for ci, (mc_uri, mc_zoom, mc_class) in enumerate(multi_crop_images, 1):
+                result_img_html += f"""
+                <div class="image-wrapper result">
+                    <span class="image-label">Crop {ci}: {mc_class} ({mc_zoom:.1f}x)</span>
+                    <img src="{mc_uri}" class="result-image" alt="Crop {ci}">
+                </div>"""
+        elif result['result_image']:
             result_img_html = f"""
                 <div class="image-wrapper result">
                     <span class="image-label">Result ({result['zoom_applied']:.2f}x)</span>
@@ -936,6 +1003,7 @@ def generate_report():
                     <span class="badge {status_class}">{status_label}</span>
                     {not_art_badge}
                     {selection_badge}
+                    {multi_crop_badge}
                     <span>Detections: {result['detection_count']}</span>
                     {art_score_info}
                     <span>Zoom: {result['zoom_applied']:.2f}x</span>
