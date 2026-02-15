@@ -203,6 +203,13 @@ class SmartCropper:
 
         return image.crop(crop_window)
 
+    def _crop_width_for(self, img_width: int, img_height: int) -> float:
+        """Return the crop window width for a given image size."""
+        current_aspect = img_height / img_width
+        if current_aspect < self.target_aspect:
+            return img_height / self.target_aspect
+        return float(img_width)
+
     def _calculate_crop_window(
         self,
         image_size: Tuple[int, int],
@@ -390,22 +397,28 @@ class SmartCropper:
         """
         Crop each viable art subject independently for multi-crop output.
 
-        Filters to art-class detections, deduplicates by crop-window overlap,
-        and produces one crop per distinct image zone.  The first (highest-
-        confidence) subject uses the normal detection threshold; every
-        additional subject must also clear MULTI_CROP_SECONDARY_CONFIDENCE.
+        The primary subject (center-weighted scoring) is always first.  If it
+        is wider than a single crop window, it is split into multiple crops
+        along its width.  Additional art-class detections that don't overlap
+        existing crops are appended, provided they clear the secondary
+        confidence threshold.
 
         Args:
             image: PIL Image
             detections: List of Detection objects
 
         Returns:
-            List of (cropped_image, detection, zoom_applied) sorted left-to-right
+            List of (cropped_image, detection, zoom_applied) — primary first,
+            then remaining subjects sorted left-to-right
         """
         if not detections:
             return []
 
         width, height = image.size
+
+        # Identify primary subject using center-weighted scoring
+        self._subject_selector._last_image_size = (width, height)
+        primary = self._subject_selector.get_primary_subject(detections)
 
         # Filter to viable art detections (class_multiplier >= 1.5)
         viable = [
@@ -413,37 +426,143 @@ class SmartCropper:
             if ArtFeatureDetector._get_class_multiplier(d.class_name) >= 1.5
         ]
 
-        if not viable:
+        if not viable and primary is None:
             return []
 
-        # Sort by confidence descending for deduplication (keep higher-scored)
-        viable.sort(key=lambda d: d.confidence, reverse=True)
+        # Ensure primary is in viable list even if its class_multiplier < 1.5
+        if primary is not None and primary not in viable:
+            viable.insert(0, primary)
 
-        # Compute crop window for each detection, then deduplicate by
-        # crop-window overlap so outputs target truly distinct image zones.
-        # The first candidate is always kept; subsequent ones must also
-        # exceed the secondary confidence threshold.
+        # Build candidate list: primary first, then others by confidence
         candidates: List[Tuple[Detection, Tuple[int, int, int, int]]] = []
-        for det in viable:
-            # Secondary candidates need higher confidence
-            if candidates and det.confidence < self.MULTI_CROP_SECONDARY_CONFIDENCE:
+
+        # --- Primary subject (possibly split if wider than crop window) ---
+        if primary is not None:
+            crop_w = self._crop_width_for(width, height)
+            bx1, by1, bx2, by2 = primary.bbox
+            subject_width = bx2 - bx1
+
+            if subject_width > crop_w * 1.3:
+                # Primary is wider than a single crop.  Use other detections
+                # that fall inside the primary as natural focal points rather
+                # than splitting uniformly.
+                img_area = width * height
+                edge_margin = 0.01
+                inner_dets = []
+                for d in detections:
+                    if d is primary:
+                        continue
+                    if self._bbox_overlap_ratio(d.bbox, primary.bbox) <= 0.5:
+                        continue
+                    # Apply same quality filters as secondary crops
+                    dx1, dy1, dx2, dy2 = d.bbox
+                    if (dx1 < width * edge_margin or
+                        dy1 < height * edge_margin or
+                        dx2 > width * (1 - edge_margin) or
+                        dy2 > height * (1 - edge_margin)):
+                        continue
+                    det_area = (dx2 - dx1) * (dy2 - dy1)
+                    if det_area < img_area * 0.015:
+                        continue
+                    inner_dets.append(d)
+
+                # Sort inner detections by primary-score so the most
+                # interesting ones come first
+                inner_dets.sort(
+                    key=lambda d: ArtFeatureDetector._get_class_multiplier(d.class_name) * d.confidence,
+                    reverse=True
+                )
+
+                if inner_dets:
+                    # Use inner detections as anchor points
+                    for det in inner_dets:
+                        cw = self._calculate_crop_window(
+                            image_size=(width, height),
+                            anchor_point=det.center
+                        )
+                        overlaps = any(
+                            self._calculate_iou(cw, ecw) > 0.3
+                            for _, ecw in candidates
+                        )
+                        if not overlaps:
+                            candidates.append((det, cw))
+
+                # Always include a primary-centered crop (first position)
+                # if no inner detections produced candidates
+                if not candidates:
+                    cw = self._calculate_crop_window(
+                        image_size=(width, height),
+                        anchor_point=primary.center
+                    )
+                    candidates.append((primary, cw))
+            else:
+                cw = self._calculate_crop_window(
+                    image_size=(width, height),
+                    anchor_point=primary.center
+                )
+                candidates.append((primary, cw))
+
+        # --- Remaining viable detections outside primary ---
+        # Secondary crops are filtered more aggressively to avoid junk:
+        #  - Higher class multiplier bar (>= 2.0 vs 1.5 for primary)
+        #  - Must clear secondary confidence threshold
+        #  - Skip detections touching image edges (partially out of frame)
+        #  - Skip very small detections (< 1.5% of image area)
+        img_area = width * height
+        edge_margin = 0.01  # 1% of dimension
+
+        remaining = sorted(
+            [d for d in viable if d is not primary],
+            key=lambda d: d.confidence, reverse=True
+        )
+        for det in remaining:
+            if det.confidence < self.MULTI_CROP_SECONDARY_CONFIDENCE:
+                continue
+
+            # Require stronger art-class signal for secondaries
+            if ArtFeatureDetector._get_class_multiplier(det.class_name) < 2.0:
+                continue
+
+            # Skip detections that touch image edges (likely partial/cut-off)
+            bx1, by1, bx2, by2 = det.bbox
+            if (bx1 < width * edge_margin or
+                by1 < height * edge_margin or
+                bx2 > width * (1 - edge_margin) or
+                by2 > height * (1 - edge_margin)):
+                continue
+
+            # Skip tiny detections (likely noise)
+            det_area = (bx2 - bx1) * (by2 - by1)
+            if det_area < img_area * 0.015:
                 continue
 
             cw = self._calculate_crop_window(
                 image_size=(width, height),
                 anchor_point=det.center
             )
-            # Check against already-kept crop windows
-            overlaps = False
-            for _, existing_cw in candidates:
-                if self._calculate_iou(cw, existing_cw) > 0.3:
-                    overlaps = True
-                    break
+            overlaps = any(
+                self._calculate_iou(cw, ecw) > 0.3
+                for _, ecw in candidates
+            )
             if not overlaps:
                 candidates.append((det, cw))
 
-        # Sort left-to-right by detection center x-coordinate
-        candidates.sort(key=lambda pair: pair[0].center[0])
+        # Primary-anchored crops stay first; remaining sorted left-to-right
+        primary_bbox = primary.bbox if primary else None
+        def _is_primary_crop(pair):
+            det, _ = pair
+            if det is primary:
+                return True
+            if primary_bbox and self._bbox_overlap_ratio(det.bbox, primary_bbox) > 0.5:
+                return True
+            return False
+
+        primary_candidates = [c for c in candidates if _is_primary_crop(c)]
+        other_candidates = [c for c in candidates if not _is_primary_crop(c)]
+        # Sort primary sub-crops left-to-right, others left-to-right
+        primary_candidates.sort(key=lambda pair: pair[0].center[0])
+        other_candidates.sort(key=lambda pair: pair[0].center[0])
+        candidates = primary_candidates + other_candidates
 
         # Crop each detection independently
         results: List[Tuple[Image.Image, Detection, float]] = []
@@ -492,6 +611,24 @@ class SmartCropper:
         union = area1 + area2 - intersection
 
         return intersection / union if union > 0 else 0.0
+
+    @staticmethod
+    def _bbox_overlap_ratio(
+        inner: Tuple[int, int, int, int],
+        outer: Tuple[int, int, int, int]
+    ) -> float:
+        """Fraction of inner's area that overlaps with outer."""
+        x1 = max(inner[0], outer[0])
+        y1 = max(inner[1], outer[1])
+        x2 = min(inner[2], outer[2])
+        y2 = min(inner[3], outer[3])
+
+        if x2 <= x1 or y2 <= y1:
+            return 0.0
+
+        intersection = (x2 - x1) * (y2 - y1)
+        inner_area = (inner[2] - inner[0]) * (inner[3] - inner[1])
+        return intersection / inner_area if inner_area > 0 else 0.0
 
     def needs_cropping(self, image: Image.Image) -> bool:
         """

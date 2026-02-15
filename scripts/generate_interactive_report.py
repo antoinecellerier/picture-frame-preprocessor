@@ -36,8 +36,15 @@ def calculate_iou(box1, box2):
     return intersection / union if union > 0 else 0.0
 
 
-def draw_boxes_on_image(image_path, detections, ground_truth_boxes=None, primary=None, max_width=800):
-    """Draw detected and ground truth bounding boxes on image."""
+def draw_boxes_on_image(image_path, detections, ground_truth_boxes=None,
+                        primary=None, crop_targets=None, max_width=800):
+    """Draw detected and ground truth bounding boxes on image.
+
+    Args:
+        crop_targets: list of Detection objects used as crop anchors.
+            These get highlighted with distinct colors (orange) so
+            the user can see which detections produced crops.
+    """
     try:
         img = Image.open(image_path).convert('RGB')
         # Handle EXIF rotation
@@ -58,6 +65,11 @@ def draw_boxes_on_image(image_path, detections, ground_truth_boxes=None, primary
             font = ImageFont.load_default()
             small_font = font
 
+        # Build set of crop-target bboxes for quick lookup
+        crop_target_bboxes = set()
+        if crop_targets:
+            crop_target_bboxes = {tuple(d.bbox) for d in crop_targets}
+
         # Draw ground truth boxes in blue
         if ground_truth_boxes:
             for gt_box in ground_truth_boxes:
@@ -66,29 +78,39 @@ def draw_boxes_on_image(image_path, detections, ground_truth_boxes=None, primary
                 draw.rectangle([x1, y1, x2, y2], outline=(0, 0, 255), width=3)
                 draw.text((x1, y2 + 5), "Ground Truth", fill=(0, 0, 255), font=small_font)
 
-        # Draw detected boxes in green
+        # Draw detected boxes
         if detections:
-            for det in detections:  # Show all detections
+            for det in detections:
                 bbox = [int(coord * scale) for coord in det.bbox]
                 x1, y1, x2, y2 = bbox
 
-                # Check if this is the primary detection (by bbox match)
                 is_primary = primary is not None and det.bbox == primary.bbox
+                is_crop_target = tuple(det.bbox) in crop_target_bboxes
 
-                # Primary detection gets thicker border and brighter color
-                width = 4 if is_primary else 2
-                color = (0, 255, 0) if is_primary else (0, 200, 0)
+                # Color scheme: primary=green, crop target=orange, other=dim green
+                if is_primary:
+                    color = (0, 255, 0)
+                    line_w = 4
+                elif is_crop_target:
+                    color = (255, 165, 0)  # orange
+                    line_w = 3
+                else:
+                    color = (0, 200, 0)
+                    line_w = 2
 
-                draw.rectangle([x1, y1, x2, y2], outline=color, width=width)
+                draw.rectangle([x1, y1, x2, y2], outline=color, width=line_w)
 
                 label = f"{det.class_name} {det.confidence:.2f}"
                 if is_primary:
                     label = "PRIMARY: " + label
+                elif is_crop_target:
+                    label = "CROP: " + label
 
                 text_bbox = draw.textbbox((x1, y1-20), label, font=font)
                 draw.rectangle([text_bbox[0]-2, text_bbox[1]-2, text_bbox[2]+2, text_bbox[3]+2],
                              fill=color)
-                draw.text((x1, y1-20), label, fill=(255, 255, 255), font=font)
+                text_color = (255, 255, 255) if not is_crop_target else (0, 0, 0)
+                draw.text((x1, y1-20), label, fill=text_color, font=font)
 
         buffer = io.BytesIO()
         img.save(buffer, format='JPEG', quality=90)
@@ -200,8 +222,10 @@ def generate_result_image(image_path, detections, cropper, max_width=400):
 def generate_multi_crop_images(image_path, detections, cropper, max_width=250):
     """Generate cropped images for all viable art subjects (multi-crop display).
 
-    Returns list of (data_uri, zoom_applied, class_name) tuples, or empty list
-    if fewer than 2 viable subjects.
+    Returns (crops, crop_target_detections) where crops is a list of
+    (data_uri, zoom_applied, class_name) tuples (empty if < 2 subjects),
+    and crop_target_detections is the list of Detection objects used as
+    crop anchors (for highlighting in the detection image).
     """
     try:
         img = Image.open(image_path).convert('RGB')
@@ -209,10 +233,13 @@ def generate_multi_crop_images(image_path, detections, cropper, max_width=250):
 
         multi_results = cropper.crop_all_subjects(img, detections)
         if len(multi_results) < 2:
-            return []
+            return [], []
 
         output = []
+        crop_targets = []
         for cropped, det, zoom_applied in multi_results:
+            crop_targets.append(det)
+
             # Resize for display
             if cropped.width > max_width:
                 scale = max_width / cropped.width
@@ -237,10 +264,10 @@ def generate_multi_crop_images(image_path, detections, cropper, max_width=250):
             img_data = base64.b64encode(buffer.getvalue()).decode()
             output.append((f"data:image/jpeg;base64,{img_data}", zoom_applied, det.class_name))
 
-        return output
+        return output, crop_targets
     except Exception as e:
         print(f"Error generating multi-crop for {image_path}: {e}")
-        return []
+        return [], []
 
 
 def generate_report():
@@ -325,29 +352,31 @@ def generate_report():
             # Has ground truth but no primary detection — counts as incorrect
             total_with_gt += 1
 
-        # Generate visualization
-        img_with_boxes = draw_boxes_on_image(
-            image_path,
-            detection_result['all_detections'],
-            gt_boxes,
-            primary=detection_result['primary']
-        )
-
         # Generate result/cropped image (skip for not-art images)
+        # Run multi-crop first so we know which detections are crop targets
         result_image, zoom_applied = None, 1.0
         multi_crop_images = []
+        crop_targets = []
         if not is_not_art:
             result_image, zoom_applied = generate_result_image(
                 image_path,
                 detection_result['all_detections'],
                 cropper
             )
-            # Also generate multi-crop results for display
-            multi_crop_images = generate_multi_crop_images(
+            multi_crop_images, crop_targets = generate_multi_crop_images(
                 image_path,
                 detection_result['all_detections'],
                 cropper
             )
+
+        # Generate visualization (after multi-crop so we can highlight targets)
+        img_with_boxes = draw_boxes_on_image(
+            image_path,
+            detection_result['all_detections'],
+            gt_boxes,
+            primary=detection_result['primary'],
+            crop_targets=crop_targets if multi_crop_images else None
+        )
 
         results.append({
             'filename': filename,
@@ -712,19 +741,19 @@ def generate_report():
 
         .feedback-buttons {{
             display: flex;
-            gap: 10px;
+            gap: 6px;
             margin-bottom: 10px;
         }}
 
         .feedback-btn {{
             flex: 1;
-            padding: 10px;
+            padding: 8px 4px;
             border: 2px solid #e5e7eb;
             background: white;
             border-radius: 8px;
             cursor: pointer;
             transition: all 0.2s;
-            font-size: 14px;
+            font-size: 13px;
             display: flex;
             align-items: center;
             justify-content: center;
@@ -912,6 +941,10 @@ def generate_report():
                 <span>Ground Truth (BLUE)</span>
             </div>
             <div class="legend-item">
+                <div class="legend-color" style="background: #ffa500; width: 40px; height: 4px;"></div>
+                <span>Crop Target (ORANGE)</span>
+            </div>
+            <div class="legend-item">
                 <div class="legend-color" style="background: #6ee7b7; width: 40px; height: 4px;"></div>
                 <span>Other Detections (light green)</span>
             </div>
@@ -1029,13 +1062,16 @@ def generate_report():
                     <div class="feedback-label">Your Feedback:</div>
                     <div class="feedback-buttons">
                         <button class="feedback-btn" onclick="setFeedback({idx}, 'good')">
-                            👍 Good Detection
+                            👍 Good
                         </button>
-                        <button class="feedback-btn" onclick="setFeedback({idx}, 'bad')">
-                            👎 Poor Detection
+                        <button class="feedback-btn" onclick="setFeedback({idx}, 'bad_detection')">
+                            👎 Bad Detection
                         </button>
-                        <button class="feedback-btn" onclick="setFeedback({idx}, 'zoom')">
-                            🔍 Zoom Issue
+                        <button class="feedback-btn" onclick="setFeedback({idx}, 'bad_crop')">
+                            ✂️ Bad Crop
+                        </button>
+                        <button class="feedback-btn" onclick="setFeedback({idx}, 'bad_both')">
+                            👎 Both Bad
                         </button>
                         <button class="feedback-btn" onclick="setFeedback({idx}, 'other')">
                             💬 Other
@@ -1118,9 +1154,10 @@ def generate_report():
 
             const ratingMap = {
                 'good': 0,
-                'bad': 1,
-                'zoom': 2,
-                'other': 3
+                'bad_detection': 1,
+                'bad_crop': 2,
+                'bad_both': 3,
+                'other': 4
             };
             buttons[ratingMap[rating]].classList.add('selected');
         }

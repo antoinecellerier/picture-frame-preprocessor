@@ -31,8 +31,8 @@ When multiple detections are in the same scoring tier (both specific_art 5.0x), 
 - `DSC_4291.JPG`: "mosaic" selected, GT wants "figure figne" (garbled class, gets default 1.5x)
 - `DSC_0155.JPG`: "painted figure" wins over GT vase area — REGRESSION
 
-**Possible approach: containment/nesting logic**
-When detection A is fully contained within detection B at the same tier, prefer the more specific (smaller) one. Would fix DSC_3401, DSC_4371, DSC_4385. But contradicts DSC_0001 where the container IS the subject.
+**Attempted: containment/nesting logic (2026-02-15) — REJECTED**
+Tried preferring the smaller detection when it's contained within a larger same-tier one (≥80% overlap, ≥8x area ratio, winner ≥15% of image). Regressed accuracy from 72.4% to 58.6%. Root cause: most large specific_art detections (mural, framed artwork) ARE the subject and naturally contain smaller detail detections (figurine, mosaic) within them. Only 1 of ~18 triggered swaps was correct (DSC_4385). No threshold combination could separate signal from noise.
 
 ### P1: Detection miss / tiny subject (5 of 22 bad)
 Subject not detected or too small for models to identify:
