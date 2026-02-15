@@ -501,6 +501,23 @@ class ArtFeatureDetector:
 
             score *= size_bonus
 
+            # Edge penalty: detections touching the image boundary are likely
+            # cut off / extending beyond the frame, and probably not the
+            # photographer's intended subject.
+            if self._last_image_size:
+                bx1, by1, bx2, by2 = det.bbox
+                margin = 0.01  # 1% of dimension
+                edges_touching = sum([
+                    bx1 < img_width * margin,
+                    by1 < img_height * margin,
+                    bx2 > img_width * (1 - margin),
+                    by2 > img_height * (1 - margin),
+                ])
+                if edges_touching >= 2:
+                    score *= 0.4  # Strongly penalize corner/multi-edge
+                elif edges_touching == 1:
+                    score *= 0.6  # Moderate penalty for single edge
+
             return score
 
         # Calculate scores and return highest
