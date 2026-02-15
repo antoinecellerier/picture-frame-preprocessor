@@ -1,81 +1,146 @@
 # Backlog
 
-## Detection Quality
+## Session Summary (2026-02-16)
 
-### DONE: Boost art-class priority in primary selection
-Implemented 2026-02-07. Three-tier class scoring (specific art 5.0x > scene art 2.0x > generic scene 0.3x), revised size bonus, deprioritized "exhibit"/"display". Accuracy improved from 62.1% (72/116) to 72.4% (84/116). +17 fixes, -5 regressions.
+**Current accuracy: 89/116 (76.7%)** on ground truth. Feedback: 87 good, 16 bad_detection, 16 bad_crop (119 reviewed / 122 total).
 
-### DONE: Fix zoom level and centering
-Implemented 2026-02-07. Increased `ZOOM_FACTOR` from 1.3 to 8.0, fixed `_apply_smart_zoom` to center on subject position instead of crop center. All 5 zoom-flagged images now zoom correctly.
+### Completed this session
+- Split feedback buttons: bad → bad_detection / bad_crop / bad_both
+- Multi-crop: primary subject always first, wide primaries use inner focal points
+- Crop target highlighting (orange) in detection image
+- Secondary crop quality filters: class_mult >= 2.0, edge/size rejection
+- Edge penalty in primary scoring: 0.6x for 1 edge, 0.4x for 2+ edges
+- Saved feedback: `reports/feedback/detection_feedback_2026-02-15T22-56-09-832Z.json`
 
-### Latest feedback: 88/119 good (74%), 22 bad, 9 other
-Up from 70/119 (59%) before scoring+zoom fixes. Net +18 improvements (23 fixes, 4 regressions).
+---
 
-### P0: Wrong primary selection (10 of 22 bad)
-Correct detection exists but wrong one is selected as primary.
+## Remaining Issues (30 items from latest feedback)
 
-**Large bbox same-tier competition (6 cases):**
-When multiple detections are in the same scoring tier (both specific_art 5.0x), the larger/higher-confidence one wins despite a smaller, more precise detection matching ground truth.
-- `DSC_3401.JPG`: "sculpture statue" (39% area, conf=0.32) beats "sculpture on pedestal" (1%, conf=0.46)
-- `DSC_4385.JPG`: "figure" (28%, conf=0.26) beats "mosaic" (1.8%, conf=0.30)
-- `DSC_4371.JPG`: "art installation" (large) beats precise "mosaic"
-- `20201003_173051.jpg`: "sculpture on pedestal" (wrong position) beats correct area — REGRESSION
-- `20220219_145944.jpg`: "mosaic" (21%, top of image) beats central painted figures — REGRESSION
-- `20210911_152658.jpg`: "sculpture statue painted figure" large bbox, GT is small central area
+### Bad Detection — Wrong primary selection (8 cases)
 
-**High-confidence mismatch (2 cases):**
-- `20210910_204401.jpg`: "framed artwork" at 0.99 confidence in corner beats statues
-- `DSC_0001_BURST20241121142123881.JPG`: "painted figure" (small) beats "painting" (correct larger area) — REGRESSION from >50% penalty
+The correct subject exists in detections but a different one wins primary scoring.
 
-**Class tier / scoring edge (2 cases):**
-- `DSC_4291.JPG`: "mosaic" selected, GT wants "figure figne" (garbled class, gets default 1.5x)
-- `DSC_0155.JPG`: "painted figure" wins over GT vase area — REGRESSION
+**Small central art beaten by higher-confidence non-art (3):**
+- `DSC_4388.JPG`: "framed artwork" (0.45, small, off-center) beats "art street art" (0.31, central). Class multiplier mismatch: 5.0x vs 2.0x. Needs "street art" boost or context-aware scoring.
+- `DSC_4042.JPG`: "painting" (0.32, actually a sign) beats "decorative art" (0.28, actual mosaic). Misclassification — sign detected as "painting".
+- `DSC_0155.JPG`: "painted figure" (0.34) beats GT vase area. Wrong region entirely.
 
-**Attempted: containment/nesting logic (2026-02-15) — REJECTED**
-Tried preferring the smaller detection when it's contained within a larger same-tier one (≥80% overlap, ≥8x area ratio, winner ≥15% of image). Regressed accuracy from 72.4% to 58.6%. Root cause: most large specific_art detections (mural, framed artwork) ARE the subject and naturally contain smaller detail detections (figurine, mosaic) within them. Only 1 of ~18 triggered swaps was correct (DSC_4385). No threshold combination could separate signal from noise.
+**Large bbox same-tier competition (3):**
+- `DSC_4291.JPG`: "mosaic" (0.32) selected, GT wants "figure figne" (garbled class → default 1.5x)
+- `DSC_4385.JPG`: "figure" (28% area, 0.26) beats "mosaic" (1.8%, 0.30). Large bbox with 1.2x size bonus
+- `DSC_4381.JPG`: "decorated sign" (0.33) beats "sculpture" (0.25). Sign-art confusion.
 
-### P1: Detection miss / tiny subject (5 of 22 bad)
-Subject not detected or too small for models to identify:
-- `DSC_0493.JPG`: chalk drawing of woman's face → "artistic object" wins
-- `DSC_4162.JPG`: tiny pig face mosaic at bottom of archway → "decorated sign" wins
-- `DSC_4311.JPG`: rocket tile art above street sign → wrong area selected
-- `DSC_4312.JPG`: small decorative tile → "mosaic" selected at wrong position
-- `DSC_4388.JPG`: hard-to-see mosaic aliens → "framed artwork" wins
+**Partial / wrong detection (2):**
+- `DSC_0274.JPG`: "painted figure" (0.28) picks wrong region of a tile mural
+- `DSC_3367.JPG`: "painted figure" (0.28) only partially covers the subject
 
-### P1: Incomplete / partial bbox detection (3 of 22 bad)
-- `20210626_160627.jpg`: mural detection shifted, doesn't cover the actual ant statue
-- `DSC_3367.JPG`: painted figures on pillar only partially detected (bottom portion)
-- `DSC_4059.JPG`: full PARIS mural not detected as single entity, only fragments
+### Bad Detection — Subject not detected at all (6 cases)
 
-### P1: Sign vs art disambiguation (2 of 22 bad)
-- `DSC_4042.JPG`: "painting" misdetecting a decorative street sign, GT wants "decorative art"
-- `DSC_4381.JPG`: "decorated sign" (higher conf, larger) beats "sculpture"
-- Note: `DSC_0274.JPG` "decorated sign" IS correct (it's a tile mural) but "painted figure" wins instead — overlaps with wrong-primary
+Models fail to find the actual art subject. Would need model improvements, additional prompts, or post-processing.
 
-### P1: Class scoring edge case (1 of 22 bad)
-- `20210815_163856.jpg`: "art installation exhibit" still selected despite removal from specific_art_classes. Falls to scene_art 2.0x but no better detection for the small GT manual box area.
+- `20200525_170722.jpg`: Sculpture/statue figures (0.30-0.31 conf) detected but not selected — actually a primary selection issue, mosaic (0.39) wins
+- `20210911_152658.jpg`: Minion mosaic not detected by any model
+- `DSC_0493.JPG`: Large chalk drawing of woman's face → "painted figure" (0.44) picks tiny detail instead
+- `DSC_4162.JPG`: Tiny pig face mosaic → only detection is "decorated sign" at edge
+- `DSC_4201.JPG`: 3 cartoon figures in mural not individually detected
+- `DSC_4311.JPG` / `DSC_4312.JPG`: Mosaic rocket tile art not properly detected
 
-## Filtering
+### Bad Detection — Misclassification (3 cases)
 
-### P1: Non-art image filtering
-Auto-detect and skip images that aren't interesting art subjects (9 "other" include 4 not-art):
-- Museum exhibit labels / info cards (`DSC_4063.JPG`, `DSC_4074.JPG`)
-- Photos of cars, buildings without art (`WP_20170624_15_17_38_Pro.jpg`)
-- Images dominated by glass reflections (`20210910_203723.jpg`, `DSC_3065.JPG`)
+- `DSC_3065.JPG`: Reflection in glass detected as "painted figure"
+- `DSC_4059.JPG`: "painted figure" picks wrong fragment of PARIS mural
+- `20210910_204401.jpg`: FIXED by edge penalty (was bad_detection in earlier round)
 
-6 images already marked `"not_art": true` in ground truth. Pipeline should skip these.
+### Bad Crop — Wide primary, suboptimal framing (6 cases)
 
-## Feature Requests
+Primary is correctly detected as a large mural/painting but the crop doesn't focus on the interesting part.
 
-### P2: Smart sub-crop / focal area refinement
-When detection is correct but covers a large area, zoom into the most interesting detail (face, focal point). 3 images rated "other":
-- `DSC_0153.JPG`: focus on woman's face within mural
-- `DSC_1488.JPG`: focus on woman's face within artwork
-- `DSC_3065.JPG`: focus on central area (also glass reflection issue)
+- `DSC_0153.JPG`: Wide mural — crop should focus on face/focal area
+- `DSC_1488.JPG`: Wide mural — crop should frame the "face" area
+- `20210530_135908.jpg`: Wide mural — lion's head (crop 3) is best but not first
+- `DSC_4205.JPG`: Wide mural — should use inner figure detections as focal points
+- `20210808_162451.jpg`: Huge mural is primary, should produce a good single crop
+- `DSC_1045.JPG`: Overlapping figurine detections — wrong one centered
 
-### P3: Multi-crop for panoramic scenes
-Generate multiple output crops from a single image when it contains multiple distinct art pieces.
-- `DSC_3089.JPG`: 3 columns with murals + 1 lower panel (4 manual boxes in GT)
+**Potential fix:** Use saliency analysis within the primary bbox to find the most visually interesting focal point when no good inner detections exist.
 
-### P3: Multiple valid detections
-- `DSC_4205.JPG`: mural selected, but GT has 3 valid detections (statue, painted figure, figurine). Could benefit from multi-crop or user selection.
+### Bad Crop — Wrong primary leads to bad crop (5 cases)
+
+Root cause is in detection, not cropping. Fix would propagate from better primary selection.
+
+- `DSC_0001_BURST20241121142123881.JPG`: "painted figure" (0.45) is a person walking in snow
+- `DSC_4381.JPG`: "decorated sign" primary instead of mosaic/sculpture
+- `DSC_4385.JPG`: "figure" primary instead of "mosaic"
+- `DSC_4294.JPG`: "mosaic" (0.25) primary is tiny; exhibit/art installation should win
+- `DSC_4371.JPG`: "art installation" primary, small mosaic is the actual subject
+
+### Bad Crop — Junk secondary crop (3 cases)
+
+Secondary crop target is not visually interesting art.
+
+- `20210213_154948.jpg`: "painted figure" (0.31) is a building behind a fence
+- `DSC_0312.JPG`: "vase" (0.45) is a plant box — misclassification by model
+- `DSC_3401.JPG`: Multiple overlapping sculpture detections, confusing result
+
+### Bad Crop — Other (2 cases)
+
+- `DSC_4312.JPG`: Primary mosaic correct but GT expects a different area (rocket)
+- `20210815_163856.jpg`: "art installation exhibit" primary, woman walking selected as secondary
+
+---
+
+## Investigation Roadmap
+
+### 1. Saliency-guided focal point for wide primaries (6 bad_crop)
+
+When primary bbox is wider than crop and no quality inner detections exist, use saliency map within the primary bbox to find the most visually interesting crop anchor. Would help DSC_0153, DSC_1488, 20210530_135908, DSC_4205, 20210808_162451, DSC_1045.
+
+**Approach:** Run composition analyzer on the primary bbox region, pick highest-saliency point as crop anchor.
+
+### 2. Boost "street art" class multiplier (2 bad_detection)
+
+"street art" currently gets 2.0x (scene_art tier). Several images have central street art losing to less-relevant 5.0x detections. Consider bumping to 3.0-3.5x, or add context: if the image has many street-level detections, boost street art classes.
+
+**Risk:** Could cause regressions where actual "street art" label is a misdetection (sign, lamp post).
+
+### 3. YOLO-World prompt engineering for mosaics (4 bad_detection)
+
+Several small mosaic/tile art pieces go undetected. Try adding specific prompts:
+- "small mosaic tile", "decorative tile", "tile artwork on wall"
+- "chalk drawing on ground", "pavement art"
+
+### 4. Person-as-art filtering (2 bad_crop)
+
+When "painted figure" detection overlaps significantly with a person-shaped bbox and is small/off-center, deprioritize it. DSC_0001_BURST and 20210815_163856 both have actual people misclassified as "painted figure".
+
+### 5. Misclassification cleanup (3 bad_detection)
+
+Hard problems requiring model-level improvements:
+- Glass reflections (DSC_3065)
+- Sign vs art (DSC_4042, DSC_4381)
+- Partial mural fragments (DSC_4059)
+
+---
+
+## Previously Completed
+
+### DONE: Art-class priority in primary selection (2026-02-07)
+Three-tier class scoring. Accuracy: 62.1% → 72.4%.
+
+### DONE: Fix zoom level and centering (2026-02-07)
+`ZOOM_FACTOR` 1.3 → 8.0, fixed smart zoom centering.
+
+### DONE: Non-art image filtering (2026-02-07)
+Art score heuristic to skip non-art images.
+
+### DONE: Multi-crop for panoramic scenes (2026-02-07)
+`--multi-crop` flag, `crop_all_subjects` in cropper.
+
+### DONE: Containment/nesting logic — REJECTED (2026-02-15)
+Regressed 72.4% → 58.6%. Large art detections ARE the subject.
+
+### DONE: Edge penalty in primary scoring (2026-02-16)
+0.6x/0.4x penalty for edge-touching detections. Fixed 2 images, no regressions.
+
+### DONE: Multi-crop ordering and secondary filtering (2026-02-16)
+Primary first, quality filters for secondaries, crop target highlighting.
