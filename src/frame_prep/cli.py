@@ -120,7 +120,7 @@ def process(input, output, width, height, strategy, model, confidence, single_mo
             detector = EnsembleDetector(
                 models=['yolov8m', 'rtdetr-l'],
                 confidence_threshold=confidence,
-                merge_threshold=0.4
+                merge_threshold=defaults.MERGE_THRESHOLD
             )
             if verbose:
                 click.echo("Using ensemble detector: YOLOv8m + RT-DETR-L")
@@ -137,7 +137,7 @@ def process(input, output, width, height, strategy, model, confidence, single_mo
             target_width=width,
             target_height=height,
             zoom_factor=zoom,
-            use_saliency_fallback=True
+            use_saliency_fallback=defaults.USE_SALIENCY_FALLBACK
         )
         preprocessor = ImagePreprocessor(
             target_width=width,

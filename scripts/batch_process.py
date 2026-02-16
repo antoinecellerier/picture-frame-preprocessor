@@ -84,7 +84,7 @@ def init_worker(config):
         _detector = EnsembleDetector(
             models=['yolov8m', 'rtdetr-l'],
             confidence_threshold=config['confidence'],
-            merge_threshold=0.4,
+            merge_threshold=defaults.MERGE_THRESHOLD,
             use_openvino=use_openvino
         )
     else:
@@ -100,7 +100,7 @@ def init_worker(config):
         target_width=config['width'],
         target_height=config['height'],
         zoom_factor=config.get('zoom', defaults.ZOOM_FACTOR),
-        use_saliency_fallback=True
+        use_saliency_fallback=defaults.USE_SALIENCY_FALLBACK
     )
 
     # Create preprocessor once per worker
@@ -111,6 +111,7 @@ def init_worker(config):
         cropper=_cropper,
         strategy=config['strategy'],
         quality=config['quality'],
+        filter_non_art=config.get('filter_non_art', defaults.FILTER_NON_ART),
         multi_crop=config.get('multi_crop', False)
     )
 
@@ -230,8 +231,8 @@ def main():
     parser.add_argument(
         '--confidence', '-c',
         type=float,
-        default=0.15,
-        help='Detection confidence threshold (default: 0.15 for more detections)'
+        default=defaults.CONFIDENCE_THRESHOLD,
+        help=f'Detection confidence threshold (default: {defaults.CONFIDENCE_THRESHOLD})'
     )
     parser.add_argument(
         '--single-model',
@@ -288,6 +289,11 @@ def main():
         help='Number of threads per worker process (default: 4, optimal for multi-process)'
     )
     parser.add_argument(
+        '--no-filter',
+        action='store_true',
+        help='Disable non-art image filtering (process all images regardless of art score)'
+    )
+    parser.add_argument(
         '--multi-crop',
         action='store_true',
         help='Generate one crop per viable art subject (e.g., multiple statues or mural panels)'
@@ -334,6 +340,7 @@ def main():
         'use_openvino': not args.no_openvino,
         'two_pass': not args.no_two_pass,
         'threads_per_worker': args.threads_per_worker,
+        'filter_non_art': defaults.FILTER_NON_ART and not args.no_filter,
         'multi_crop': args.multi_crop
     }
 
