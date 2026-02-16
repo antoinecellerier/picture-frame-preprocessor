@@ -18,6 +18,7 @@ from frame_prep.preprocessor import ImagePreprocessor, ProcessingResult
 from frame_prep.detector import ArtFeatureDetector, EnsembleDetector, OptimizedEnsembleDetector
 from frame_prep.cropper import SmartCropper
 from frame_prep.utils import is_image_file, get_output_path, ensure_directory
+from frame_prep import defaults
 
 
 @dataclass
@@ -89,16 +90,16 @@ def init_worker(config):
     else:
         # Default: optimized ensemble (YOLO-World + Grounding DINO)
         _detector = OptimizedEnsembleDetector(
-            confidence_threshold=0.25,
-            merge_threshold=0.2,
-            two_pass=config.get('two_pass', True)
+            confidence_threshold=defaults.CONFIDENCE_THRESHOLD,
+            merge_threshold=defaults.MERGE_THRESHOLD,
+            two_pass=config.get('two_pass', defaults.TWO_PASS)
         )
 
     # Create cropper once per worker
     _cropper = SmartCropper(
         target_width=config['width'],
         target_height=config['height'],
-        zoom_factor=config.get('zoom', 1.3),
+        zoom_factor=config.get('zoom', defaults.ZOOM_FACTOR),
         use_saliency_fallback=True
     )
 
@@ -206,20 +207,20 @@ def main():
     parser.add_argument(
         '--width', '-w',
         type=int,
-        default=480,
-        help='Target width in pixels (default: 480)'
+        default=defaults.TARGET_WIDTH,
+        help=f'Target width in pixels (default: {defaults.TARGET_WIDTH})'
     )
     parser.add_argument(
         '--height',
         type=int,
-        default=800,
-        help='Target height in pixels (default: 800)'
+        default=defaults.TARGET_HEIGHT,
+        help=f'Target height in pixels (default: {defaults.TARGET_HEIGHT})'
     )
     parser.add_argument(
         '--strategy', '-s',
         choices=['smart', 'saliency', 'center'],
-        default='smart',
-        help='Cropping strategy (default: smart)'
+        default=defaults.STRATEGY,
+        help=f'Cropping strategy (default: {defaults.STRATEGY})'
     )
     parser.add_argument(
         '--model', '-m',
@@ -245,14 +246,14 @@ def main():
     parser.add_argument(
         '--zoom', '-z',
         type=float,
-        default=1.3,
-        help='Zoom factor to focus on subjects (default: 1.3)'
+        default=defaults.ZOOM_FACTOR,
+        help=f'Zoom factor to focus on subjects (default: {defaults.ZOOM_FACTOR})'
     )
     parser.add_argument(
         '--quality', '-q',
         type=int,
-        default=95,
-        help='JPEG quality 1-100 (default: 95)'
+        default=defaults.JPEG_QUALITY,
+        help=f'JPEG quality 1-100 (default: {defaults.JPEG_QUALITY})'
     )
     parser.add_argument(
         '--workers',
