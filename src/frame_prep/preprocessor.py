@@ -117,50 +117,53 @@ class ImagePreprocessor:
                 crop_box = None
                 zoom_applied = 1.0
 
+                # Run detection for smart strategy (needed for both
+                # cropping and non-art filtering)
+                detections = []
+                art_score = None
+                needs_crop = self.cropper.needs_cropping(img)
+
+                if self.strategy == 'smart' and (needs_crop or self.filter_non_art):
+                    # Pass image_path for cache lookups (OptimizedEnsembleDetector)
+                    try:
+                        detections = self.detector.detect(img, verbose=verbose, image_path=input_path)
+                    except TypeError:
+                        # Fallback for detectors that don't support image_path
+                        detections = self.detector.detect(img, verbose=verbose)
+
+                    # Get primary subject and art score
+                    primary = None
+                    if detections and hasattr(self.detector, 'get_primary_subject_with_score'):
+                        primary, art_score = self.detector.get_primary_subject_with_score(detections)
+                    elif detections:
+                        primary = self.detector.get_primary_subject(detections)
+
+                    # Filter non-art images by score threshold
+                    if self.filter_non_art and art_score is not None and art_score < defaults.MIN_ART_SCORE:
+                        if verbose:
+                            print(f"Filtered as non-art (score: {art_score:.3f} < {defaults.MIN_ART_SCORE})")
+                        return ProcessingResult(
+                            success=True,
+                            input_path=input_path,
+                            filtered=True,
+                            art_score=art_score,
+                            detections_found=len(detections),
+                            original_dimensions=original_dimensions,
+                        )
+
+                    # Capture detection details for ML analysis
+                    for det in detections:
+                        detections_list.append({
+                            'bbox': det.bbox,
+                            'confidence': det.confidence,
+                            'class_name': det.class_name,
+                            'is_primary': det == primary
+                        })
+
                 # Check if cropping is needed
-                if self.cropper.needs_cropping(img):
+                if needs_crop:
                     if verbose:
-                        print(f"Image is landscape, applying {self.strategy} cropping...")
-
-                    # Run detection if using smart strategy
-                    detections = []
-                    art_score = None
-                    if self.strategy == 'smart':
-                        # Pass image_path for cache lookups (OptimizedEnsembleDetector)
-                        try:
-                            detections = self.detector.detect(img, verbose=verbose, image_path=input_path)
-                        except TypeError:
-                            # Fallback for detectors that don't support image_path
-                            detections = self.detector.detect(img, verbose=verbose)
-
-                        # Get primary subject and art score
-                        primary = None
-                        if detections and hasattr(self.detector, 'get_primary_subject_with_score'):
-                            primary, art_score = self.detector.get_primary_subject_with_score(detections)
-                        elif detections:
-                            primary = self.detector.get_primary_subject(detections)
-
-                        # Filter non-art images by score threshold
-                        if self.filter_non_art and art_score is not None and art_score < defaults.MIN_ART_SCORE:
-                            if verbose:
-                                print(f"Filtered as non-art (score: {art_score:.3f} < {defaults.MIN_ART_SCORE})")
-                            return ProcessingResult(
-                                success=True,
-                                input_path=input_path,
-                                filtered=True,
-                                art_score=art_score,
-                                detections_found=len(detections),
-                                original_dimensions=original_dimensions,
-                            )
-
-                        # Capture detection details for ML analysis
-                        for det in detections:
-                            detections_list.append({
-                                'bbox': det.bbox,
-                                'confidence': det.confidence,
-                                'class_name': det.class_name,
-                                'is_primary': det == primary
-                            })
+                        print(f"Aspect ratio mismatch, applying {self.strategy} cropping...")
 
                     # Multi-crop path: one output per viable art subject
                     if self.multi_crop and self.strategy == 'smart' and detections:
