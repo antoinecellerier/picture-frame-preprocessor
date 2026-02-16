@@ -352,12 +352,14 @@ def generate_report():
             # Has ground truth but no primary detection — counts as incorrect
             total_with_gt += 1
 
-        # Generate result/cropped image (skip for not-art images)
+        # Generate result/cropped image (skip when art score is below threshold,
+        # matching the batch pipeline's filter_non_art behavior)
         # Run multi-crop first so we know which detections are crop targets
         result_image, zoom_applied = None, 1.0
         multi_crop_images = []
         crop_targets = []
-        if not is_not_art:
+        auto_filtered = detection_result['art_score'] < MIN_ART_SCORE
+        if not auto_filtered:
             result_image, zoom_applied = generate_result_image(
                 image_path,
                 detection_result['all_detections'],
@@ -395,11 +397,13 @@ def generate_report():
             'ground_truth_boxes': gt_boxes,
             'art_score': detection_result['art_score'],
             'is_not_art': is_not_art,
+            'auto_filtered': auto_filtered,
         })
 
     accuracy = (correct_count / total_with_gt * 100) if total_with_gt > 0 else 0
     selection_changed_count = sum(1 for r in results if r['selection_changed'])
     not_art_count = sum(1 for r in results if r.get('is_not_art'))
+    auto_filtered_count = sum(1 for r in results if r.get('auto_filtered'))
 
     print(f"\n✓ Processing complete!")
     print(f"  Accuracy: {correct_count}/{total_with_gt} ({accuracy:.1f}%) (excludes {not_art_count} not-art images)")
@@ -1003,8 +1007,10 @@ def generate_report():
             selection_badge = "<span class='badge' style='background: #d1fae5; color: #065f46;'>Selection Changed</span>"
 
         not_art_badge = ""
-        if is_not_art:
-            not_art_badge = "<span class='badge not-art'>NOT ART</span>"
+        if result.get('auto_filtered'):
+            not_art_badge = "<span class='badge not-art'>FILTERED (non-art)</span>"
+        elif is_not_art:
+            not_art_badge = "<span class='badge not-art'>NOT ART (GT label)</span>"
 
         multi_crop_badge = ""
         if multi_crop_images:
