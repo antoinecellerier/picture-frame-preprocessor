@@ -91,7 +91,7 @@ Generated reports are available in `reports/` directory:
 
 To regenerate reports:
 ```bash
-python scripts/generate_interactive_report.py
+frame-prep report
 ```
 
 ## Next Steps

@@ -36,10 +36,10 @@
 **Implementation:**
 ```bash
 # Current (4 workers)
-python scripts/batch_process.py --workers 4 --ensemble
+frame-prep batch --workers 4 --ensemble
 
 # Optimized (10 workers - leaves headroom for system)
-python scripts/batch_process.py --workers 10 --ensemble
+frame-prep batch --workers 10 --ensemble
 ```
 
 **Expected Speedup:** 2-2.5x faster
@@ -158,7 +158,7 @@ else:
 **Optimal Config:**
 ```bash
 # Use 10 workers, leverage all CPU cores
-python scripts/batch_process.py \
+frame-prep batch \
   --input-dir test_real_images/input \
   --output-dir test_real_images/output_ensemble \
   --ensemble \
@@ -218,7 +218,7 @@ result = preprocessor.process_image(image_path, output_path)
 ### 1. Increase Batch Workers
 ```bash
 # Change from 4 to 10 workers
-sed -i 's/default=4/default=10/' scripts/batch_process.py
+sed -i 's/default=4/default=10/' src/frame_prep/batch.py
 ```
 **Speedup:** 2x
 **Effort:** 1 minute
@@ -275,10 +275,10 @@ top -H -p $(pgrep -f cache_grounding)
 ### Benchmark Different Configs
 ```bash
 # Test current config
-time python scripts/batch_process.py --workers 4 --ensemble
+time frame-prep batch --workers 4 --ensemble
 
 # Test optimized config
-time python scripts/batch_process.py --workers 10 --ensemble
+time frame-prep batch --workers 10 --ensemble
 ```
 
 ---

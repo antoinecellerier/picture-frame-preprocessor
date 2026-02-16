@@ -19,10 +19,10 @@ OpenVINO provides 1.4-2.0x speedup for YOLO inference on Intel CPUs.
 **Usage in batch processing**:
 ```bash
 # OpenVINO is enabled by default
-python scripts/batch_process.py -i input/ -o output/ --workers 8
+frame-prep batch -i input/ -o output/ --workers 8
 
 # Disable if needed
-python scripts/batch_process.py -i input/ -o output/ --no-openvino
+frame-prep batch -i input/ -o output/ --no-openvino
 ```
 
 **Export models to OpenVINO format**:
@@ -63,10 +63,10 @@ OpenMP parallelizes operations across CPU cores.
 
 ```bash
 # Default: 4 threads per worker
-python scripts/batch_process.py -i input/ -o output/ --workers 8
+frame-prep batch -i input/ -o output/ --workers 8
 
 # Custom thread count per worker
-python scripts/batch_process.py -i input/ -o output/ --workers 8 --threads-per-worker 2
+frame-prep batch -i input/ -o output/ --workers 8 --threads-per-worker 2
 ```
 
 ### 4. Intel CPU Optimizations (Built into PyTorch)
@@ -90,13 +90,13 @@ Adjust the number of parallel workers based on your CPU:
 
 ```bash
 # Conservative (low CPU usage, good for background processing)
-python scripts/batch_process.py -i input/ -o output/ --workers 4
+frame-prep batch -i input/ -o output/ --workers 4
 
 # Balanced (recommended for 12-16 core CPUs)
-python scripts/batch_process.py -i input/ -o output/ --workers 8
+frame-prep batch -i input/ -o output/ --workers 8
 
 # Aggressive (maximum speed, high CPU usage)
-python scripts/batch_process.py -i input/ -o output/ --workers 12
+frame-prep batch -i input/ -o output/ --workers 12
 ```
 
 **Rule of thumb**:
@@ -110,7 +110,7 @@ Prevent over-subscription by tuning threads per worker:
 ```bash
 # Formula: threads_per_worker × workers ≈ total_CPU_threads
 # Example for 16-thread CPU with 8 workers:
-python scripts/batch_process.py -i input/ -o output/ --workers 8 --threads-per-worker 2
+frame-prep batch -i input/ -o output/ --workers 8 --threads-per-worker 2
 ```
 
 ### Memory Optimization
@@ -118,7 +118,7 @@ python scripts/batch_process.py -i input/ -o output/ --workers 8 --threads-per-w
 For large batches, enable skip-existing to resume interrupted processing:
 
 ```bash
-python scripts/batch_process.py -i input/ -o output/ --skip-existing
+frame-prep batch -i input/ -o output/ --skip-existing
 ```
 
 ## Checking Optimization Status
@@ -182,7 +182,7 @@ pip uninstall intel-extension-for-pytorch
 
 **Current optimal configuration**:
 ```bash
-python scripts/batch_process.py \
+frame-prep batch \
   -i input/ \
   -o output/ \
   --workers 8 \

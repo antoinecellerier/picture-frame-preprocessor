@@ -49,7 +49,7 @@ The Picture Frame Preprocessor has been successfully implemented according to th
 
 ### Scripts
 
-1. **Batch Processor** (`scripts/batch_process.py`)
+1. **Batch Processor** (`src/frame_prep/batch.py`)
    - Directory scanning (recursive option)
    - Parallel processing with multiprocessing
    - Progress tracking with tqdm
@@ -93,7 +93,7 @@ frame-prep process \
 ### Batch Processing ✅
 
 ```bash
-python scripts/batch_process.py \
+frame-prep batch \
   --input-dir test_data/input/ \
   --output-dir test_data/batch_output/ \
   --width 480 --height 800 \
@@ -145,10 +145,8 @@ picture-frame-preprocessor/
 │   └── utils.py                # Utilities
 │
 ├── scripts/                    # Helper scripts
-│   ├── batch_process.py              # Batch processing
 │   ├── download_models.py            # Model downloader
 │   ├── generate_test_set.py          # Generate random test sets
-│   ├── generate_interactive_report.py # Interactive detection report
 │   ├── generate_quality_report.py    # Quality assessment report
 │   ├── check_optimizations.py        # System optimization check
 │   └── export_to_openvino.py         # OpenVINO model export
@@ -189,13 +187,13 @@ frame-prep process -i input.jpg -o output/ -s saliency -v
 
 ```bash
 # Basic batch
-python scripts/batch_process.py \
+frame-prep batch \
   -i ~/images/raw/ \
   -o ~/images/processed/ \
   --width 480 --height 800
 
 # With all options
-python scripts/batch_process.py \
+frame-prep batch \
   -i ~/images/raw/ \
   -o ~/images/processed/ \
   --width 480 --height 800 \
@@ -259,7 +257,7 @@ To use with ML detection:
 
 ## Notes
 
-- The `-h` flag conflict in batch_process.py was fixed (removed short option, kept `--height`)
+- The `-h` flag for `--height` is available in all CLI commands via shared options
 - All tests pass without requiring ML models (smart strategy only needs models at runtime)
 - Center crop strategy works immediately without any model downloads
 - Smart strategy requires running `download_models.py` first

@@ -74,7 +74,7 @@ Options:
 Process a directory of images:
 
 ```bash
-python scripts/batch_process.py \
+frame-prep batch \
   --input-dir ~/images/raw/ \
   --output-dir ~/images/processed/ \
   --width 480 \
@@ -87,7 +87,7 @@ Options:
 - `--input-dir, -i`: Input directory (required)
 - `--output-dir, -o`: Output directory (required)
 - `--width, -w`: Target width (default: 480)
-- `--height`: Target height (default: 800)
+- `--height, -h`: Target height (default: 800)
 - `--strategy, -s`: Cropping strategy (default: smart)
 - `--single-model`: Use single YOLOv8 model instead of default ensemble (faster, lower accuracy)
 - `--ensemble`: Use YOLOv8m + RT-DETR-L ensemble instead of default
@@ -171,7 +171,7 @@ python download.py --album "Art Collection" --output ~/images/raw/
 
 # Batch preprocess
 cd ../picture-frame-preprocessor
-python scripts/batch_process.py \
+frame-prep batch \
   --input-dir ~/images/raw/ \
   --output-dir ~/images/processed/ \
   --width 480 --height 800
@@ -240,10 +240,8 @@ picture-frame-preprocessor/
 │   ├── analyzer.py         # Saliency analysis
 │   └── utils.py            # Shared utilities
 ├── scripts/
-│   ├── batch_process.py              # Directory batch processing
 │   ├── download_models.py            # Initialize models
 │   ├── generate_test_set.py          # Generate random test sets
-│   ├── generate_interactive_report.py # Interactive detection report (HTML)
 │   ├── generate_quality_report.py    # Quality assessment report (HTML)
 │   ├── check_optimizations.py        # Check system optimization status
 │   └── export_to_openvino.py         # Export models to OpenVINO format
@@ -270,14 +268,14 @@ python scripts/generate_test_set.py \
 
 ### Process Test Set
 ```bash
-python scripts/batch_process.py \
+frame-prep batch \
   --input-dir test_images/input \
   --output-dir test_images/output
 ```
 
 ### Create Interactive Detection Report
 ```bash
-python scripts/generate_interactive_report.py
+frame-prep report
 ```
 
 **Features:**

@@ -49,7 +49,7 @@
 - Or: 8 workers × 2 threads = 16 threads (perfect match, no over-subscription)
 
 **Files Changed**:
-- `scripts/batch_process.py`: Added threading optimization and OpenVINO control
+- `src/frame_prep/batch.py`: Added threading optimization and OpenVINO control
 
 ### ✓ 4. Removed Deprecated IPEX Code
 **Status**: IPEX deprecated and removed
@@ -165,7 +165,7 @@ python scripts/check_optimizations.py
 ### Optimal Batch Processing
 ```bash
 # Recommended configuration for this system
-python scripts/batch_process.py \
+frame-prep batch \
   -i input/ \
   -o output/ \
   --workers 8 \
@@ -194,7 +194,7 @@ python scripts/export_to_openvino.py yolov8n yolov8s
 ### Disable OpenVINO (if needed)
 ```bash
 # Use PyTorch instead of OpenVINO
-python scripts/batch_process.py -i input/ -o output/ --no-openvino
+frame-prep batch -i input/ -o output/ --no-openvino
 ```
 
 ## Files Modified
@@ -206,7 +206,7 @@ python scripts/batch_process.py -i input/ -o output/ --no-openvino
    - Added IPEX version checking
    - Fixed RT-DETR class ID handling
 
-2. `scripts/batch_process.py`
+2. `src/frame_prep/batch.py`
    - Added thread optimization per worker
    - Added --threads-per-worker parameter
    - Added --no-openvino flag
@@ -240,13 +240,13 @@ pip uninstall intel-extension-for-pytorch
 Experiment with different worker/thread combinations:
 ```bash
 # Conservative (4 workers × 4 threads = 16)
-python scripts/batch_process.py -i input/ -o output/ --workers 4 --threads-per-worker 4
+frame-prep batch -i input/ -o output/ --workers 4 --threads-per-worker 4
 
 # Balanced (8 workers × 4 threads = 32, recommended)
-python scripts/batch_process.py -i input/ -o output/ --workers 8 --threads-per-worker 4
+frame-prep batch -i input/ -o output/ --workers 8 --threads-per-worker 4
 
 # Aggressive (12 workers × 2 threads = 24)
-python scripts/batch_process.py -i input/ -o output/ --workers 12 --threads-per-worker 2
+frame-prep batch -i input/ -o output/ --workers 12 --threads-per-worker 2
 ```
 
 ## Summary

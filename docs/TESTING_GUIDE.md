@@ -28,13 +28,13 @@ python scripts/generate_test_set.py \
 - Reproducible test sets with seed parameter
 - Quick sampling from large image collections
 
-### 2. Generate Interactive Detection Report (`scripts/generate_interactive_report.py`)
+### 2. Generate Interactive Detection Report (`src/frame_prep/report.py`)
 
 Creates a comprehensive HTML report showing detection results alongside cropped outputs for quality assessment.
 
 **Usage:**
 ```bash
-python scripts/generate_interactive_report.py
+frame-prep report
 ```
 
 **Features:**
@@ -107,7 +107,7 @@ python scripts/generate_test_set.py \
 
 ```bash
 # Process with smart strategy (default)
-python scripts/batch_process.py \
+frame-prep batch \
   --input-dir test_real_images/input/ \
   --output-dir test_real_images/output/ \
   --width 480 --height 800 \
@@ -224,19 +224,19 @@ Compare different cropping strategies:
 
 ```bash
 # Smart strategy (default)
-python scripts/batch_process.py \
+frame-prep batch \
   -i test_real_images/input/ \
   -o test_real_images/smart/ \
   --strategy smart
 
 # Saliency strategy
-python scripts/batch_process.py \
+frame-prep batch \
   -i test_real_images/input/ \
   -o test_real_images/saliency/ \
   --strategy saliency
 
 # Center strategy
-python scripts/batch_process.py \
+frame-prep batch \
   -i test_real_images/input/ \
   -o test_real_images/center/ \
   --strategy center
@@ -290,7 +290,7 @@ python scripts/generate_test_set.py \
   -s ~/art/ -o test/input -n 64 --seed 42
 
 # Process images
-python scripts/batch_process.py \
+frame-prep batch \
   -i test/input -o test/output
 
 # Generate report

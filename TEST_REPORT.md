@@ -77,7 +77,7 @@ frame-prep process \
 
 ### Batch Processing
 ```bash
-python scripts/batch_process.py \
+frame-prep batch \
   --input-dir test_real_images/input/ \
   --output-dir test_real_images/output/ \
   --width 480 --height 800 \
@@ -106,7 +106,7 @@ OneDrive Album Download → Preprocessor → E-ink Frame Display
 
 **For speed (batch processing 876 images)**:
 ```bash
-python scripts/batch_process.py \
+frame-prep batch \
   --input-dir ~/stuff/onedrive-album-download/downloads/art/ \
   --output-dir ~/processed_art/ \
   --width 480 --height 800 \
@@ -118,7 +118,7 @@ python scripts/batch_process.py \
 
 **For quality (with ML detection)**:
 ```bash
-python scripts/batch_process.py \
+frame-prep batch \
   --input-dir ~/stuff/onedrive-album-download/downloads/art/ \
   --output-dir ~/processed_art/ \
   --width 480 --height 800 \

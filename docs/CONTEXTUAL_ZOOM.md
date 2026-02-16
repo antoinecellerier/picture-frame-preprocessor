@@ -144,7 +144,7 @@ To verify contextual zoom is working:
 ### Using the Interactive Detection Report
 
 ```bash
-python scripts/generate_interactive_report.py
+frame-prep report
 ```
 
 The report (`reports/interactive_detection_report.html`) provides:

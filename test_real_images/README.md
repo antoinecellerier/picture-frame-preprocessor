@@ -25,12 +25,12 @@ All generated outputs can be recreated:
 
 ```bash
 # Regenerate output (uses optimized ensemble by default)
-python scripts/batch_process.py \
+frame-prep batch \
   --input-dir test_real_images/input \
   --output-dir test_real_images/output_optimized
 
 # Regenerate interactive detection report
-python scripts/generate_interactive_report.py
+frame-prep report
 ```
 
 ## Safe to Delete

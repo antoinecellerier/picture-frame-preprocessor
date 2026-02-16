@@ -1,21 +1,16 @@
-#!/usr/bin/env python3
-"""Generate interactive HTML report for testing the updated preprocessor with feedback capability."""
+"""Interactive HTML report generation for detection testing and feedback."""
 
 import json
-import sys
 from pathlib import Path
 import base64
 from PIL import Image, ImageDraw, ImageFont, ImageOps
 import io
 from datetime import datetime
 
-# Add src to path
-sys.path.insert(0, str(Path(__file__).parent.parent))
-
-from frame_prep.detector import ArtFeatureDetector, EnsembleDetector, OptimizedEnsembleDetector
-from frame_prep.cropper import SmartCropper
-from frame_prep import defaults
-from frame_prep.defaults import MIN_ART_SCORE
+from .detector import OptimizedEnsembleDetector
+from .cropper import SmartCropper
+from . import defaults
+from .defaults import MIN_ART_SCORE
 
 
 def calculate_iou(box1, box2):
@@ -270,29 +265,48 @@ def generate_multi_crop_images(image_path, detections, cropper, max_width=250):
         return [], []
 
 
-def generate_report():
-    """Generate interactive HTML report."""
+def generate_report(input_dir=None, ground_truth_path=None, output_file=None,
+                    detector=None, cropper=None, verbose=False):
+    """Generate interactive HTML report.
+
+    Args:
+        input_dir: Path to input images directory (default: test_real_images/input/)
+        ground_truth_path: Path to ground truth JSON (default: test_real_images/ground_truth_annotations.json)
+        output_file: Path to output HTML report (default: reports/interactive_detection_report.html)
+        detector: Pre-configured detector instance (default: OptimizedEnsembleDetector)
+        cropper: Pre-configured cropper instance (default: SmartCropper with defaults)
+        verbose: Whether to print verbose output
+    """
+    if ground_truth_path is None:
+        ground_truth_path = 'test_real_images/ground_truth_annotations.json'
+    if input_dir is None:
+        input_dir = 'test_real_images/input'
+    if output_file is None:
+        output_file = 'reports/interactive_detection_report.html'
+
     print("Loading ground truth annotations...")
-    with open('test_real_images/ground_truth_annotations.json', 'r') as f:
+    with open(ground_truth_path, 'r') as f:
         ground_truth = json.load(f)
 
-    input_dir = Path('test_real_images/input')
+    input_dir = Path(input_dir)
     results = []
 
     # Create detector once (reused for all images, with caching)
-    detector = OptimizedEnsembleDetector(
-        confidence_threshold=defaults.CONFIDENCE_THRESHOLD,
-        merge_threshold=defaults.MERGE_THRESHOLD,
-        two_pass=defaults.TWO_PASS
-    )
+    if detector is None:
+        detector = OptimizedEnsembleDetector(
+            confidence_threshold=defaults.CONFIDENCE_THRESHOLD,
+            merge_threshold=defaults.MERGE_THRESHOLD,
+            two_pass=defaults.TWO_PASS
+        )
 
     # Create cropper for generating result images
-    cropper = SmartCropper(
-        target_width=defaults.TARGET_WIDTH,
-        target_height=defaults.TARGET_HEIGHT,
-        zoom_factor=defaults.ZOOM_FACTOR,
-        use_saliency_fallback=defaults.USE_SALIENCY_FALLBACK
-    )
+    if cropper is None:
+        cropper = SmartCropper(
+            target_width=defaults.TARGET_WIDTH,
+            target_height=defaults.TARGET_HEIGHT,
+            zoom_factor=defaults.ZOOM_FACTOR,
+            use_saliency_fallback=defaults.USE_SALIENCY_FALLBACK
+        )
 
     # Build config dict for report display and feedback export traceability
     config = {
@@ -349,7 +363,7 @@ def generate_report():
             if is_correct:
                 correct_count += 1
         elif not is_not_art and gt_boxes:
-            # Has ground truth but no primary detection — counts as incorrect
+            # Has ground truth but no primary detection -- counts as incorrect
             total_with_gt += 1
 
         # Generate result/cropped image (skip when art score is below threshold,
@@ -405,7 +419,7 @@ def generate_report():
     not_art_count = sum(1 for r in results if r.get('is_not_art'))
     auto_filtered_count = sum(1 for r in results if r.get('auto_filtered'))
 
-    print(f"\n✓ Processing complete!")
+    print(f"\nProcessing complete!")
     print(f"  Accuracy: {correct_count}/{total_with_gt} ({accuracy:.1f}%) (excludes {not_art_count} not-art images)")
     print(f"  Primary selection changed: {selection_changed_count}/{len(results)} images")
     print(f"\nGenerating HTML report...")
@@ -843,12 +857,12 @@ def generate_report():
 </head>
 <body>
     <div class="header">
-        <h1>🎨 Interactive Detection Report</h1>
+        <h1>Interactive Detection Report</h1>
         <p>Updated Adaptive Zoom Logic - {datetime.now().strftime('%Y-%m-%d %H:%M')}</p>
     </div>
 
     <div class="config-summary">
-        <h2>⚙️ Configuration Summary</h2>
+        <h2>Configuration Summary</h2>
         <div class="config-grid">
             <div class="config-section">
                 <h3>Detection Strategy</h3>
@@ -962,7 +976,7 @@ def generate_report():
             <button class="filter-btn" onclick="filterResults('incorrect')">Incorrect ({sum(1 for r in results if r['has_ground_truth'] and not r['is_correct'] and not r.get('is_not_art'))})</button>
             <button class="filter-btn" onclick="filterResults('not-art')">Not Art ({sum(1 for r in results if r.get('is_not_art'))})</button>
             <button class="filter-btn" onclick="filterResults('no-gt')">No Ground Truth ({sum(1 for r in results if not r['has_ground_truth'] and not r.get('is_not_art'))})</button>
-            <button class="export-btn" onclick="exportFeedback()">📥 Export Feedback</button>
+            <button class="export-btn" onclick="exportFeedback()">Export Feedback</button>
         </div>
     </div>
 
@@ -980,17 +994,17 @@ def generate_report():
             status_label = 'No Ground Truth'
         elif result['is_correct']:
             status_class = 'correct'
-            status_label = '✓ Correct'
+            status_label = 'Correct'
         else:
             status_class = 'incorrect'
-            status_label = '✗ Incorrect'
+            status_label = 'Incorrect'
 
         primary_info = "No detections"
         if result['primary']:
             primary_info = f"{result['primary'].class_name} (conf: {result['primary'].confidence:.3f})"
             # Show if selection algorithm chose differently than confidence-based
             if result['selection_changed'] and result['primary_by_confidence']:
-                primary_info += f"<br><span style='color: #059669; font-size: 12px;'>✓ Changed from: {result['primary_by_confidence'].class_name} (conf: {result['primary_by_confidence'].confidence:.3f})</span>"
+                primary_info += f"<br><span style='color: #059669; font-size: 12px;'>Changed from: {result['primary_by_confidence'].class_name} (conf: {result['primary_by_confidence'].confidence:.3f})</span>"
 
         # Show art score
         art_score = result.get('art_score', 0.0)
@@ -1068,19 +1082,19 @@ def generate_report():
                     <div class="feedback-label">Your Feedback:</div>
                     <div class="feedback-buttons">
                         <button class="feedback-btn" onclick="setFeedback({idx}, 'good')">
-                            👍 Good
+                            Good
                         </button>
                         <button class="feedback-btn" onclick="setFeedback({idx}, 'bad_detection')">
-                            👎 Bad Detection
+                            Bad Detection
                         </button>
                         <button class="feedback-btn" onclick="setFeedback({idx}, 'bad_crop')">
-                            ✂️ Bad Crop
+                            Bad Crop
                         </button>
                         <button class="feedback-btn" onclick="setFeedback({idx}, 'bad_both')">
-                            👎 Both Bad
+                            Both Bad
                         </button>
                         <button class="feedback-btn" onclick="setFeedback({idx}, 'other')">
-                            💬 Other
+                            Other
                         </button>
                     </div>
                     <textarea
@@ -1231,18 +1245,14 @@ def generate_report():
 """
 
     # Save report
-    output_path = Path('reports/interactive_detection_report.html')
+    output_path = Path(output_file)
     output_path.parent.mkdir(exist_ok=True)
 
     with open(output_path, 'w') as f:
         f.write(html)
 
-    print(f"\n✓ Report generated: {output_path}")
+    print(f"\nReport generated: {output_path}")
     print(f"\nOpen in browser to view and provide feedback:")
     print(f"  file://{output_path.absolute()}")
     print(f"\nKeyboard shortcuts:")
     print(f"  Ctrl+F: Export feedback to JSON")
-
-
-if __name__ == '__main__':
-    generate_report()

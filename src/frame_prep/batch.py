@@ -1,24 +1,18 @@
-#!/usr/bin/env python3
-"""Batch processing script for directories."""
+"""Batch processing logic for directories of images."""
 
 import os
-import sys
 import json
-import argparse
-from pathlib import Path
 from concurrent.futures import ProcessPoolExecutor, as_completed
-from tqdm import tqdm
-from dataclasses import dataclass, asdict
+from dataclasses import dataclass
 from typing import List
 
-# Add src to path for imports
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
+from tqdm import tqdm
 
-from frame_prep.preprocessor import ImagePreprocessor, ProcessingResult
-from frame_prep.detector import ArtFeatureDetector, EnsembleDetector, OptimizedEnsembleDetector
-from frame_prep.cropper import SmartCropper
-from frame_prep.utils import is_image_file, get_output_path, ensure_directory
-from frame_prep import defaults
+from .preprocessor import ImagePreprocessor, ProcessingResult
+from .detector import ArtFeatureDetector, EnsembleDetector, OptimizedEnsembleDetector
+from .cropper import SmartCropper
+from .utils import is_image_file, get_output_path, ensure_directory
+from . import defaults
 
 
 @dataclass
@@ -56,13 +50,9 @@ def init_worker(config):
     global _detector, _cropper, _preprocessor
 
     # Optimize threading for multi-process batch processing
-    # Each worker gets fewer threads to avoid over-subscription
     import os
     import torch
 
-    # Calculate optimal threads per worker
-    # With 8 workers on 16-core CPU: 16/8 = 2 threads per worker is ideal
-    # But allow some overlap for I/O: use 3-4 threads per worker
     threads_per_worker = config.get('threads_per_worker', 4)
 
     os.environ['OMP_NUM_THREADS'] = str(threads_per_worker)
@@ -71,7 +61,6 @@ def init_worker(config):
     torch.set_num_threads(threads_per_worker)
 
     # Create detector once per worker
-    # use_openvino defaults to True for best CPU performance
     use_openvino = config.get('use_openvino', True)
 
     if config.get('single_model', False):
@@ -95,7 +84,6 @@ def init_worker(config):
             two_pass=config.get('two_pass', defaults.TWO_PASS)
         )
 
-    # Create cropper once per worker
     _cropper = SmartCropper(
         target_width=config['width'],
         target_height=config['height'],
@@ -103,7 +91,6 @@ def init_worker(config):
         use_saliency_fallback=defaults.USE_SALIENCY_FALLBACK
     )
 
-    # Create preprocessor once per worker
     _preprocessor = ImagePreprocessor(
         target_width=config['width'],
         target_height=config['height'],
@@ -121,7 +108,6 @@ def process_single_image(args):
     Process a single image using pre-loaded models.
 
     Uses the global _preprocessor instance that was initialized once per worker.
-    This avoids reloading models for every image (6.7x speedup).
 
     Args:
         args: Tuple of (input_path, output_path, config_dict)
@@ -143,12 +129,10 @@ def process_single_image(args):
             detections_found=0
         )
 
-    # Use pre-loaded preprocessor (models already in memory)
     result = _preprocessor.process_image(input_path, output_path, verbose=False)
 
     # Save ML analysis data as JSON for quality reports
     if result.success and result.output_path:
-        # Use the base output_path (first crop for multi-crop) for analysis JSON
         json_path = result.output_path.rsplit('.', 1)[0] + '_analysis.json'
         analysis_data = {
             'filename': os.path.basename(input_path),
@@ -165,8 +149,7 @@ def process_single_image(args):
         try:
             with open(json_path, 'w') as f:
                 json.dump(analysis_data, f, indent=2)
-        except Exception as e:
-            # Don't fail the whole process if JSON save fails
+        except Exception:
             pass
 
     return result
@@ -191,132 +174,34 @@ def collect_images(input_dir: str) -> List[str]:
     return sorted(images)
 
 
-def main():
-    parser = argparse.ArgumentParser(
-        description='Batch process images for e-ink display'
-    )
-    parser.add_argument(
-        '--input-dir', '-i',
-        required=True,
-        help='Input directory containing images'
-    )
-    parser.add_argument(
-        '--output-dir', '-o',
-        required=True,
-        help='Output directory for processed images'
-    )
-    parser.add_argument(
-        '--width', '-w',
-        type=int,
-        default=defaults.TARGET_WIDTH,
-        help=f'Target width in pixels (default: {defaults.TARGET_WIDTH})'
-    )
-    parser.add_argument(
-        '--height',
-        type=int,
-        default=defaults.TARGET_HEIGHT,
-        help=f'Target height in pixels (default: {defaults.TARGET_HEIGHT})'
-    )
-    parser.add_argument(
-        '--strategy', '-s',
-        choices=['smart', 'saliency', 'center'],
-        default=defaults.STRATEGY,
-        help=f'Cropping strategy (default: {defaults.STRATEGY})'
-    )
-    parser.add_argument(
-        '--model', '-m',
-        default='yolov8m',
-        help='YOLO model variant (default: yolov8m for better detection)'
-    )
-    parser.add_argument(
-        '--confidence', '-c',
-        type=float,
-        default=defaults.CONFIDENCE_THRESHOLD,
-        help=f'Detection confidence threshold (default: {defaults.CONFIDENCE_THRESHOLD})'
-    )
-    parser.add_argument(
-        '--single-model',
-        action='store_true',
-        help='Use single YOLOv8 model instead of default optimized ensemble (faster, lower accuracy)'
-    )
-    parser.add_argument(
-        '--ensemble',
-        action='store_true',
-        help='Use ensemble detector (YOLOv8m + RT-DETR-L) instead of default optimized ensemble'
-    )
-    parser.add_argument(
-        '--zoom', '-z',
-        type=float,
-        default=defaults.ZOOM_FACTOR,
-        help=f'Zoom factor to focus on subjects (default: {defaults.ZOOM_FACTOR})'
-    )
-    parser.add_argument(
-        '--quality', '-q',
-        type=int,
-        default=defaults.JPEG_QUALITY,
-        help=f'JPEG quality 1-100 (default: {defaults.JPEG_QUALITY})'
-    )
-    parser.add_argument(
-        '--workers',
-        type=int,
-        default=8,
-        help='Number of parallel workers (default: 8, optimized for 16-thread CPUs)'
-    )
-    parser.add_argument(
-        '--skip-existing',
-        action='store_true',
-        help='Skip images that already exist in output directory'
-    )
-    parser.add_argument(
-        '--recursive', '-r',
-        action='store_true',
-        help='Process subdirectories recursively'
-    )
-    parser.add_argument(
-        '--no-openvino',
-        action='store_true',
-        help='Disable OpenVINO acceleration (use PyTorch instead)'
-    )
-    parser.add_argument(
-        '--no-two-pass',
-        action='store_true',
-        help='Disable two-pass center-crop detection (faster, may miss small centered subjects)'
-    )
-    parser.add_argument(
-        '--threads-per-worker',
-        type=int,
-        default=4,
-        help='Number of threads per worker process (default: 4, optimal for multi-process)'
-    )
-    parser.add_argument(
-        '--no-filter',
-        action='store_true',
-        help='Disable non-art image filtering (process all images regardless of art score)'
-    )
-    parser.add_argument(
-        '--multi-crop',
-        action='store_true',
-        help='Generate one crop per viable art subject (e.g., multiple statues or mural panels)'
-    )
+def run_batch(input_dir, output_dir, config, workers=8):
+    """
+    Run batch processing on a directory of images.
 
-    args = parser.parse_args()
+    Args:
+        input_dir: Input directory containing images
+        output_dir: Output directory for processed images
+        config: Configuration dictionary for worker processes
+        workers: Number of parallel workers
 
-    # Validate directories
-    if not os.path.isdir(args.input_dir):
-        print(f"Error: Input directory does not exist: {args.input_dir}")
+    Returns:
+        0 on success, 1 if any failures
+    """
+    if not os.path.isdir(input_dir):
+        print(f"Error: Input directory does not exist: {input_dir}")
         return 1
 
-    ensure_directory(args.output_dir)
+    ensure_directory(output_dir)
 
     # Collect images
     print("Scanning for images...")
-    if args.recursive:
-        images = collect_images(args.input_dir)
+    if config.get('recursive', False):
+        images = collect_images(input_dir)
     else:
         images = [
-            os.path.join(args.input_dir, f)
-            for f in os.listdir(args.input_dir)
-            if is_image_file(os.path.join(args.input_dir, f))
+            os.path.join(input_dir, f)
+            for f in os.listdir(input_dir)
+            if is_image_file(os.path.join(input_dir, f))
         ]
 
     if not images:
@@ -325,47 +210,27 @@ def main():
 
     print(f"Found {len(images)} images")
 
-    # Prepare processing tasks
-    config = {
-        'width': args.width,
-        'height': args.height,
-        'strategy': args.strategy,
-        'model': args.model,
-        'confidence': args.confidence,
-        'single_model': args.single_model,
-        'ensemble': args.ensemble,
-        'zoom': args.zoom,
-        'quality': args.quality,
-        'skip_existing': args.skip_existing,
-        'use_openvino': not args.no_openvino,
-        'two_pass': not args.no_two_pass,
-        'threads_per_worker': args.threads_per_worker,
-        'filter_non_art': defaults.FILTER_NON_ART and not args.no_filter,
-        'multi_crop': args.multi_crop
-    }
-
     tasks = [
-        (img, get_output_path(img, args.output_dir), config)
+        (img, get_output_path(img, output_dir), config)
         for img in images
     ]
 
-    # Process images
     stats = BatchStats(total=len(images))
 
-    print(f"\nProcessing images (strategy: {args.strategy}, workers: {args.workers})...")
-    print(f"Target: {args.width}x{args.height}")
+    print(f"\nProcessing images (strategy: {config['strategy']}, workers: {workers})...")
+    print(f"Target: {config['width']}x{config['height']}")
 
     # Show optimization info
     optimizations = []
-    if config['use_openvino']:
+    if config.get('use_openvino', True):
         optimizations.append("OpenVINO")
-    optimizations.append(f"{args.threads_per_worker} threads/worker")
+    optimizations.append(f"{config.get('threads_per_worker', 4)} threads/worker")
 
-    if not args.single_model and not args.ensemble:
-        print("🚀 Optimized ensemble: YOLO-World + Grounding DINO (models cached per worker)")
-    print(f"⚡ Optimizations: {', '.join(optimizations)}\n")
+    if not config.get('single_model') and not config.get('ensemble'):
+        print("Optimized ensemble: YOLO-World + Grounding DINO (models cached per worker)")
+    print(f"Optimizations: {', '.join(optimizations)}\n")
 
-    with ProcessPoolExecutor(max_workers=args.workers, initializer=init_worker, initargs=(config,)) as executor:
+    with ProcessPoolExecutor(max_workers=workers, initializer=init_worker, initargs=(config,)) as executor:
         futures = {executor.submit(process_single_image, task): task for task in tasks}
 
         with tqdm(total=len(tasks), unit='img') as pbar:
@@ -396,31 +261,27 @@ def main():
                 pbar.update(1)
 
     # Print summary
-    print("\n" + "="*60)
+    print("\n" + "=" * 60)
     print("BATCH PROCESSING SUMMARY")
-    print("="*60)
+    print("=" * 60)
     print(f"Total images:     {stats.total}")
-    print(f"✓ Successful:     {stats.success}")
+    print(f"Successful:       {stats.success}")
     if stats.output_files > stats.success:
         print(f"  Output files:   {stats.output_files} (multi-crop)")
     if stats.filtered > 0:
-        print(f"⊘ Filtered:       {stats.filtered} (non-art)")
+        print(f"Filtered:         {stats.filtered} (non-art)")
     if stats.skipped > 0:
-        print(f"⊘ Skipped:        {stats.skipped}")
-    print(f"✗ Failed:         {stats.failed}")
+        print(f"Skipped:          {stats.skipped}")
+    print(f"Failed:           {stats.failed}")
 
     if stats.errors:
         print("\nErrors:")
-        for error in stats.errors[:10]:  # Show first 10 errors
+        for error in stats.errors[:10]:
             print(f"  - {error}")
         if len(stats.errors) > 10:
             print(f"  ... and {len(stats.errors) - 10} more")
 
-    print(f"\nOutput directory: {args.output_dir}")
-    print("="*60)
+    print(f"\nOutput directory: {output_dir}")
+    print("=" * 60)
 
     return 0 if stats.failed == 0 else 1
-
-
-if __name__ == '__main__':
-    sys.exit(main())

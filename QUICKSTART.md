@@ -29,20 +29,20 @@ frame-prep process -i input.jpg -o output_dir/ --single-model -v
 
 ```bash
 # Process entire directory (uses optimized ensemble by default)
-python scripts/batch_process.py \
+frame-prep batch \
   -i input_dir/ \
   -o output_dir/ \
   --workers 4
 
 # Faster with single model
-python scripts/batch_process.py \
+frame-prep batch \
   -i input_dir/ \
   -o output_dir/ \
   --single-model \
   --workers 4
 
 # Skip already processed images
-python scripts/batch_process.py \
+frame-prep batch \
   -i input_dir/ \
   -o output_dir/ \
   --skip-existing \
@@ -72,7 +72,7 @@ python download.py --album "Art" --output ~/raw_images/
 
 # 2. Preprocess for e-ink display (uses smart strategy by default)
 cd ../picture-frame-preprocessor
-python scripts/batch_process.py \
+frame-prep batch \
   -i ~/raw_images/ \
   -o ~/processed_images/ \
   --workers 4
@@ -90,16 +90,16 @@ python scripts/download_models.py
 **Adjust settings if needed**
 ```bash
 # Reduce workers for memory-constrained systems
-python scripts/batch_process.py -i input/ -o output/ --workers 2
+frame-prep batch -i input/ -o output/ --workers 2
 
 # Use single model if speed is critical
-python scripts/batch_process.py -i input/ -o output/ --single-model
+frame-prep batch -i input/ -o output/ --single-model
 
 # Disable two-pass detection for faster processing
-python scripts/batch_process.py -i input/ -o output/ --no-two-pass
+frame-prep batch -i input/ -o output/ --no-two-pass
 
 # Disable zoom for faster processing
-python scripts/batch_process.py -i input/ -o output/ --zoom 1.0
+frame-prep batch -i input/ -o output/ --zoom 1.0
 ```
 
 **Need different dimensions**
