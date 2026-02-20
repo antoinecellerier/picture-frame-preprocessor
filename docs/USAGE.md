@@ -23,9 +23,9 @@ frame-prep process \
 | `--single-model` | | | Use single YOLOv8 model (faster, lower accuracy) |
 | `--ensemble` | | | Use YOLOv8m + RT-DETR-L ensemble |
 | `--model` | `-m` | yolov8m | YOLO model variant for `--single-model` mode |
-| `--confidence` | `-c` | 0.15 | Detection confidence threshold |
+| `--confidence` | `-c` | 0.25 | Detection confidence threshold |
 | `--no-two-pass` | | | Disable two-pass center-crop detection |
-| `--zoom` | `-z` | 1.3 | Contextual zoom factor (1.0-2.0) |
+| `--zoom` | `-z` | 8.0 | Max contextual zoom factor |
 | `--quality` | `-q` | 95 | JPEG quality 1-100 |
 | `--verbose` | `-v` | | Verbose output |
 
@@ -51,8 +51,8 @@ frame-prep batch \
 | `--single-model` | | | Use single YOLOv8 model |
 | `--ensemble` | | | Use YOLOv8m + RT-DETR-L ensemble |
 | `--model` | `-m` | yolov8m | YOLO model variant |
-| `--confidence` | `-c` | 0.15 | Detection threshold |
-| `--zoom` | `-z` | 1.3 | Contextual zoom factor |
+| `--confidence` | `-c` | 0.25 | Detection threshold |
+| `--zoom` | `-z` | 8.0 | Max contextual zoom factor |
 | `--workers` | | 8 | Parallel workers |
 | `--threads-per-worker` | | 4 | Threads per worker process |
 | `--no-two-pass` | | | Disable two-pass detection |
@@ -100,9 +100,9 @@ Simple center crop. Last resort fallback.
 | Subject size | Zoom applied |
 |-------------|-------------|
 | Large (>60% of frame) | None |
-| Medium (40-60%) | Slight (1.15x) |
-| Small (20-40%) | Moderate |
-| Tiny (<20%) | Max (up to 1.3x) |
+| Medium (45-65%) | Slight (up to 1.2x) |
+| Small (25-45%) | Moderate |
+| Tiny (<25%) | Aggressive (up to `--zoom` cap) |
 
 See [CONTEXTUAL_ZOOM.md](CONTEXTUAL_ZOOM.md) for details.
 
@@ -135,7 +135,7 @@ python scripts/download_models.py
 
 - The default optimized ensemble gives best results
 - Try `--strategy saliency` for images where ML detection struggles
-- Adjust `--confidence 0.15` with `--single-model`
+- Adjust `--confidence` (lower catches more, e.g. `0.15`)
 
 ## Project Structure
 
@@ -151,9 +151,9 @@ picture-frame-preprocessor/
 ├── scripts/
 │   ├── download_models.py            # Initialize models
 │   ├── generate_test_set.py          # Generate random test sets
-│   ├── generate_quality_report.py    # Quality assessment report
 │   ├── check_optimizations.py        # Check system optimization status
-│   └── export_to_openvino.py         # Export models to OpenVINO format
+│   ├── export_to_openvino.py         # Export models to OpenVINO format
+│   └── create_sample_composites.py   # Generate README sample images
 ├── docs/
 │   ├── USAGE.md                      # This file
 │   ├── TESTING_GUIDE.md              # Quality assessment guide

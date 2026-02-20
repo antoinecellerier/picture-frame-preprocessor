@@ -15,14 +15,14 @@ When YOLO detects objects:
 
 ### 2. Contextual Zoom Calculation
 
-**Target**: Make subject fill ~60-70% of the frame for optimal viewing
+**Target**: Make subject fill ~70% of the frame's larger dimension for optimal viewing
 
 | Subject Ratio | Subject Size | Zoom Applied | Logic |
 |---------------|--------------|--------------|-------|
-| > 60% | Large | **No zoom** | Subject already fills frame |
-| 40-60% | Medium | **1.15x** | Slight zoom to remove excess |
-| 20-40% | Small | **Moderate** | Zoom to reach ~65% fill |
-| < 20% | Tiny | **Aggressive** | Max zoom (up to limit) |
+| > 65% | Large | **No zoom** | Subject already fills frame |
+| 45-65% | Medium | **Up to 1.2x** | Slight zoom to remove excess |
+| 25-45% | Small | **Moderate** | Zoom to reach ~70% fill (capped at `--zoom`) |
+| < 25% | Tiny | **Aggressive** | Max zoom (capped at `--zoom`) |
 
 ### 3. Examples
 
@@ -66,46 +66,47 @@ When YOLO finds nothing, saliency detection is used:
 
 ### Default Settings
 ```bash
---zoom 1.3  # Maximum zoom factor
+--zoom 8.0  # Maximum zoom cap (default, very aggressive for tiny subjects)
 ```
 
-The actual zoom applied will be **≤ 1.3x** based on subject size.
+The actual zoom applied depends on subject size -- large subjects get no zoom, tiny subjects can zoom up to the cap.
 
 ### Custom Maximum Zoom
 ```bash
-# Allow up to 1.5x zoom for tiny subjects
---zoom 1.5
+# Conservative zoom (cap at 1.3x)
+--zoom 1.3
 
 # Disable zoom completely
 --zoom 1.0
 
-# Conservative zoom
---zoom 1.2
+# Moderate zoom
+--zoom 2.0
 ```
 
 ## Algorithm Pseudocode
 
 ```python
-def calculate_contextual_zoom(subject_ratio, max_zoom):
+def calculate_contextual_zoom(max_dim_ratio, max_zoom):
     """
-    subject_ratio: 0.0 to 1.0 (subject area / crop area)
-    max_zoom: user-configured maximum (e.g., 1.3)
+    max_dim_ratio: max(width_ratio, height_ratio) of subject vs crop
+    max_zoom: user-configured maximum (e.g., 8.0)
     """
+    target = 0.70  # Subject should fill ~70% of frame
 
-    if subject_ratio >= 0.6:
+    if max_dim_ratio >= 0.65:
         return 1.0  # No zoom needed
 
-    elif subject_ratio >= 0.4:
-        return min(1.15, max_zoom)  # Slight zoom
+    elif max_dim_ratio >= 0.45:
+        zoom_needed = target / max_dim_ratio
+        return min(zoom_needed, 1.2, max_zoom)  # Cap at 1.2x
 
-    elif subject_ratio >= 0.2:
-        # Moderate zoom to reach target
-        zoom_needed = sqrt(0.65 / subject_ratio)
+    elif max_dim_ratio >= 0.25:
+        zoom_needed = target / max_dim_ratio
         return min(zoom_needed, max_zoom)
 
     else:
         # Aggressive zoom for tiny subjects
-        zoom_needed = sqrt(0.65 / max(subject_ratio, 0.01))
+        zoom_needed = target / max(max_dim_ratio, 0.05)
         return min(zoom_needed, max_zoom)
 ```
 
@@ -161,8 +162,8 @@ The report (`reports/interactive_detection_report.html`) provides:
 |------------------|---------------|--------------|
 | Large (fills frame) | 1.00x | No zoom applied |
 | Medium | 1.00x - 1.20x | Slight tightening |
-| Small | 1.20x - 1.30x | Noticeable zoom |
-| Tiny | 1.30x (max) | Maximum zoom |
+| Small | 1.20x+ | Noticeable zoom |
+| Tiny | Up to `--zoom` cap | Aggressive zoom |
 
 ### Verifying Behavior
 

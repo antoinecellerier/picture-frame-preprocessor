@@ -60,35 +60,26 @@ frame-prep report
 | Detection | Confidence Threshold | Minimum detection confidence (default: 0.25) |
 | Detection | Merge Threshold | IoU threshold for merging boxes (default: 0.2) |
 | Cropping | Target Dimensions | Output size (default: 480×800) |
-| Cropping | Max Zoom Factor | Maximum zoom applied (default: 1.3x) |
+| Cropping | Max Zoom Factor | Maximum zoom cap (default: 8.0x) |
 | Cropping | Saliency Fallback | Use saliency when no detections (default: enabled) |
 
-### 3. Generate Quality Report (`scripts/generate_quality_report.py`)
+### 3. Interactive Detection Report (`frame-prep report`)
 
-Creates an interactive HTML report for assessing crop quality with rating system.
+The primary quality assessment tool. Creates a comprehensive HTML report with detection overlays and crop results.
 
 **Usage:**
 ```bash
-python scripts/generate_quality_report.py \
-  --input-dir test_real_images/input/ \
-  --output-dir test_real_images/output/ \
-  --html test_real_images/quality_assessment.html \
-  --title "Crop Quality Assessment - 64 Images"
+frame-prep report
 ```
 
-**Options:**
-- `--input-dir`: Directory with original images (required)
-- `--output-dir`: Directory with processed images (required)
-- `--html`: Path to save HTML report (default: quality_report.html)
-- `--title`: Report title (default: Crop Quality Assessment)
+**Output:** `reports/interactive_detection_report.html`
 
 **Features:**
-- ⭐ Rate each crop from 1-5 stars
-- 💬 Add optional comments per image
-- 📊 Live statistics (total, rated, average rating)
-- 💾 Export feedback as JSON
-- 🔄 Auto-saves to browser localStorage (survives page refresh)
-- 📱 Responsive design for desktop/tablet viewing
+- Side-by-side detection view (bounding boxes) and crop result
+- Ground truth comparison with IoU scores
+- Rate results as Good/Poor/Zoom Issue with comments
+- Export feedback as JSON for analysis
+- Multi-crop display for images with multiple detected subjects
 
 ## Complete Workflow
 
@@ -114,19 +105,15 @@ frame-prep batch \
   --workers 4
 ```
 
-### Step 3: Generate Quality Report
+### Step 3: Generate Report
 
 ```bash
-# Create interactive HTML assessment
-python scripts/generate_quality_report.py \
-  --input-dir test_real_images/input/ \
-  --output-dir test_real_images/output/ \
-  --html test_real_images/quality_assessment.html
+frame-prep report
 ```
 
 ### Step 4: Review and Rate
 
-1. Open `quality_assessment.html` in your browser
+1. Open `reports/interactive_detection_report.html` in your browser
 2. Review each image comparison
 3. Rate crop quality (1-5 stars)
 4. Add comments for problematic crops
@@ -241,18 +228,8 @@ frame-prep batch \
   -o test_real_images/center/ \
   --strategy center
 
-# Generate comparison reports
-python scripts/generate_quality_report.py \
-  --input-dir test_real_images/input/ \
-  --output-dir test_real_images/smart/ \
-  --html smart_quality.html \
-  --title "Smart Strategy"
-
-python scripts/generate_quality_report.py \
-  --input-dir test_real_images/input/ \
-  --output-dir test_real_images/saliency/ \
-  --html saliency_quality.html \
-  --title "Saliency Strategy"
+# Generate report for each
+frame-prep report
 ```
 
 ## Reproducible Testing
@@ -294,13 +271,10 @@ frame-prep batch \
   -i test/input -o test/output
 
 # Generate report
-python scripts/generate_quality_report.py \
-  --input-dir test/input \
-  --output-dir test/output \
-  --html quality_report.html
+frame-prep report
 
 # Open in browser
-xdg-open quality_report.html
+xdg-open reports/interactive_detection_report.html
 ```
 
 Make it executable:
