@@ -116,6 +116,7 @@ class ImagePreprocessor:
                 detections_list = []
                 crop_box = None
                 zoom_applied = 1.0
+                focal_dets = []  # Separate focal-pass results (never mixed into detections)
 
                 # Run detection for smart strategy (needed for both
                 # cropping and non-art filtering)
@@ -160,6 +161,35 @@ class ImagePreprocessor:
                             'is_primary': det == primary
                         })
 
+                    # === FOCAL POINT DETECTION ===
+                    # When the primary fills the frame (no zoom possible), run a
+                    # focused second pass on the primary's zone with face/figure
+                    # prompts to find a better crop anchor inside the large piece.
+                    # Skip for 3D objects (sculpture, statue, etc.) — the object
+                    # itself is the focal point and face detection adds noise.
+                    #
+                    # IMPORTANT: focal dets are kept separate from the main
+                    # detections list so they cannot influence primary selection
+                    # inside crop_with_detections (focal class names like
+                    # "human figure" would inherit wrong class multipliers).
+                    if (primary is not None
+                            and hasattr(self.detector, 'detect_focal_points')
+                            and not ArtFeatureDetector.is_3d_art(primary.class_name)
+                            and self.cropper.primary_fills_frame(primary.bbox, (width, height))):
+                        focal_dets = self.detector.detect_focal_points(
+                            img, primary.bbox, verbose=verbose
+                        )
+                        if focal_dets:
+                            if verbose:
+                                print(f"  Focal pass: {len(focal_dets)} focal detections")
+                            for det in focal_dets:
+                                detections_list.append({
+                                    'bbox': det.bbox,
+                                    'confidence': det.confidence,
+                                    'class_name': det.class_name,
+                                    'is_primary': False
+                                })
+
                 # Check if cropping is needed
                 if needs_crop:
                     if verbose:
@@ -167,7 +197,7 @@ class ImagePreprocessor:
 
                     # Multi-crop path: one output per viable art subject
                     if self.multi_crop and self.strategy == 'smart' and detections:
-                        multi_results = self.cropper.crop_all_subjects(img, detections)
+                        multi_results = self.cropper.crop_all_subjects(img, detections, focal_detections=focal_dets)
 
                         if len(multi_results) >= 2:
                             output_paths = []
@@ -198,8 +228,10 @@ class ImagePreprocessor:
                                 zoom_applied=multi_results[0][2]
                             )
 
-                    # Crop image
-                    img = self.cropper.crop_image(img, detections, self.strategy)
+                    # Crop image (focal_dets passed separately so they are
+                    # used only for inner anchor selection, not primary selection)
+                    img = self.cropper.crop_image(img, detections, self.strategy,
+                                                  focal_detections=focal_dets)
 
                     # Capture crop box and zoom from cropper
                     crop_box = self.cropper.last_crop_box

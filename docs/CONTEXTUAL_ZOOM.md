@@ -130,9 +130,12 @@ def calculate_contextual_zoom(max_dim_ratio, max_zoom):
 - Selects primary subject via center-weighting and class priorities (not just highest confidence)
 - Centers on primary, zoom based on its size
 
-### Very Large Subjects
-- Ratio > 0.6 → No zoom applied
-- Preserves full subject visibility
+### Very Large Subjects (Frame-Filling Primaries)
+- Ratio > 0.6 → No zoom applied (subject already fills frame)
+- Triggers **focal point detection**: a second Grounding DINO pass on the primary's zone searches for faces, heads, and figures to use as a more interesting crop anchor
+- Focal detections are scored by `confidence × 4×r×(1-r)` where `r = focal_area / primary_area` — peaks at 50% of primary, penalises both tiny noise and full-primary re-detections
+- The selected anchor is highlighted in gold in the HTML report
+- Skipped for 3D art primaries (sculpture, statue, bust, etc.) — the object itself is the focal point
 
 ### Very Small Subjects
 - Ratio < 0.05 → Caps at max_zoom

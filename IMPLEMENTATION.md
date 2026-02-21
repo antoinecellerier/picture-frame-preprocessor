@@ -28,6 +28,7 @@ The Picture Frame Preprocessor has been successfully implemented according to th
    - Lazy model loading with detection caching
    - Center-weighted primary subject selection with class priorities
    - Art-specific class lists and avoid-class filtering
+   - `detect_focal_points()`: targeted Grounding DINO pass on the primary's zone using face/figure prompts, triggered when primary fills the frame; skipped for 3D art
 
 4. **Smart Cropper** (`src/frame_prep/cropper.py`)
    - Three cropping strategies: smart, saliency, center
@@ -35,6 +36,7 @@ The Picture Frame Preprocessor has been successfully implemented according to th
    - Center-weighted primary subject selection
    - Proper aspect ratio calculations
    - Edge case handling (subjects near borders)
+   - `_get_quality_inner_detections()`: selects best inner anchor from focal and regular detections using parabolic area scoring; focal dets passed separately to prevent class-multiplier pollution of primary selection
 
 5. **Composition Analyzer** (`src/frame_prep/analyzer.py`)
    - OpenCV saliency detection for fallback

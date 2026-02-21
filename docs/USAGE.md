@@ -74,6 +74,7 @@ Uses ML ensemble detection (YOLO-World + Grounding DINO) to find art subjects an
 **Features:**
 - Detects people, art, sculptures, murals, and other subjects
 - Center-weighted primary subject selection with class priorities
+- Focal point detection: when the primary fills the frame, a second Grounding DINO pass searches for faces/figures within the primary to use as the crop anchor (skipped for 3D art)
 - Contextual zoom: only zooms when subject is small relative to frame
 - Falls back to saliency detection when no detections found
 
@@ -89,11 +90,12 @@ Simple center crop. Last resort fallback.
 
 1. **Load** - Opens image, validates format, applies EXIF orientation
 2. **Aspect ratio** - Determines if image needs cropping (landscape: crop width, portrait: crop height)
-3. **Detect** - Runs YOLO-World + Grounding DINO ensemble to find art subjects
-4. **Crop** - Centers crop window on primary subject (center-weighted, class-prioritized)
-5. **Zoom** - Analyzes subject size, zooms only if needed
-6. **Resize** - Scales to exact target dimensions (480x800)
-7. **Save** - Exports JPEG with preserved EXIF metadata and ML analysis JSON
+3. **Detect** - Main pass: YOLO-World + Grounding DINO ensemble finds art subjects and selects primary
+4. **Focal pass** - If primary fills the frame (zoom would be ≤1.0), runs Grounding DINO with face/figure prompts on the primary's zone to find a crop anchor inside large murals; skipped for 3D art (sculptures, statues)
+5. **Crop** - Centers crop window on primary (or focal anchor if found), clamped to keep primary fully visible
+6. **Zoom** - Analyzes subject size, zooms only if needed
+7. **Resize** - Scales to exact target dimensions (480x800)
+8. **Save** - Exports JPEG with preserved EXIF metadata
 
 **Contextual zoom logic:**
 

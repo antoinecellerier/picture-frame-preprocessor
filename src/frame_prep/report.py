@@ -7,7 +7,7 @@ from PIL import Image, ImageDraw, ImageFont, ImageOps
 import io
 from datetime import datetime
 
-from .detector import OptimizedEnsembleDetector
+from .detector import OptimizedEnsembleDetector, ArtFeatureDetector
 from .cropper import SmartCropper
 from . import defaults
 from .defaults import MIN_ART_SCORE
@@ -32,13 +32,19 @@ def calculate_iou(box1, box2):
 
 
 def draw_boxes_on_image(image_path, detections, ground_truth_boxes=None,
-                        primary=None, crop_targets=None, max_width=800):
+                        primary=None, crop_targets=None, focal_detections=None,
+                        selected_anchor=None, max_width=800):
     """Draw detected and ground truth bounding boxes on image.
 
     Args:
         crop_targets: list of Detection objects used as crop anchors.
             These get highlighted with distinct colors (orange) so
             the user can see which detections produced crops.
+        focal_detections: list of Detection objects from the focal-point
+            second pass.  Drawn in magenta so they're visually distinct.
+        selected_anchor: the single Detection chosen as the crop anchor
+            from the inner/focal detections.  Drawn in gold with thick
+            border so it's easy to spot.
     """
     try:
         img = Image.open(image_path).convert('RGB')
@@ -60,10 +66,16 @@ def draw_boxes_on_image(image_path, detections, ground_truth_boxes=None,
             font = ImageFont.load_default()
             small_font = font
 
-        # Build set of crop-target bboxes for quick lookup
+        # Build lookup sets for special detection categories
         crop_target_bboxes = set()
         if crop_targets:
             crop_target_bboxes = {tuple(d.bbox) for d in crop_targets}
+
+        focal_bboxes = set()
+        if focal_detections:
+            focal_bboxes = {tuple(d.bbox) for d in focal_detections}
+
+        selected_anchor_bbox = tuple(selected_anchor.bbox) if selected_anchor else None
 
         # Draw ground truth boxes in blue
         if ground_truth_boxes:
@@ -79,15 +91,25 @@ def draw_boxes_on_image(image_path, detections, ground_truth_boxes=None,
                 bbox = [int(coord * scale) for coord in det.bbox]
                 x1, y1, x2, y2 = bbox
 
+                det_bbox_t = tuple(det.bbox)
                 is_primary = primary is not None and det.bbox == primary.bbox
-                is_crop_target = tuple(det.bbox) in crop_target_bboxes
+                is_crop_target = det_bbox_t in crop_target_bboxes
+                is_selected_anchor = det_bbox_t == selected_anchor_bbox
+                is_focal = det_bbox_t in focal_bboxes
 
-                # Color scheme: primary=green, crop target=orange, other=dim green
+                # Color scheme: primary=green, selected anchor=gold (thick),
+                #               crop target=orange, focal=magenta, other=dim green
                 if is_primary:
                     color = (0, 255, 0)
                     line_w = 4
+                elif is_selected_anchor:
+                    color = (255, 215, 0)   # gold
+                    line_w = 4
                 elif is_crop_target:
-                    color = (255, 165, 0)  # orange
+                    color = (255, 165, 0)   # orange
+                    line_w = 3
+                elif is_focal:
+                    color = (220, 0, 220)   # magenta
                     line_w = 3
                 else:
                     color = (0, 200, 0)
@@ -98,8 +120,12 @@ def draw_boxes_on_image(image_path, detections, ground_truth_boxes=None,
                 label = f"{det.class_name} {det.confidence:.2f}"
                 if is_primary:
                     label = "PRIMARY: " + label
+                elif is_selected_anchor:
+                    label = "ANCHOR: " + label
                 elif is_crop_target:
                     label = "CROP: " + label
+                elif is_focal:
+                    label = "FOCAL: " + label
 
                 text_bbox = draw.textbbox((x1, y1-20), label, font=font)
                 draw.rectangle([text_bbox[0]-2, text_bbox[1]-2, text_bbox[2]+2, text_bbox[3]+2],
@@ -116,7 +142,7 @@ def draw_boxes_on_image(image_path, detections, ground_truth_boxes=None,
         return None
 
 
-def run_detection(image_path, detector, verbose=False):
+def run_detection(image_path, detector, verbose=False, cropper=None):
     """Run detection on an image and return results."""
     try:
         img = Image.open(image_path)
@@ -137,6 +163,24 @@ def run_detection(image_path, detector, verbose=False):
         elif detections:
             primary = detector.get_primary_subject(detections)
 
+        # === FOCAL POINT DETECTION ===
+        # When primary fills the frame, run a focused pass on the primary's
+        # zone with face/figure prompts to find a better crop anchor.
+        # Skip for 3D objects (sculpture, statue, etc.) — the object itself
+        # is the focal point and face detection inside it adds noise.
+        focal_detections = []
+        if (primary is not None
+                and cropper is not None
+                and hasattr(detector, 'detect_focal_points')
+                and not ArtFeatureDetector.is_3d_art(primary.class_name)
+                and cropper.primary_fills_frame(primary.bbox, img.size)):
+            focal_detections = detector.detect_focal_points(img, primary.bbox, verbose=verbose)
+            if focal_detections:
+                if verbose:
+                    print(f"  Focal pass: {len(focal_detections)} detections")
+                # NOTE: focal_detections are kept separate from main detections so
+                # they cannot corrupt primary selection in crop_with_detections.
+
         # Get primary by confidence (old method) for comparison
         primary_by_confidence = detections[0] if detections else None
 
@@ -147,6 +191,7 @@ def run_detection(image_path, detector, verbose=False):
 
         return {
             'all_detections': detections,
+            'focal_detections': focal_detections,
             'primary': primary,
             'primary_by_confidence': primary_by_confidence,
             'selection_changed': selection_changed,
@@ -155,8 +200,9 @@ def run_detection(image_path, detector, verbose=False):
         }
     except Exception as e:
         print(f"Error detecting in {image_path}: {e}")
-        return {'all_detections': [], 'primary': None, 'primary_by_confidence': None,
-                'selection_changed': False, 'count': 0, 'art_score': 0.0}
+        return {'all_detections': [], 'focal_detections': [], 'primary': None,
+                'primary_by_confidence': None, 'selection_changed': False,
+                'count': 0, 'art_score': 0.0}
 
 
 def check_accuracy(primary, ground_truth_boxes, iou_threshold=0.3):
@@ -173,17 +219,22 @@ def check_accuracy(primary, ground_truth_boxes, iou_threshold=0.3):
     return best_iou >= iou_threshold, best_iou
 
 
-def generate_result_image(image_path, detections, cropper, max_width=400):
-    """Generate the cropped result image for comparison."""
+def generate_result_image(image_path, detections, cropper, focal_detections=None, max_width=400):
+    """Generate the cropped result image for comparison.
+
+    Returns (data_uri, zoom_applied, primary_fills_frame, selected_inner_det).
+    """
     try:
         img = Image.open(image_path).convert('RGB')
         img = ImageOps.exif_transpose(img)
 
-        # Run the actual cropping logic
-        cropped = cropper.crop_image(img, detections, strategy='smart')
+        # Run the actual cropping logic (focal_dets passed separately)
+        cropped = cropper.crop_image(img, detections, strategy='smart',
+                                     focal_detections=focal_detections)
 
-        # Get crop info
+        # Get crop info (including selected inner anchor, if any)
         zoom_applied = cropper.last_zoom_applied
+        selected_inner_det = getattr(cropper, 'last_inner_detection', None)
 
         # Resize for display
         scale = 1.0
@@ -209,13 +260,13 @@ def generate_result_image(image_path, detections, cropper, max_width=400):
         cropped.save(buffer, format='JPEG', quality=90)
         img_data = base64.b64encode(buffer.getvalue()).decode()
         primary_fills_frame = getattr(cropper, 'last_primary_fills_frame', False)
-        return f"data:image/jpeg;base64,{img_data}", zoom_applied, primary_fills_frame
+        return f"data:image/jpeg;base64,{img_data}", zoom_applied, primary_fills_frame, selected_inner_det
     except Exception as e:
         print(f"Error generating result for {image_path}: {e}")
-        return None, 1.0, False
+        return None, 1.0, False, None
 
 
-def generate_multi_crop_images(image_path, detections, cropper, max_width=250):
+def generate_multi_crop_images(image_path, detections, cropper, focal_detections=None, max_width=250):
     """Generate cropped images for all viable art subjects (multi-crop display).
 
     Returns (crops, crop_target_detections) where crops is a list of
@@ -227,7 +278,7 @@ def generate_multi_crop_images(image_path, detections, cropper, max_width=250):
         img = Image.open(image_path).convert('RGB')
         img = ImageOps.exif_transpose(img)
 
-        multi_results = cropper.crop_all_subjects(img, detections)
+        multi_results = cropper.crop_all_subjects(img, detections, focal_detections=focal_detections)
         if len(multi_results) < 2:
             return [], []
 
@@ -326,6 +377,7 @@ def generate_report(input_dir=None, ground_truth_path=None, output_file=None,
         'use_saliency_fallback': defaults.USE_SALIENCY_FALLBACK,
         'yolo_world_prompts': detector._art_classes,
         'grounding_dino_prompts': detector._dino_prompts,
+        'focal_prompts': getattr(detector, '_focal_prompts', []),
     }
 
     print(f"\nProcessing {len(ground_truth)} test images...")
@@ -352,7 +404,7 @@ def generate_report(input_dir=None, ground_truth_path=None, output_file=None,
             gt_boxes.append(det_data['bbox'])
 
         # Run detection with optimized ensemble (uses caching, verbose for two-pass info)
-        detection_result = run_detection(image_path, detector, verbose=True)
+        detection_result = run_detection(image_path, detector, verbose=True, cropper=cropper)
 
         # Check accuracy using smart primary selection
         # Exclude not_art images from accuracy denominator
@@ -373,27 +425,36 @@ def generate_report(input_dir=None, ground_truth_path=None, output_file=None,
         result_image, zoom_applied = None, 1.0
         multi_crop_images = []
         crop_targets = []
+        selected_inner_det = None
         auto_filtered = detection_result['art_score'] < MIN_ART_SCORE
         primary_fills_frame = False
+        focal_dets = detection_result.get('focal_detections') or None
         if not auto_filtered:
-            result_image, zoom_applied, primary_fills_frame = generate_result_image(
+            result_image, zoom_applied, primary_fills_frame, selected_inner_det = generate_result_image(
                 image_path,
                 detection_result['all_detections'],
-                cropper
+                cropper,
+                focal_detections=focal_dets,
             )
             multi_crop_images, crop_targets = generate_multi_crop_images(
                 image_path,
                 detection_result['all_detections'],
-                cropper
+                cropper,
+                focal_detections=focal_dets,
             )
+
+        # all_detections for drawing = main dets + focal dets (for display only)
+        display_detections = detection_result['all_detections'] + (focal_dets or [])
 
         # Generate visualization (after multi-crop so we can highlight targets)
         img_with_boxes = draw_boxes_on_image(
             image_path,
-            detection_result['all_detections'],
+            display_detections,
             gt_boxes,
             primary=detection_result['primary'],
-            crop_targets=crop_targets if multi_crop_images else None
+            crop_targets=crop_targets if multi_crop_images else None,
+            focal_detections=focal_dets,
+            selected_anchor=selected_inner_det,
         )
 
         results.append({
@@ -924,6 +985,29 @@ def generate_report(input_dir=None, ground_truth_path=None, output_file=None,
                     <span class="config-value">{'Enabled' if config['use_saliency_fallback'] else 'Disabled'}</span>
                 </div>
             </div>
+            <div class="config-section">
+                <h3>Focal Point Detection</h3>
+                <div class="config-item">
+                    <span class="config-label">Model</span>
+                    <span class="config-value">Grounding DINO (targeted pass)</span>
+                </div>
+                <div class="config-item">
+                    <span class="config-label">Trigger</span>
+                    <span class="config-value">Primary fills frame (zoom ≤ 1.0)</span>
+                </div>
+                <div class="config-item">
+                    <span class="config-label">Prompts</span>
+                    <span class="config-value">{', '.join(config.get('focal_prompts', []))}</span>
+                </div>
+                <div class="config-item">
+                    <span class="config-label">Skip 3D Art</span>
+                    <span class="config-value">Enabled (sculpture, statue, etc.)</span>
+                </div>
+                <div class="config-item">
+                    <span class="config-label">Scoring</span>
+                    <span class="config-value">conf × parabolic area (peaks at 50%)</span>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -962,8 +1046,16 @@ def generate_report(input_dir=None, ground_truth_path=None, output_file=None,
                 <span>Ground Truth (BLUE)</span>
             </div>
             <div class="legend-item">
+                <div class="legend-color" style="background: #ffd700; width: 40px; height: 4px;"></div>
+                <span>Selected Anchor (GOLD - chosen focal point for crop centering)</span>
+            </div>
+            <div class="legend-item">
                 <div class="legend-color" style="background: #ffa500; width: 40px; height: 4px;"></div>
                 <span>Crop Target (ORANGE)</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-color" style="background: #dc00dc; width: 40px; height: 4px;"></div>
+                <span>Focal Detection (MAGENTA - face/figure pass)</span>
             </div>
             <div class="legend-item">
                 <div class="legend-color" style="background: #6ee7b7; width: 40px; height: 4px;"></div>
@@ -1238,13 +1330,6 @@ def generate_report(input_dir=None, ground_truth_path=None, output_file=None,
             setFeedback(parseInt(card.dataset.index), 'good');
         });
 
-        // Keyboard shortcuts
-        document.addEventListener('keydown', (e) => {
-            if (e.key === 'f' && e.ctrlKey) {
-                e.preventDefault();
-                exportFeedback();
-            }
-        });
     </script>
 </body>
 </html>
@@ -1260,5 +1345,3 @@ def generate_report(input_dir=None, ground_truth_path=None, output_file=None,
     print(f"\nReport generated: {output_path}")
     print(f"\nOpen in browser to view and provide feedback:")
     print(f"  file://{output_path.absolute()}")
-    print(f"\nKeyboard shortcuts:")
-    print(f"  Ctrl+F: Export feedback to JSON")

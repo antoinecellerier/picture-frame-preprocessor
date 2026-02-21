@@ -40,12 +40,14 @@ class SmartCropper:
         self.last_zoom_applied: float = 1.0
         self.last_primary_detection: Optional[Detection] = None
         self.last_primary_fills_frame: bool = False
+        self.last_inner_detection: Optional[Detection] = None  # Selected focal anchor
 
     def crop_image(
         self,
         image: Image.Image,
         detections: Optional[List[Detection]] = None,
-        strategy: str = 'smart'
+        strategy: str = 'smart',
+        focal_detections: Optional[List[Detection]] = None
     ) -> Image.Image:
         """
         Crop image using specified strategy.
@@ -54,13 +56,16 @@ class SmartCropper:
             image: PIL Image to crop
             detections: List of object detections (for smart strategy)
             strategy: Cropping strategy ('smart', 'saliency', or 'center')
+            focal_detections: Focal-pass detections (used only for inner anchor
+                selection, never for primary subject selection)
 
         Returns:
             Cropped PIL Image
         """
         if strategy == 'smart':
             if detections:
-                return self.crop_with_detections(image, detections)
+                return self.crop_with_detections(image, detections,
+                                                 focal_detections=focal_detections)
             elif self.use_saliency_fallback:
                 # No detections - use saliency instead of center crop
                 return self.crop_saliency_based(image)
@@ -74,14 +79,17 @@ class SmartCropper:
     def crop_with_detections(
         self,
         image: Image.Image,
-        detections: List[Detection]
+        detections: List[Detection],
+        focal_detections: Optional[List[Detection]] = None
     ) -> Image.Image:
         """
         Crop using ML detections as anchor points with contextual smart zoom.
 
         Args:
             image: PIL Image
-            detections: List of Detection objects
+            detections: List of Detection objects (used for primary selection)
+            focal_detections: Focal-pass detections (used only for inner anchor
+                selection, never for primary subject selection)
 
         Returns:
             Cropped image with contextual zoom applied
@@ -92,7 +100,10 @@ class SmartCropper:
         width, height = image.size
 
         # Use primary subject selection (center-weighted, class-prioritized)
-        # instead of just taking highest confidence detection
+        # instead of just taking highest confidence detection.
+        # NOTE: focal_detections are NOT included here — focal class names
+        # (e.g. "human figure") can inherit wrong art-class multipliers and
+        # would corrupt primary selection.
         self._subject_selector._last_image_size = (width, height)
         primary = self._subject_selector.get_primary_subject(detections)
         if primary is None:
@@ -101,6 +112,7 @@ class SmartCropper:
         # Store for reporting
         self.last_primary_detection = primary
         self.last_primary_fills_frame = False
+        self.last_inner_detection = None
         anchor_x, anchor_y = primary.center
         zoom_subject = primary
 
@@ -116,10 +128,15 @@ class SmartCropper:
         test_ch = test_crop[3] - test_crop[1]
         if self._calculate_contextual_zoom(primary.bbox, test_cw, test_ch) <= 1.0:
             self.last_primary_fills_frame = True
-            inner_dets = self._get_quality_inner_detections(primary, detections, (width, height))
+            # Combine regular detections with focal detections for inner anchor
+            # selection — focal dets are safe here since we're already past
+            # primary selection and only using them as candidate crop anchors.
+            inner_candidates = detections + (focal_detections or [])
+            inner_dets = self._get_quality_inner_detections(primary, inner_candidates, (width, height))
             if inner_dets:
                 # Shift anchor to the focal point but keep zoom against the primary —
                 # we want to frame as much of the piece as possible, just better centred.
+                self.last_inner_detection = inner_dets[0]
                 anchor_x, anchor_y = inner_dets[0].center
                 # Ensure the crop window still fully contains the primary bbox
                 anchor_x, anchor_y = self._clamp_anchor_to_primary(
@@ -413,11 +430,14 @@ class SmartCropper:
 
     # Secondary crops must clear this confidence bar to avoid false positives
     MULTI_CROP_SECONDARY_CONFIDENCE = 0.30
+    # Inner focal anchors can be less confident — they're within a detected primary
+    FOCAL_INNER_CONFIDENCE = 0.25
 
     def crop_all_subjects(
         self,
         image: Image.Image,
-        detections: List[Detection]
+        detections: List[Detection],
+        focal_detections: Optional[List[Detection]] = None
     ) -> List[Tuple[Image.Image, Detection, float]]:
         """
         Crop each viable art subject independently for multi-crop output.
@@ -481,8 +501,9 @@ class SmartCropper:
             if subject_width > crop_w * 1.3 or primary_fills_frame:
                 # Primary is too large for a single crop to zoom into.
                 # Use inner detections as natural focal points.
+                inner_candidates = detections + (focal_detections or [])
                 inner_dets = self._get_quality_inner_detections(
-                    primary, detections, (width, height)
+                    primary, inner_candidates, (width, height)
                 )
 
                 if inner_dets:
@@ -656,19 +677,34 @@ class SmartCropper:
         """
         Find quality detections that fall inside the primary bbox.
 
-        Applies edge and size filters identical to secondary crop filters.
-        Returns list sorted by class_multiplier * confidence (best first).
+        Filters:
+        - Must overlap > 50% with primary bbox
+        - Confidence >= FOCAL_INNER_CONFIDENCE (lower bar than secondaries)
+        - Must not touch image edges (partial / cut-off detections)
+        - Area >= 0.5% of full image (avoids tiny noise)
+
+        Sorted by: confidence * parabolic_area_factor
+        where parabolic_area_factor = 4 * area_ratio * (1 - area_ratio).
+        This peaks at 50% of the primary area and naturally penalises both
+        tiny noise detections AND near-full-primary re-detections — no hard
+        cap needed.  Class multiplier is intentionally excluded: focal prompt
+        labels ("human figure", "portrait", etc.) should not inherit the
+        art-class scoring system designed for primary subject selection.
         """
         width, height = image_size
         img_area = width * height
         edge_margin = 0.01
+
+        px1, py1, px2, py2 = primary.bbox
+        primary_area = max(1, (px2 - px1) * (py2 - py1))
+
         inner_dets = []
         for d in detections:
             if d is primary:
                 continue
             if self._bbox_overlap_ratio(d.bbox, primary.bbox) <= 0.5:
                 continue
-            if d.confidence < self.MULTI_CROP_SECONDARY_CONFIDENCE:
+            if d.confidence < self.FOCAL_INNER_CONFIDENCE:
                 continue
             dx1, dy1, dx2, dy2 = d.bbox
             if (dx1 < width * edge_margin or
@@ -677,13 +713,20 @@ class SmartCropper:
                 dy2 > height * (1 - edge_margin)):
                 continue
             det_area = (dx2 - dx1) * (dy2 - dy1)
-            if det_area < img_area * 0.015:
+            if det_area < img_area * 0.005:  # 0.5%: allows small faces/figures
                 continue
             inner_dets.append(d)
-        inner_dets.sort(
-            key=lambda d: ArtFeatureDetector._get_class_multiplier(d.class_name) * d.confidence,
-            reverse=True
-        )
+
+        def _inner_score(d):
+            dx1, dy1, dx2, dy2 = d.bbox
+            area = (dx2 - dx1) * (dy2 - dy1)
+            area_ratio = area / primary_area
+            # Parabolic factor peaks at area_ratio=0.5, penalises both tiny and
+            # full-primary-covering detections without a hard cutoff.
+            area_factor = 4.0 * area_ratio * (1.0 - area_ratio)
+            return d.confidence * area_factor
+
+        inner_dets.sort(key=_inner_score, reverse=True)
         return inner_dets
 
     @staticmethod
@@ -724,6 +767,26 @@ class SmartCropper:
         intersection = (x2 - x1) * (y2 - y1)
         inner_area = (inner[2] - inner[0]) * (inner[3] - inner[1])
         return intersection / inner_area if inner_area > 0 else 0.0
+
+    def primary_fills_frame(
+        self,
+        primary_bbox: Tuple[int, int, int, int],
+        image_size: Tuple[int, int]
+    ) -> bool:
+        """
+        Return True when the primary detection already fills the crop frame.
+
+        Mirrors the condition used in crop_with_detections: primary fills the
+        frame when _calculate_contextual_zoom would return <= 1.0, meaning the
+        subject already occupies the full target screen width or height.
+        """
+        width, height = image_size
+        cx = (primary_bbox[0] + primary_bbox[2]) // 2
+        cy = (primary_bbox[1] + primary_bbox[3]) // 2
+        test_crop = self._calculate_crop_window((width, height), (cx, cy))
+        cw = test_crop[2] - test_crop[0]
+        ch = test_crop[3] - test_crop[1]
+        return self._calculate_contextual_zoom(primary_bbox, cw, ch) <= 1.0
 
     def needs_cropping(self, image: Image.Image) -> bool:
         """

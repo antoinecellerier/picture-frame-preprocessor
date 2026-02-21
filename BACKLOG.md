@@ -1,8 +1,25 @@
 # Backlog
 
-## Session Summary (2026-02-16)
+## Session Summary (2026-02-21)
 
-**Current accuracy: 89/116 (76.7%)** on ground truth. Feedback: 87 good, 16 bad_detection, 16 bad_crop (119 reviewed / 122 total).
+**Current accuracy: TBD** (focal detection added, report regenerated). Feedback: 94 good, 25 bad (119 reviewed / 122 total — `detection_feedback_2026-02-21T19-06-31-369Z.json`).
+
+### Completed this session
+- Focal point detection pass: Grounding DINO on primary's zone with face/figure prompts
+- Focal dets passed separately to cropper (never merged into main detections) to prevent class-multiplier corruption of primary selection
+- Parabolic area scoring for inner anchors: `conf × 4r(1-r)`, peaks at 50% of primary — replaces hard 65% cap and sqrt scoring
+- 3D art skip: focal pass and inner anchor logic both skip 3D primaries (sculpture, statue, etc.)
+- Report: focal dets in magenta, selected anchor in gold; config shows focal detection setup; removed Ctrl+F shortcut
+- Saved feedback: `test_real_images/detection_feedback_2026-02-21T19-06-31-369Z.json`
+
+### New issues from feedback
+- `DSC_1734.JPG`, `DSC_2149.JPG`: Background "framed artwork" used as anchor for statue primary — `is_3d_art` skip was only in preprocessor, not in `_get_quality_inner_detections` inside cropper
+- `20210530_135908.jpg`: "mosaic" appearing as bad first crop in multi-crop display
+- `20210808_162451.jpg`: Exhibit label detected as mosaic, appears as bad first crop
+
+---
+
+## Session Summary (2026-02-16)
 
 ### Completed this session
 - Split feedback buttons: bad → bad_detection / bad_crop / bad_both

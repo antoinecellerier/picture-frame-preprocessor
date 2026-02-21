@@ -356,6 +356,24 @@ class ArtFeatureDetector:
         'bottle', 'cup', 'bowl',  # Glass/ceramic art
     }
 
+    # 3D art objects — the object itself is the focal point; don't run
+    # a face/figure detection pass inside these (it just adds noise)
+    _3d_art_terms = frozenset([
+        'sculpture', 'statue', 'figurine', 'bust',
+        'carving', 'pottery', 'vase', 'relief',
+    ])
+
+    @staticmethod
+    def is_3d_art(class_name: str) -> bool:
+        """Return True when the primary class represents a 3D object.
+
+        3D art objects (sculpture, statue, etc.) are their own focal point.
+        Running face/figure detection inside them adds noise and can shift
+        the crop anchor away from the intended subject.
+        """
+        cn = class_name.lower()
+        return any(term in cn for term in ArtFeatureDetector._3d_art_terms)
+
     # Classes to strongly avoid (not art, distractions)
     # Note: 'sign' removed - street art often uses signs as medium
     _avoid_classes = {
@@ -718,6 +736,16 @@ class OptimizedEnsembleDetector:
             'street art', 'painted figure', 'figurine',
         ]
 
+        # Focal-point prompts: face/figure classes for the focused second pass
+        # that runs on the primary's zone to find interesting crop anchors
+        # within large art pieces (murals, statues, etc.)
+        self._focal_prompts = [
+            'face', 'painted face', 'sculpted face', 'stone face',
+            'portrait', 'human face', 'animal face',
+            'head', 'human head', 'animal head',
+            'figure', 'human figure',
+        ]
+
     def _load_yolo_world(self):
         """Lazy-load YOLO-World model on first use."""
         if self._yolo_world is None:
@@ -1067,3 +1095,124 @@ class OptimizedEnsembleDetector:
         detector = ArtFeatureDetector()
         detector._last_image_size = self._last_image_size
         return detector.get_primary_subject_with_score(detections)
+
+    def detect_focal_points(
+        self,
+        image: Image.Image,
+        primary_bbox: Tuple[int, int, int, int],
+        inflate_fraction: float = 0.15,
+        verbose: bool = False
+    ) -> List[Detection]:
+        """
+        Run focused detection on the primary subject's zone to find focal points.
+
+        Uses Grounding DINO with face/figure-oriented prompts on a slightly
+        inflated crop of the primary bbox.  Coordinates are mapped back to
+        full-image space so results can be merged with the main detection list.
+
+        This pass runs *after* primary selection and is specifically intended
+        for large art pieces (murals, statues) that fill the frame, where we
+        want to find a face, portrait, or figure to use as a crop anchor.
+
+        Args:
+            image: Full PIL Image
+            primary_bbox: (x1, y1, x2, y2) bounding box of the primary detection
+            inflate_fraction: Fraction to inflate each side of the bbox (default: 0.15)
+            verbose: Print detection info
+
+        Returns:
+            List of Detection objects in full-image coordinates
+        """
+        width, height = image.size
+        px1, py1, px2, py2 = primary_bbox
+
+        # Inflate and clamp to image bounds
+        bw = px2 - px1
+        bh = py2 - py1
+        inflate_x = int(bw * inflate_fraction)
+        inflate_y = int(bh * inflate_fraction)
+        cx1 = max(0, px1 - inflate_x)
+        cy1 = max(0, py1 - inflate_y)
+        cx2 = min(width, px2 + inflate_x)
+        cy2 = min(height, py2 + inflate_y)
+
+        if cx2 <= cx1 or cy2 <= cy1:
+            return []
+
+        # Crop to primary zone
+        region = image.crop((cx1, cy1, cx2, cy2))
+
+        # Cache by region content + focal prompts + confidence threshold + primary bbox
+        # Primary bbox is included so that if the detection changes (different
+        # primary selected), a fresh detection run is used rather than stale coords.
+        region_hash = _compute_image_hash(region)
+        params_hash = _compute_params_hash(
+            self.confidence_threshold, self._focal_prompts,
+            list(primary_bbox), inflate_fraction
+        )
+        cache_path = _get_cache_path("focal_dino", region_hash, params_hash)
+
+        cached = _load_cached_detections(cache_path)
+        if cached is not None:
+            if verbose:
+                print(f"  Focal detection: {len(cached)} detections (cached)")
+            # Translate region-space coords back to full-image space
+            return [Detection(
+                bbox=(d.bbox[0] + cx1, d.bbox[1] + cy1, d.bbox[2] + cx1, d.bbox[3] + cy1),
+                confidence=d.confidence,
+                class_name=d.class_name,
+                area=(d.bbox[2] - d.bbox[0]) * (d.bbox[3] - d.bbox[1])
+            ) for d in cached]
+
+        if verbose:
+            print(f"  Running focal detection on primary zone ({cx2 - cx1}x{cy2 - cy1})...")
+
+        self._load_grounding_dino()
+        import torch
+
+        inputs = self._dino_processor(
+            images=region,
+            text=self._focal_prompts,
+            return_tensors="pt"
+        ).to("cpu")
+
+        with torch.no_grad():
+            outputs = self._grounding_dino(**inputs)
+
+        dino_results = self._dino_processor.post_process_grounded_object_detection(
+            outputs,
+            inputs.input_ids,
+            threshold=self.confidence_threshold,
+            target_sizes=[region.size[::-1]]
+        )[0]
+
+        region_detections = []
+        for score, label, box in zip(
+            dino_results["scores"],
+            dino_results["text_labels"],
+            dino_results["boxes"]
+        ):
+            bbox = tuple(int(x) for x in box.tolist())
+            area = (bbox[2] - bbox[0]) * (bbox[3] - bbox[1])
+            region_detections.append(Detection(
+                bbox=bbox,
+                confidence=float(score),
+                class_name=label,
+                area=area
+            ))
+
+        # Save region-space coords to cache
+        _save_cached_detections(cache_path, region_detections)
+
+        if verbose:
+            print(f"  Focal detection: {len(region_detections)} detections")
+            for det in region_detections[:3]:
+                print(f"    - {det.class_name}: {det.confidence:.2f}")
+
+        # Translate to full-image space
+        return [Detection(
+            bbox=(d.bbox[0] + cx1, d.bbox[1] + cy1, d.bbox[2] + cx1, d.bbox[3] + cy1),
+            confidence=d.confidence,
+            class_name=d.class_name,
+            area=(d.bbox[2] - d.bbox[0]) * (d.bbox[3] - d.bbox[1])
+        ) for d in region_detections]

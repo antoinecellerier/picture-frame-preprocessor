@@ -1,0 +1,8035 @@
+{
+  "generated_at": "2026-02-21T19:06:31.370Z",
+  "config": {
+    "detector": "OptimizedEnsembleDetector",
+    "models": {
+      "yolo_world": "yolov8m-worldv2",
+      "grounding_dino": "IDEA-Research/grounding-dino-tiny"
+    },
+    "confidence_threshold": 0.25,
+    "merge_threshold": 0.2,
+    "two_pass": true,
+    "primary_selection": "center-weighted scoring",
+    "target_width": 480,
+    "target_height": 800,
+    "zoom_factor": 8,
+    "use_saliency_fallback": true,
+    "yolo_world_prompts": [
+      "museum exhibit",
+      "gallery display",
+      "art installation",
+      "sculpture on pedestal",
+      "statue on display",
+      "framed artwork",
+      "wall-mounted art",
+      "decorative sculpture",
+      "artistic piece",
+      "sculpture",
+      "statue",
+      "figurine",
+      "bust",
+      "painting",
+      "artwork",
+      "canvas",
+      "mosaic",
+      "tile art",
+      "mural",
+      "wall art",
+      "relief sculpture",
+      "pottery",
+      "vase",
+      "street art",
+      "painted figure",
+      "painted mural",
+      "art on wall",
+      "decorated sign"
+    ],
+    "grounding_dino_prompts": [
+      "sculpture",
+      "statue",
+      "painting",
+      "art installation",
+      "mosaic",
+      "artwork",
+      "mural",
+      "art piece",
+      "exhibit",
+      "artistic object",
+      "wall art",
+      "decorative art",
+      "street art",
+      "painted figure",
+      "figurine"
+    ],
+    "focal_prompts": [
+      "face",
+      "painted face",
+      "sculpted face",
+      "stone face",
+      "portrait",
+      "human face",
+      "animal face",
+      "head",
+      "human head",
+      "animal head",
+      "figure",
+      "human figure"
+    ]
+  },
+  "total_images": 122,
+  "feedback_count": 119,
+  "feedback": {
+    "20130317_020501_Android.jpg": {
+      "rating": "good",
+      "detections": [
+        {
+          "class_name": "painted mural",
+          "confidence": 0.3575,
+          "bbox": [
+            87,
+            106,
+            1331,
+            451
+          ]
+        },
+        {
+          "class_name": "painted figure",
+          "confidence": 0.3419,
+          "bbox": [
+            95,
+            126,
+            322,
+            385
+          ]
+        },
+        {
+          "class_name": "painted figure",
+          "confidence": 0.2819,
+          "bbox": [
+            946,
+            128,
+            1152,
+            407
+          ]
+        }
+      ],
+      "primary": {
+        "class_name": "painted mural",
+        "confidence": 0.3575,
+        "bbox": [
+          87,
+          106,
+          1331,
+          451
+        ]
+      },
+      "is_correct": true,
+      "best_iou": 0.9345,
+      "ground_truth_boxes": [
+        [
+          97,
+          111,
+          1335,
+          437
+        ]
+      ]
+    },
+    "20190929_112829.jpg": {
+      "rating": "good",
+      "detections": [
+        {
+          "class_name": "framed artwork",
+          "confidence": 0.8238,
+          "bbox": [
+            153,
+            668,
+            1944,
+            2869
+          ]
+        }
+      ],
+      "primary": {
+        "class_name": "framed artwork",
+        "confidence": 0.8238,
+        "bbox": [
+          153,
+          668,
+          1944,
+          2869
+        ]
+      },
+      "is_correct": true,
+      "best_iou": 0.8248,
+      "ground_truth_boxes": [
+        [
+          245,
+          784,
+          1887,
+          2764
+        ]
+      ]
+    },
+    "20191124_100445.jpg": {
+      "rating": "good",
+      "detections": [
+        {
+          "class_name": "wall art",
+          "confidence": 0.2876,
+          "bbox": [
+            1396,
+            741,
+            2906,
+            1693
+          ]
+        }
+      ],
+      "primary": {
+        "class_name": "wall art",
+        "confidence": 0.2876,
+        "bbox": [
+          1396,
+          741,
+          2906,
+          1693
+        ]
+      },
+      "is_correct": true,
+      "best_iou": 0.7623,
+      "ground_truth_boxes": [
+        [
+          1369,
+          652,
+          2951,
+          1844
+        ]
+      ]
+    },
+    "20200525_170722.jpg": {
+      "rating": "good",
+      "detections": [
+        {
+          "class_name": "mosaic",
+          "confidence": 0.3874,
+          "bbox": [
+            1105,
+            1455,
+            1979,
+            2167
+          ]
+        },
+        {
+          "class_name": "wall-mounted art",
+          "confidence": 0.3864,
+          "bbox": [
+            955,
+            0,
+            3024,
+            3261
+          ]
+        },
+        {
+          "class_name": "sculpture statue",
+          "confidence": 0.3095,
+          "bbox": [
+            1097,
+            171,
+            1521,
+            652
+          ]
+        },
+        {
+          "class_name": "sculpture statue",
+          "confidence": 0.3034,
+          "bbox": [
+            1239,
+            1191,
+            1650,
+            1658
+          ]
+        },
+        {
+          "class_name": "figurine",
+          "confidence": 0.2667,
+          "bbox": [
+            1976,
+            1857,
+            2153,
+            2090
+          ]
+        },
+        {
+          "class_name": "artwork",
+          "confidence": 0.2581,
+          "bbox": [
+            356,
+            2025,
+            978,
+            2811
+          ]
+        }
+      ],
+      "primary": {
+        "class_name": "mosaic",
+        "confidence": 0.3874,
+        "bbox": [
+          1105,
+          1455,
+          1979,
+          2167
+        ]
+      },
+      "is_correct": true,
+      "best_iou": 0.7065,
+      "ground_truth_boxes": [
+        [
+          1094,
+          1200,
+          1991,
+          2182
+        ],
+        [
+          1084,
+          148,
+          1558,
+          686
+        ]
+      ]
+    },
+    "20200529_185329.jpg": {
+      "rating": "good",
+      "detections": [
+        {
+          "class_name": "painting",
+          "confidence": 0.3526,
+          "bbox": [
+            1597,
+            2352,
+            2334,
+            3013
+          ]
+        },
+        {
+          "class_name": "painted figure",
+          "confidence": 0.3139,
+          "bbox": [
+            3511,
+            2475,
+            3744,
+            2744
+          ]
+        },
+        {
+          "class_name": "decorative art",
+          "confidence": 0.306,
+          "bbox": [
+            1789,
+            992,
+            2339,
+            2198
+          ]
+        }
+      ],
+      "primary": {
+        "class_name": "decorative art",
+        "confidence": 0.306,
+        "bbox": [
+          1789,
+          992,
+          2339,
+          2198
+        ]
+      },
+      "is_correct": true,
+      "best_iou": 0.8123,
+      "ground_truth_boxes": [
+        [
+          1777,
+          969,
+          2391,
+          2299
+        ]
+      ]
+    },
+    "20200926_163413.jpg": {
+      "rating": "good",
+      "detections": [
+        {
+          "class_name": "painting",
+          "confidence": 0.4054,
+          "bbox": [
+            1256,
+            1916,
+            1528,
+            2308
+          ]
+        },
+        {
+          "class_name": "decorated sign",
+          "confidence": 0.3787,
+          "bbox": [
+            2748,
+            771,
+            2925,
+            1292
+          ]
+        },
+        {
+          "class_name": "sculpture statue",
+          "confidence": 0.3143,
+          "bbox": [
+            736,
+            637,
+            2080,
+            3175
+          ]
+        }
+      ],
+      "primary": {
+        "class_name": "sculpture statue",
+        "confidence": 0.3143,
+        "bbox": [
+          736,
+          637,
+          2080,
+          3175
+        ]
+      },
+      "is_correct": true,
+      "best_iou": 0.8277,
+      "ground_truth_boxes": [
+        [
+          620,
+          620,
+          2193,
+          3240
+        ]
+      ]
+    },
+    "20210116_140023.jpg": {
+      "rating": "good",
+      "detections": [
+        {
+          "class_name": "painted figure",
+          "confidence": 0.268,
+          "bbox": [
+            2330,
+            888,
+            2645,
+            1328
+          ]
+        },
+        {
+          "class_name": "art",
+          "confidence": 0.2546,
+          "bbox": [
+            1137,
+            676,
+            3210,
+            2318
+          ]
+        }
+      ],
+      "primary": {
+        "class_name": "art",
+        "confidence": 0.2546,
+        "bbox": [
+          1137,
+          676,
+          3210,
+          2318
+        ]
+      },
+      "is_correct": true,
+      "best_iou": 0.9935,
+      "ground_truth_boxes": [
+        [
+          1133,
+          672,
+          3208,
+          2316
+        ]
+      ]
+    },
+    "20210213_154948.jpg": {
+      "rating": "other",
+      "detections": [
+        {
+          "class_name": "painted figure",
+          "confidence": 0.3062,
+          "bbox": [
+            580,
+            1751,
+            1162,
+            2407
+          ]
+        },
+        {
+          "class_name": "mosaic",
+          "confidence": 0.3046,
+          "bbox": [
+            1857,
+            1667,
+            2530,
+            2220
+          ]
+        },
+        {
+          "class_name": "painted figure",
+          "confidence": 0.2901,
+          "bbox": [
+            1623,
+            1694,
+            1999,
+            2107
+          ]
+        },
+        {
+          "class_name": "exhibit",
+          "confidence": 0.2728,
+          "bbox": [
+            17,
+            136,
+            2707,
+            2720
+          ]
+        }
+      ],
+      "primary": {
+        "class_name": "mosaic",
+        "confidence": 0.3046,
+        "bbox": [
+          1857,
+          1667,
+          2530,
+          2220
+        ]
+      },
+      "is_correct": true,
+      "best_iou": 0.552,
+      "ground_truth_boxes": [
+        [
+          1584,
+          1534,
+          2543,
+          2237
+        ]
+      ]
+    },
+    "20210303_151750.jpg": {
+      "rating": "good",
+      "detections": [
+        {
+          "class_name": "framed artwork",
+          "confidence": 0.7335,
+          "bbox": [
+            1878,
+            1761,
+            2945,
+            2935
+          ]
+        },
+        {
+          "class_name": "street",
+          "confidence": 0.2794,
+          "bbox": [
+            7,
+            13,
+            426,
+            2241
+          ]
+        },
+        {
+          "class_name": "art exhibit",
+          "confidence": 0.2721,
+          "bbox": [
+            28,
+            37,
+            3999,
+            2982
+          ]
+        },
+        {
+          "class_name": "mosaic",
+          "confidence": 0.261,
+          "bbox": [
+            1205,
+            677,
+            1657,
+            836
+          ]
+        }
+      ],
+      "primary": {
+        "class_name": "framed artwork",
+        "confidence": 0.7335,
+        "bbox": [
+          1878,
+          1761,
+          2945,
+          2935
+        ]
+      },
+      "is_correct": true,
+      "best_iou": 0.9963,
+      "ground_truth_boxes": [
+        [
+          1877,
+          1761,
+          2943,
+          2934
+        ]
+      ]
+    },
+    "20210529_150851.jpg": {
+      "rating": "good",
+      "comment": "",
+      "detections": [
+        {
+          "class_name": "wall-mounted art",
+          "confidence": 0.3952,
+          "bbox": [
+            672,
+            89,
+            2351,
+            2057
+          ]
+        },
+        {
+          "class_name": "mosaic",
+          "confidence": 0.2658,
+          "bbox": [
+            1871,
+            1499,
+            2341,
+            1747
+          ]
+        },
+        {
+          "class_name": "wall art",
+          "confidence": 0.2631,
+          "bbox": [
+            2381,
+            1653,
+            3880,
+            2516
+          ]
+        }
+      ],
+      "primary": {
+        "class_name": "wall-mounted art",
+        "confidence": 0.3952,
+        "bbox": [
+          672,
+          89,
+          2351,
+          2057
+        ]
+      },
+      "is_correct": true,
+      "best_iou": 0.8524,
+      "ground_truth_boxes": [
+        [
+          549,
+          61,
+          2404,
+          1960
+        ]
+      ]
+    },
+    "20210529_153247.jpg": {
+      "rating": "good",
+      "detections": [
+        {
+          "class_name": "sculpture on pedestal",
+          "confidence": 0.6371,
+          "bbox": [
+            2636,
+            2506,
+            2849,
+            2792
+          ]
+        },
+        {
+          "class_name": "mural",
+          "confidence": 0.474,
+          "bbox": [
+            254,
+            384,
+            2460,
+            2602
+          ]
+        },
+        {
+          "class_name": "figurine",
+          "confidence": 0.2754,
+          "bbox": [
+            1186,
+            671,
+            1379,
+            1015
+          ]
+        }
+      ],
+      "primary": {
+        "class_name": "mural",
+        "confidence": 0.474,
+        "bbox": [
+          254,
+          384,
+          2460,
+          2602
+        ]
+      },
+      "is_correct": true,
+      "best_iou": 0.6195,
+      "ground_truth_boxes": [
+        [
+          267,
+          459,
+          3712,
+          2605
+        ]
+      ]
+    },
+    "20210530_135908.jpg": {
+      "rating": "bad_detection",
+      "comment": "The \"mosaic\" 1st crop is a bad detection. The 2nd crop is good.",
+      "detections": [
+        {
+          "class_name": "wall art",
+          "confidence": 0.3536,
+          "bbox": [
+            3172,
+            554,
+            3984,
+            1373
+          ]
+        },
+        {
+          "class_name": "mural",
+          "confidence": 0.321,
+          "bbox": [
+            305,
+            1758,
+            3935,
+            2732
+          ]
+        },
+        {
+          "class_name": "street art",
+          "confidence": 0.2881,
+          "bbox": [
+            1886,
+            2250,
+            2251,
+            3013
+          ]
+        },
+        {
+          "class_name": "painted figure",
+          "confidence": 0.2835,
+          "bbox": [
+            2931,
+            1774,
+            3787,
+            2383
+          ]
+        },
+        {
+          "class_name": "figurine",
+          "confidence": 0.2833,
+          "bbox": [
+            2064,
+            2862,
+            2233,
+            3011
+          ]
+        },
+        {
+          "class_name": "mosaic",
+          "confidence": 0.275,
+          "bbox": [
+            393,
+            1740,
+            879,
+            2258
+          ]
+        }
+      ],
+      "primary": {
+        "class_name": "mural",
+        "confidence": 0.321,
+        "bbox": [
+          305,
+          1758,
+          3935,
+          2732
+        ]
+      },
+      "is_correct": true,
+      "best_iou": 0.9933,
+      "ground_truth_boxes": [
+        [
+          305,
+          1756,
+          3933,
+          2728
+        ],
+        [
+          2930,
+          1770,
+          3786,
+          2379
+        ]
+      ]
+    },
+    "20210606_141906.jpg": {
+      "rating": "good",
+      "detections": [
+        {
+          "class_name": "sculpture on pedestal",
+          "confidence": 0.5401,
+          "bbox": [
+            154,
+            235,
+            1053,
+            1689
+          ]
+        },
+        {
+          "class_name": "sculpture statue painted figure",
+          "confidence": 0.3086,
+          "bbox": [
+            2050,
+            814,
+            3364,
+            2661
+          ]
+        }
+      ],
+      "primary": {
+        "class_name": "sculpture on pedestal",
+        "confidence": 0.5401,
+        "bbox": [
+          154,
+          235,
+          1053,
+          1689
+        ]
+      },
+      "is_correct": true,
+      "best_iou": 0.8649,
+      "ground_truth_boxes": [
+        [
+          155,
+          222,
+          1011,
+          1830
+        ],
+        [
+          2055,
+          536,
+          3730,
+          2897
+        ]
+      ]
+    },
+    "20210626_143410.jpg": {
+      "rating": "good",
+      "detections": [
+        {
+          "class_name": "exhibit",
+          "confidence": 0.3198,
+          "bbox": [
+            29,
+            1078,
+            3115,
+            3005
+          ]
+        },
+        {
+          "class_name": "painted figurene",
+          "confidence": 0.3029,
+          "bbox": [
+            1430,
+            641,
+            2811,
+            1461
+          ]
+        }
+      ],
+      "primary": {
+        "class_name": "painted figurene",
+        "confidence": 0.3029,
+        "bbox": [
+          1430,
+          641,
+          2811,
+          1461
+        ]
+      },
+      "is_correct": true,
+      "best_iou": 0.9966,
+      "ground_truth_boxes": [
+        [
+          1429,
+          641,
+          2809,
+          1460
+        ]
+      ]
+    },
+    "20210626_160627.jpg": {
+      "rating": "good",
+      "detections": [
+        {
+          "class_name": "mural",
+          "confidence": 0.7502,
+          "bbox": [
+            1248,
+            670,
+            3895,
+            2351
+          ]
+        },
+        {
+          "class_name": "figurine",
+          "confidence": 0.3386,
+          "bbox": [
+            1899,
+            1447,
+            2346,
+            1917
+          ]
+        },
+        {
+          "class_name": "artistic",
+          "confidence": 0.2501,
+          "bbox": [
+            3232,
+            2376,
+            4017,
+            2949
+          ]
+        }
+      ],
+      "primary": {
+        "class_name": "mural",
+        "confidence": 0.7502,
+        "bbox": [
+          1248,
+          670,
+          3895,
+          2351
+        ]
+      },
+      "is_correct": true,
+      "best_iou": 0.4652,
+      "ground_truth_boxes": [
+        [
+          424,
+          1103,
+          3331,
+          2389
+        ]
+      ]
+    },
+    "20210626_170725.jpg": {
+      "rating": "good",
+      "detections": [
+        {
+          "class_name": "mural",
+          "confidence": 0.497,
+          "bbox": [
+            674,
+            513,
+            3715,
+            2264
+          ]
+        }
+      ],
+      "primary": {
+        "class_name": "mural",
+        "confidence": 0.497,
+        "bbox": [
+          674,
+          513,
+          3715,
+          2264
+        ]
+      },
+      "is_correct": true,
+      "best_iou": 0.9967,
+      "ground_truth_boxes": [
+        [
+          672,
+          511,
+          3714,
+          2262
+        ]
+      ]
+    },
+    "20210626_172859.jpg": {
+      "rating": "good",
+      "detections": [
+        {
+          "class_name": "framed artwork",
+          "confidence": 0.5319,
+          "bbox": [
+            2585,
+            1555,
+            3290,
+            2736
+          ]
+        },
+        {
+          "class_name": "mosaic",
+          "confidence": 0.386,
+          "bbox": [
+            3352,
+            1491,
+            3933,
+            2126
+          ]
+        },
+        {
+          "class_name": "mural wall art",
+          "confidence": 0.2867,
+          "bbox": [
+            1078,
+            1396,
+            2377,
+            2914
+          ]
+        },
+        {
+          "class_name": "exhibit",
+          "confidence": 0.2682,
+          "bbox": [
+            16,
+            192,
+            4013,
+            2333
+          ]
+        }
+      ],
+      "primary": {
+        "class_name": "framed artwork",
+        "confidence": 0.5319,
+        "bbox": [
+          2585,
+          1555,
+          3290,
+          2736
+        ]
+      },
+      "is_correct": true,
+      "best_iou": 0.9946,
+      "ground_truth_boxes": [
+        [
+          2585,
+          1555,
+          3288,
+          2733
+        ],
+        [
+          3351,
+          1487,
+          3929,
+          2124
+        ],
+        [
+          1075,
+          1393,
+          2374,
+          2912
+        ]
+      ]
+    },
+    "20210910_191256.jpg": {
+      "rating": "good",
+      "detections": [
+        {
+          "class_name": "framed artwork",
+          "confidence": 0.8564,
+          "bbox": [
+            2084,
+            549,
+            3223,
+            2020
+          ]
+        },
+        {
+          "class_name": "framed artwork",
+          "confidence": 0.8379,
+          "bbox": [
+            3125,
+            494,
+            4020,
+            1545
+          ]
+        },
+        {
+          "class_name": "framed artwork",
+          "confidence": 0.8357,
+          "bbox": [
+            1215,
+            624,
+            2042,
+            2120
+          ]
+        },
+        {
+          "class_name": "mosaic",
+          "confidence": 0.4206,
+          "bbox": [
+            3165,
+            1317,
+            4006,
+            1546
+          ]
+        },
+        {
+          "class_name": "exhibit",
+          "confidence": 0.3423,
+          "bbox": [
+            914,
+            1489,
+            3440,
+            2992
+          ]
+        },
+        {
+          "class_name": "exhibit",
+          "confidence": 0.2658,
+          "bbox": [
+            464,
+            234,
+            3989,
+            2962
+          ]
+        }
+      ],
+      "primary": {
+        "class_name": "framed artwork",
+        "confidence": 0.8357,
+        "bbox": [
+          1215,
+          624,
+          2042,
+          2120
+        ]
+      },
+      "is_correct": true,
+      "best_iou": 0.5799,
+      "ground_truth_boxes": [
+        [
+          1020,
+          507,
+          3264,
+          2895
+        ],
+        [
+          2379,
+          591,
+          3212,
+          2858
+        ],
+        [
+          1075,
+          676,
+          2016,
+          2710
+        ]
+      ]
+    },
+    "20210910_204401.jpg": {
+      "rating": "good",
+      "detections": [
+        {
+          "class_name": "framed artwork",
+          "confidence": 0.9887,
+          "bbox": [
+            3314,
+            2,
+            4027,
+            1123
+          ]
+        },
+        {
+          "class_name": "statue on display",
+          "confidence": 0.3771,
+          "bbox": [
+            2996,
+            277,
+            3613,
+            2789
+          ]
+        },
+        {
+          "class_name": "art installation street art",
+          "confidence": 0.3224,
+          "bbox": [
+            517,
+            133,
+            3743,
+            2958
+          ]
+        },
+        {
+          "class_name": "sculpture statue",
+          "confidence": 0.3013,
+          "bbox": [
+            1351,
+            139,
+            1901,
+            2737
+          ]
+        },
+        {
+          "class_name": "sculpture statue painted figure",
+          "confidence": 0.293,
+          "bbox": [
+            2195,
+            333,
+            2659,
+            2543
+          ]
+        },
+        {
+          "class_name": "sculpture statue",
+          "confidence": 0.2851,
+          "bbox": [
+            590,
+            244,
+            1185,
+            3006
+          ]
+        }
+      ],
+      "primary": {
+        "class_name": "statue on display",
+        "confidence": 0.3771,
+        "bbox": [
+          2996,
+          277,
+          3613,
+          2789
+        ]
+      },
+      "is_correct": true,
+      "best_iou": 0.9896,
+      "ground_truth_boxes": [
+        [
+          2993,
+          273,
+          3611,
+          2787
+        ],
+        [
+          515,
+          130,
+          3741,
+          2957
+        ],
+        [
+          1348,
+          139,
+          1900,
+          2733
+        ],
+        [
+          2191,
+          332,
+          2657,
+          2540
+        ],
+        [
+          587,
+          242,
+          1183,
+          3002
+        ]
+      ]
+    },
+    "20220109_160326.jpg": {
+      "rating": "good",
+      "detections": [
+        {
+          "class_name": "framed artwork",
+          "confidence": 0.4776,
+          "bbox": [
+            1837,
+            2026,
+            2578,
+            2801
+          ]
+        },
+        {
+          "class_name": "street art",
+          "confidence": 0.3696,
+          "bbox": [
+            306,
+            15,
+            1259,
+            2978
+          ]
+        },
+        {
+          "class_name": "exhibit",
+          "confidence": 0.2857,
+          "bbox": [
+            446,
+            343,
+            3581,
+            2677
+          ]
+        },
+        {
+          "class_name": "statue painted figure",
+          "confidence": 0.2692,
+          "bbox": [
+            898,
+            1137,
+            1066,
+            1364
+          ]
+        }
+      ],
+      "primary": {
+        "class_name": "framed artwork",
+        "confidence": 0.4776,
+        "bbox": [
+          1837,
+          2026,
+          2578,
+          2801
+        ]
+      },
+      "is_correct": true,
+      "best_iou": 0.7297,
+      "ground_truth_boxes": [
+        [
+          1857,
+          2099,
+          2592,
+          2950
+        ]
+      ]
+    },
+    "20220219_145944.jpg": {
+      "rating": "good",
+      "detections": [
+        {
+          "class_name": "painted figure figurine",
+          "confidence": 0.3595,
+          "bbox": [
+            1268,
+            1661,
+            1563,
+            1925
+          ]
+        },
+        {
+          "class_name": "exhibit",
+          "confidence": 0.3309,
+          "bbox": [
+            835,
+            916,
+            3078,
+            2559
+          ]
+        },
+        {
+          "class_name": "figurine",
+          "confidence": 0.2969,
+          "bbox": [
+            1724,
+            1864,
+            1900,
+            2025
+          ]
+        },
+        {
+          "class_name": "painted figure",
+          "confidence": 0.2956,
+          "bbox": [
+            1790,
+            1745,
+            2377,
+            2308
+          ]
+        },
+        {
+          "class_name": "mosaic",
+          "confidence": 0.2539,
+          "bbox": [
+            799,
+            10,
+            3134,
+            744
+          ]
+        }
+      ],
+      "primary": {
+        "class_name": "painted figure",
+        "confidence": 0.2956,
+        "bbox": [
+          1790,
+          1745,
+          2377,
+          2308
+        ]
+      },
+      "is_correct": true,
+      "best_iou": 0.367,
+      "ground_truth_boxes": [
+        [
+          1239,
+          1578,
+          2435,
+          2331
+        ]
+      ]
+    },
+    "20220321_171136.jpg": {
+      "rating": "good",
+      "detections": [
+        {
+          "class_name": "painted figure",
+          "confidence": 0.363,
+          "bbox": [
+            1006,
+            1093,
+            1946,
+            3536
+          ]
+        },
+        {
+          "class_name": "mosaic",
+          "confidence": 0.2816,
+          "bbox": [
+            1015,
+            1131,
+            1893,
+            1637
+          ]
+        },
+        {
+          "class_name": "painting",
+          "confidence": 0.2648,
+          "bbox": [
+            2061,
+            1771,
+            2378,
+            2582
+          ]
+        }
+      ],
+      "primary": {
+        "class_name": "painted figure",
+        "confidence": 0.363,
+        "bbox": [
+          1006,
+          1093,
+          1946,
+          3536
+        ]
+      },
+      "is_correct": true,
+      "best_iou": 0.7397,
+      "ground_truth_boxes": [
+        [
+          936,
+          1090,
+          2031,
+          3925
+        ],
+        [
+          2058,
+          1761,
+          2388,
+          2571
+        ]
+      ]
+    },
+    "20220325_115329.jpg": {
+      "rating": "good",
+      "detections": [
+        {
+          "class_name": "painted mural",
+          "confidence": 0.6397,
+          "bbox": [
+            338,
+            439,
+            2805,
+            3506
+          ]
+        }
+      ],
+      "primary": {
+        "class_name": "painted mural",
+        "confidence": 0.6397,
+        "bbox": [
+          338,
+          439,
+          2805,
+          3506
+        ]
+      },
+      "is_correct": true,
+      "best_iou": 0.9566,
+      "ground_truth_boxes": [
+        [
+          304,
+          407,
+          2831,
+          3475
+        ]
+      ]
+    },
+    "20220424_143915.jpg": {
+      "rating": "good",
+      "detections": [
+        {
+          "class_name": "mural",
+          "confidence": 0.3421,
+          "bbox": [
+            1910,
+            1060,
+            3225,
+            2419
+          ]
+        },
+        {
+          "class_name": "street",
+          "confidence": 0.2835,
+          "bbox": [
+            1515,
+            1240,
+            1623,
+            1654
+          ]
+        },
+        {
+          "class_name": "mosaic",
+          "confidence": 0.265,
+          "bbox": [
+            2000,
+            1182,
+            2188,
+            1259
+          ]
+        },
+        {
+          "class_name": "art",
+          "confidence": 0.2562,
+          "bbox": [
+            1567,
+            614,
+            1958,
+            1406
+          ]
+        }
+      ],
+      "primary": {
+        "class_name": "mural",
+        "confidence": 0.3421,
+        "bbox": [
+          1910,
+          1060,
+          3225,
+          2419
+        ]
+      },
+      "is_correct": true,
+      "best_iou": 0.6521,
+      "ground_truth_boxes": [
+        [
+          1902,
+          1141,
+          3658,
+          2548
+        ]
+      ]
+    },
+    "20220626_134318.jpg": {
+      "rating": "good",
+      "detections": [
+        {
+          "class_name": "painted mural",
+          "confidence": 0.5121,
+          "bbox": [
+            1074,
+            1323,
+            2256,
+            2889
+          ]
+        },
+        {
+          "class_name": "painted figure",
+          "confidence": 0.4024,
+          "bbox": [
+            145,
+            233,
+            490,
+            1019
+          ]
+        },
+        {
+          "class_name": "figurine",
+          "confidence": 0.3505,
+          "bbox": [
+            432,
+            865,
+            693,
+            1270
+          ]
+        },
+        {
+          "class_name": "artistic object",
+          "confidence": 0.2893,
+          "bbox": [
+            2545,
+            1580,
+            2987,
+            2449
+          ]
+        },
+        {
+          "class_name": "art",
+          "confidence": 0.266,
+          "bbox": [
+            995,
+            3491,
+            1799,
+            4016
+          ]
+        }
+      ],
+      "primary": {
+        "class_name": "painted mural",
+        "confidence": 0.5121,
+        "bbox": [
+          1074,
+          1323,
+          2256,
+          2889
+        ]
+      },
+      "is_correct": true,
+      "best_iou": 0.8571,
+      "ground_truth_boxes": [
+        [
+          1010,
+          1210,
+          2273,
+          2920
+        ]
+      ]
+    },
+    "DSC_0153.JPG": {
+      "rating": "good",
+      "detections": [
+        {
+          "class_name": "mural",
+          "confidence": 0.4024,
+          "bbox": [
+            209,
+            393,
+            3180,
+            1859
+          ]
+        }
+      ],
+      "primary": {
+        "class_name": "mural",
+        "confidence": 0.4024,
+        "bbox": [
+          209,
+          393,
+          3180,
+          1859
+        ]
+      },
+      "is_correct": true,
+      "best_iou": 0.9963,
+      "ground_truth_boxes": [
+        [
+          207,
+          392,
+          3177,
+          1857
+        ]
+      ]
+    },
+    "DSC_0154.JPG": {
+      "rating": "good",
+      "detections": [
+        {
+          "class_name": "mural",
+          "confidence": 0.6251,
+          "bbox": [
+            9,
+            2,
+            3998,
+            2360
+          ]
+        },
+        {
+          "class_name": "painted figure",
+          "confidence": 0.322,
+          "bbox": [
+            416,
+            1434,
+            889,
+            2097
+          ]
+        },
+        {
+          "class_name": "painted figure",
+          "confidence": 0.3179,
+          "bbox": [
+            2499,
+            531,
+            2990,
+            1102
+          ]
+        }
+      ],
+      "primary": {
+        "class_name": "mural",
+        "confidence": 0.6251,
+        "bbox": [
+          9,
+          2,
+          3998,
+          2360
+        ]
+      },
+      "is_correct": true,
+      "best_iou": 0.5811,
+      "ground_truth_boxes": [
+        [
+          425,
+          479,
+          3340,
+          2354
+        ]
+      ]
+    },
+    "DSC_0312.JPG": {
+      "rating": "other",
+      "detections": [
+        {
+          "class_name": "mural",
+          "confidence": 0.691,
+          "bbox": [
+            1186,
+            983,
+            2784,
+            2418
+          ]
+        },
+        {
+          "class_name": "vase",
+          "confidence": 0.4489,
+          "bbox": [
+            530,
+            2180,
+            1216,
+            2784
+          ]
+        },
+        {
+          "class_name": "figurine",
+          "confidence": 0.2756,
+          "bbox": [
+            3179,
+            210,
+            3376,
+            507
+          ]
+        }
+      ],
+      "primary": {
+        "class_name": "mural",
+        "confidence": 0.691,
+        "bbox": [
+          1186,
+          983,
+          2784,
+          2418
+        ]
+      },
+      "is_correct": true,
+      "best_iou": 0.8469,
+      "ground_truth_boxes": [
+        [
+          1163,
+          932,
+          2860,
+          2643
+        ],
+        [
+          1222,
+          1098,
+          2782,
+          2600
+        ],
+        [
+          1209,
+          1049,
+          2778,
+          2573
+        ]
+      ]
+    },
+    "DSC_0314.JPG": {
+      "rating": "good",
+      "detections": [
+        {
+          "class_name": "painted figure figne",
+          "confidence": 0.355,
+          "bbox": [
+            838,
+            2327,
+            1132,
+            2684
+          ]
+        },
+        {
+          "class_name": "mosaic art",
+          "confidence": 0.3413,
+          "bbox": [
+            870,
+            1278,
+            1663,
+            2097
+          ]
+        },
+        {
+          "class_name": "artwork decorative art",
+          "confidence": 0.3275,
+          "bbox": [
+            824,
+            2292,
+            2279,
+            2746
+          ]
+        },
+        {
+          "class_name": "painted figure figurine",
+          "confidence": 0.3193,
+          "bbox": [
+            1973,
+            2395,
+            2266,
+            2721
+          ]
+        },
+        {
+          "class_name": "painted figure",
+          "confidence": 0.3085,
+          "bbox": [
+            1599,
+            2398,
+            1908,
+            2712
+          ]
+        },
+        {
+          "class_name": "painted figure",
+          "confidence": 0.2945,
+          "bbox": [
+            1214,
+            2340,
+            1528,
+            2701
+          ]
+        },
+        {
+          "class_name": "exhibit",
+          "confidence": 0.2927,
+          "bbox": [
+            21,
+            17,
+            2428,
+            3243
+          ]
+        }
+      ],
+      "primary": {
+        "class_name": "mosaic art",
+        "confidence": 0.3413,
+        "bbox": [
+          870,
+          1278,
+          1663,
+          2097
+        ]
+      },
+      "is_correct": true,
+      "best_iou": 0.6652,
+      "ground_truth_boxes": [
+        [
+          736,
+          1233,
+          1767,
+          2180
+        ]
+      ]
+    },
+    "DSC_0402.JPG": {
+      "rating": "good",
+      "detections": [
+        {
+          "class_name": "statue on display",
+          "confidence": 0.5619,
+          "bbox": [
+            693,
+            509,
+            3131,
+            2584
+          ]
+        },
+        {
+          "class_name": "mosaic",
+          "confidence": 0.3518,
+          "bbox": [
+            2353,
+            484,
+            3952,
+            1587
+          ]
+        },
+        {
+          "class_name": "art piece artistic decorative art",
+          "confidence": 0.31,
+          "bbox": [
+            131,
+            791,
+            1159,
+            1788
+          ]
+        }
+      ],
+      "primary": {
+        "class_name": "statue on display",
+        "confidence": 0.5619,
+        "bbox": [
+          693,
+          509,
+          3131,
+          2584
+        ]
+      },
+      "is_correct": true,
+      "best_iou": 0.7257,
+      "ground_truth_boxes": [
+        [
+          87,
+          358,
+          3936,
+          2812
+        ],
+        [
+          529,
+          560,
+          3480,
+          2822
+        ]
+      ]
+    },
+    "DSC_0771.JPG": {
+      "rating": "good",
+      "comment": "",
+      "detections": [
+        {
+          "class_name": "statue on display",
+          "confidence": 0.8405,
+          "bbox": [
+            1303,
+            320,
+            2113,
+            2506
+          ]
+        },
+        {
+          "class_name": "statue on display",
+          "confidence": 0.8338,
+          "bbox": [
+            3574,
+            354,
+            3844,
+            1108
+          ]
+        },
+        {
+          "class_name": "vase",
+          "confidence": 0.6525,
+          "bbox": [
+            2981,
+            1724,
+            3132,
+            1901
+          ]
+        },
+        {
+          "class_name": "statue on display",
+          "confidence": 0.6323,
+          "bbox": [
+            2173,
+            593,
+            2824,
+            2592
+          ]
+        },
+        {
+          "class_name": "sculpture on pedestal",
+          "confidence": 0.4643,
+          "bbox": [
+            1149,
+            2109,
+            3036,
+            2993
+          ]
+        },
+        {
+          "class_name": "statue on display",
+          "confidence": 0.4478,
+          "bbox": [
+            2905,
+            296,
+            3045,
+            652
+          ]
+        },
+        {
+          "class_name": "mosaic",
+          "confidence": 0.3788,
+          "bbox": [
+            3391,
+            16,
+            3953,
+            267
+          ]
+        },
+        {
+          "class_name": "statue on display",
+          "confidence": 0.3196,
+          "bbox": [
+            0,
+            503,
+            100,
+            948
+          ]
+        },
+        {
+          "class_name": "wall-mounted art",
+          "confidence": 0.3042,
+          "bbox": [
+            2009,
+            0,
+            2600,
+            32
+          ]
+        },
+        {
+          "class_name": "exhibit",
+          "confidence": 0.2574,
+          "bbox": [
+            28,
+            24,
+            3962,
+            2968
+          ]
+        },
+        {
+          "class_name": "wall-mounted art",
+          "confidence": 0.2566,
+          "bbox": [
+            2715,
+            50,
+            3450,
+            1989
+          ]
+        }
+      ],
+      "primary": {
+        "class_name": "statue on display",
+        "confidence": 0.8405,
+        "bbox": [
+          1303,
+          320,
+          2113,
+          2506
+        ]
+      },
+      "is_correct": true,
+      "best_iou": 0.9868,
+      "ground_truth_boxes": [
+        [
+          1274,
+          292,
+          2834,
+          2612
+        ],
+        [
+          2169,
+          600,
+          2813,
+          2587
+        ],
+        [
+          1298,
+          316,
+          2102,
+          2507
+        ],
+        [
+          1293,
+          320,
+          2107,
+          2511
+        ],
+        [
+          2164,
+          600,
+          2818,
+          2578
+        ],
+        [
+          1302,
+          329,
+          2107,
+          2507
+        ],
+        [
+          2169,
+          604,
+          2818,
+          2587
+        ]
+      ]
+    },
+    "DSC_1045.JPG": {
+      "rating": "good",
+      "detections": [
+        {
+          "class_name": "figurine",
+          "confidence": 0.3781,
+          "bbox": [
+            1740,
+            1111,
+            2488,
+            2106
+          ]
+        },
+        {
+          "class_name": "figure figurine",
+          "confidence": 0.3755,
+          "bbox": [
+            1901,
+            1196,
+            3417,
+            2499
+          ]
+        },
+        {
+          "class_name": "figurine",
+          "confidence": 0.364,
+          "bbox": [
+            572,
+            859,
+            2025,
+            2501
+          ]
+        }
+      ],
+      "primary": {
+        "class_name": "figurine",
+        "confidence": 0.3781,
+        "bbox": [
+          1740,
+          1111,
+          2488,
+          2106
+        ]
+      },
+      "is_correct": true,
+      "best_iou": 0.9044,
+      "ground_truth_boxes": [
+        [
+          509,
+          443,
+          3549,
+          2630
+        ],
+        [
+          572,
+          903,
+          1678,
+          2530
+        ],
+        [
+          1625,
+          1059,
+          2692,
+          2547
+        ],
+        [
+          2425,
+          1267,
+          3429,
+          2503
+        ],
+        [
+          596,
+          969,
+          1636,
+          2484
+        ],
+        [
+          2427,
+          1324,
+          3418,
+          2489
+        ],
+        [
+          2404,
+          1329,
+          3373,
+          2489
+        ],
+        [
+          1747,
+          1124,
+          2484,
+          2182
+        ],
+        [
+          591,
+          969,
+          1622,
+          2498
+        ],
+        [
+          1742,
+          1124,
+          2680,
+          2484
+        ],
+        [
+          1751,
+          1129,
+          2484,
+          2178
+        ],
+        [
+          591,
+          964,
+          1622,
+          2480
+        ],
+        [
+          520,
+          476,
+          3551,
+          2631
+        ]
+      ]
+    },
+    "DSC_1209.JPG": {
+      "rating": "good",
+      "detections": [
+        {
+          "class_name": "figure",
+          "confidence": 0.3534,
+          "bbox": [
+            1802,
+            1012,
+            3352,
+            2711
+          ]
+        },
+        {
+          "class_name": "painted figure",
+          "confidence": 0.3509,
+          "bbox": [
+            1729,
+            1146,
+            2296,
+            2575
+          ]
+        },
+        {
+          "class_name": "street art",
+          "confidence": 0.3335,
+          "bbox": [
+            682,
+            2216,
+            1119,
+            2986
+          ]
+        },
+        {
+          "class_name": "painting",
+          "confidence": 0.2743,
+          "bbox": [
+            32,
+            28,
+            3969,
+            2974
+          ]
+        }
+      ],
+      "primary": {
+        "class_name": "figure",
+        "confidence": 0.3534,
+        "bbox": [
+          1802,
+          1012,
+          3352,
+          2711
+        ]
+      },
+      "is_correct": true,
+      "best_iou": 0.8,
+      "ground_truth_boxes": [
+        [
+          1714,
+          955,
+          3416,
+          2889
+        ],
+        [
+          1973,
+          1040,
+          3249,
+          2342
+        ],
+        [
+          1738,
+          1151,
+          2262,
+          2560
+        ],
+        [
+          1956,
+          1040,
+          3258,
+          2342
+        ],
+        [
+          1969,
+          1040,
+          3253,
+          2338
+        ],
+        [
+          1738,
+          1160,
+          2307,
+          2604
+        ]
+      ]
+    },
+    "DSC_1488.JPG": {
+      "rating": "good",
+      "comment": "",
+      "detections": [
+        {
+          "class_name": "mural",
+          "confidence": 0.3596,
+          "bbox": [
+            613,
+            330,
+            3191,
+            2585
+          ]
+        },
+        {
+          "class_name": "fig",
+          "confidence": 0.2508,
+          "bbox": [
+            382,
+            366,
+            539,
+            503
+          ]
+        }
+      ],
+      "primary": {
+        "class_name": "mural",
+        "confidence": 0.3596,
+        "bbox": [
+          613,
+          330,
+          3191,
+          2585
+        ]
+      },
+      "is_correct": true,
+      "best_iou": 0.754,
+      "ground_truth_boxes": [
+        [
+          1287,
+          398,
+          3509,
+          2567
+        ],
+        [
+          916,
+          404,
+          3520,
+          2604
+        ],
+        [
+          1022,
+          422,
+          3516,
+          2596
+        ]
+      ]
+    },
+    "DSC_1734.JPG": {
+      "rating": "other",
+      "comment": "The anchor is wrong. Small background framed artwork should never be the focal point for a primary statue :)",
+      "detections": [
+        {
+          "class_name": "statue",
+          "confidence": 0.7912,
+          "bbox": [
+            887,
+            158,
+            3319,
+            2947
+          ]
+        },
+        {
+          "class_name": "framed artwork",
+          "confidence": 0.7055,
+          "bbox": [
+            2703,
+            467,
+            2937,
+            834
+          ]
+        },
+        {
+          "class_name": "framed artwork",
+          "confidence": 0.689,
+          "bbox": [
+            2242,
+            485,
+            2574,
+            843
+          ]
+        },
+        {
+          "class_name": "framed artwork",
+          "confidence": 0.6311,
+          "bbox": [
+            280,
+            367,
+            545,
+            939
+          ]
+        },
+        {
+          "class_name": "framed artwork",
+          "confidence": 0.5922,
+          "bbox": [
+            2837,
+            426,
+            3089,
+            843
+          ]
+        },
+        {
+          "class_name": "framed artwork",
+          "confidence": 0.3167,
+          "bbox": [
+            960,
+            0,
+            1468,
+            901
+          ]
+        },
+        {
+          "class_name": "mosaic",
+          "confidence": 0.2837,
+          "bbox": [
+            3428,
+            115,
+            3922,
+            355
+          ]
+        },
+        {
+          "class_name": "wall-mounted art",
+          "confidence": 0.276,
+          "bbox": [
+            0,
+            336,
+            136,
+            687
+          ]
+        }
+      ],
+      "primary": {
+        "class_name": "statue",
+        "confidence": 0.7912,
+        "bbox": [
+          887,
+          158,
+          3319,
+          2947
+        ]
+      },
+      "is_correct": true,
+      "best_iou": 0.8847,
+      "ground_truth_boxes": [
+        [
+          1020,
+          134,
+          3207,
+          2974
+        ],
+        [
+          1044,
+          178,
+          3191,
+          2747
+        ]
+      ]
+    },
+    "DSC_2149.JPG": {
+      "rating": "other",
+      "comment": "The anchor is wrong. Background framed artwork should never be the focal point for a primary statue :)",
+      "detections": [
+        {
+          "class_name": "statue on display",
+          "confidence": 0.6924,
+          "bbox": [
+            987,
+            323,
+            2594,
+            3635
+          ]
+        },
+        {
+          "class_name": "framed artwork",
+          "confidence": 0.638,
+          "bbox": [
+            689,
+            1154,
+            1670,
+            1995
+          ]
+        },
+        {
+          "class_name": "framed artwork",
+          "confidence": 0.5894,
+          "bbox": [
+            2379,
+            1189,
+            2995,
+            1874
+          ]
+        },
+        {
+          "class_name": "painted figure",
+          "confidence": 0.36,
+          "bbox": [
+            67,
+            1542,
+            523,
+            2662
+          ]
+        },
+        {
+          "class_name": "figuri",
+          "confidence": 0.2509,
+          "bbox": [
+            990,
+            1186,
+            1176,
+            1520
+          ]
+        }
+      ],
+      "primary": {
+        "class_name": "statue on display",
+        "confidence": 0.6924,
+        "bbox": [
+          987,
+          323,
+          2594,
+          3635
+        ]
+      },
+      "is_correct": true,
+      "best_iou": 0.7713,
+      "ground_truth_boxes": [
+        [
+          1132,
+          216,
+          2502,
+          3969
+        ],
+        [
+          1157,
+          240,
+          2480,
+          3823
+        ]
+      ]
+    },
+    "DSC_2523.JPG": {
+      "rating": "good",
+      "detections": [
+        {
+          "class_name": "framed artwork",
+          "confidence": 0.9567,
+          "bbox": [
+            613,
+            77,
+            3620,
+            2950
+          ]
+        },
+        {
+          "class_name": "framed artwork",
+          "confidence": 0.6117,
+          "bbox": [
+            3823,
+            81,
+            4000,
+            2931
+          ]
+        },
+        {
+          "class_name": "wall-mounted art",
+          "confidence": 0.2746,
+          "bbox": [
+            0,
+            0,
+            258,
+            2999
+          ]
+        }
+      ],
+      "primary": {
+        "class_name": "framed artwork",
+        "confidence": 0.9567,
+        "bbox": [
+          613,
+          77,
+          3620,
+          2950
+        ]
+      },
+      "is_correct": true,
+      "best_iou": 0.8633,
+      "ground_truth_boxes": [
+        [
+          665,
+          123,
+          3398,
+          2852
+        ]
+      ]
+    },
+    "DSC_2744.JPG": {
+      "rating": "good",
+      "comment": "",
+      "detections": [
+        {
+          "class_name": "framed artwork",
+          "confidence": 0.7255,
+          "bbox": [
+            3412,
+            2,
+            3840,
+            292
+          ]
+        },
+        {
+          "class_name": "framed artwork",
+          "confidence": 0.6981,
+          "bbox": [
+            3384,
+            223,
+            3600,
+            495
+          ]
+        },
+        {
+          "class_name": "sculpture statue figurine",
+          "confidence": 0.3475,
+          "bbox": [
+            1107,
+            410,
+            3454,
+            2286
+          ]
+        },
+        {
+          "class_name": "street art",
+          "confidence": 0.3391,
+          "bbox": [
+            199,
+            27,
+            949,
+            1993
+          ]
+        },
+        {
+          "class_name": "mosaic",
+          "confidence": 0.3342,
+          "bbox": [
+            504,
+            2251,
+            1752,
+            2981
+          ]
+        },
+        {
+          "class_name": "pottery",
+          "confidence": 0.255,
+          "bbox": [
+            251,
+            35,
+            909,
+            292
+          ]
+        },
+        {
+          "class_name": "figure",
+          "confidence": 0.2544,
+          "bbox": [
+            1571,
+            1452,
+            2839,
+            2095
+          ]
+        }
+      ],
+      "primary": {
+        "class_name": "sculpture statue figurine",
+        "confidence": 0.3475,
+        "bbox": [
+          1107,
+          410,
+          3454,
+          2286
+        ]
+      },
+      "is_correct": true,
+      "best_iou": 0.8156,
+      "ground_truth_boxes": [
+        [
+          1096,
+          75,
+          3389,
+          2311
+        ],
+        [
+          1200,
+          169,
+          3400,
+          2080
+        ],
+        [
+          1200,
+          169,
+          3404,
+          2084
+        ]
+      ]
+    },
+    "DSC_2764.JPG": {
+      "rating": "good",
+      "detections": [
+        {
+          "class_name": "framed artwork",
+          "confidence": 0.8714,
+          "bbox": [
+            66,
+            339,
+            2781,
+            3479
+          ]
+        },
+        {
+          "class_name": "painted figure",
+          "confidence": 0.4324,
+          "bbox": [
+            1331,
+            1099,
+            1979,
+            3043
+          ]
+        },
+        {
+          "class_name": "painted figure",
+          "confidence": 0.4082,
+          "bbox": [
+            660,
+            1091,
+            1411,
+            3058
+          ]
+        }
+      ],
+      "primary": {
+        "class_name": "framed artwork",
+        "confidence": 0.8714,
+        "bbox": [
+          66,
+          339,
+          2781,
+          3479
+        ]
+      },
+      "is_correct": true,
+      "best_iou": 0.9669,
+      "ground_truth_boxes": [
+        [
+          405,
+          749,
+          2435,
+          3139
+        ],
+        [
+          40,
+          340,
+          2777,
+          3550
+        ]
+      ]
+    },
+    "DSC_2816.JPG": {
+      "rating": "good",
+      "detections": [
+        {
+          "class_name": "statue on display",
+          "confidence": 0.5297,
+          "bbox": [
+            538,
+            1461,
+            1073,
+            2330
+          ]
+        },
+        {
+          "class_name": "painted mural",
+          "confidence": 0.4178,
+          "bbox": [
+            501,
+            1105,
+            3717,
+            2402
+          ]
+        },
+        {
+          "class_name": "sculpture",
+          "confidence": 0.2501,
+          "bbox": [
+            3094,
+            1211,
+            3555,
+            1608
+          ]
+        }
+      ],
+      "primary": {
+        "class_name": "painted mural",
+        "confidence": 0.4178,
+        "bbox": [
+          501,
+          1105,
+          3717,
+          2402
+        ]
+      },
+      "is_correct": true,
+      "best_iou": 0.8574,
+      "ground_truth_boxes": [
+        [
+          527,
+          1128,
+          3776,
+          2554
+        ],
+        [
+          527,
+          1365,
+          1123,
+          2365
+        ],
+        [
+          3047,
+          1138,
+          3754,
+          2014
+        ]
+      ]
+    },
+    "DSC_2846.JPG": {
+      "rating": "good",
+      "detections": [
+        {
+          "class_name": "pottery",
+          "confidence": 0.4654,
+          "bbox": [
+            405,
+            2757,
+            505,
+            2856
+          ]
+        },
+        {
+          "class_name": "mosaic",
+          "confidence": 0.3191,
+          "bbox": [
+            434,
+            1783,
+            1519,
+            2114
+          ]
+        },
+        {
+          "class_name": "exhibit",
+          "confidence": 0.3135,
+          "bbox": [
+            909,
+            2195,
+            1428,
+            2393
+          ]
+        },
+        {
+          "class_name": "painted figure",
+          "confidence": 0.2898,
+          "bbox": [
+            1656,
+            1019,
+            2134,
+            1640
+          ]
+        },
+        {
+          "class_name": "painted mural",
+          "confidence": 0.2834,
+          "bbox": [
+            916,
+            2342,
+            1144,
+            2762
+          ]
+        },
+        {
+          "class_name": "figurine",
+          "confidence": 0.2713,
+          "bbox": [
+            2526,
+            1147,
+            2624,
+            1297
+          ]
+        },
+        {
+          "class_name": "mural",
+          "confidence": 0.2643,
+          "bbox": [
+            0,
+            2351,
+            110,
+            2583
+          ]
+        },
+        {
+          "class_name": "artistic",
+          "confidence": 0.2551,
+          "bbox": [
+            3410,
+            2631,
+            3561,
+            2831
+          ]
+        },
+        {
+          "class_name": "figure",
+          "confidence": 0.253,
+          "bbox": [
+            630,
+            2418,
+            800,
+            2626
+          ]
+        }
+      ],
+      "primary": {
+        "class_name": "painted figure",
+        "confidence": 0.2898,
+        "bbox": [
+          1656,
+          1019,
+          2134,
+          1640
+        ]
+      },
+      "is_correct": true,
+      "best_iou": 0.6868,
+      "ground_truth_boxes": [
+        [
+          1616,
+          993,
+          2247,
+          1678
+        ]
+      ]
+    },
+    "DSC_2902.JPG": {
+      "rating": "good",
+      "detections": [
+        {
+          "class_name": "sculpture statue",
+          "confidence": 0.3748,
+          "bbox": [
+            1752,
+            1370,
+            2481,
+            2758
+          ]
+        },
+        {
+          "class_name": "figurine",
+          "confidence": 0.3283,
+          "bbox": [
+            1723,
+            1095,
+            2031,
+            1460
+          ]
+        },
+        {
+          "class_name": "mosaic",
+          "confidence": 0.2866,
+          "bbox": [
+            21,
+            2095,
+            420,
+            2303
+          ]
+        },
+        {
+          "class_name": "painting",
+          "confidence": 0.2802,
+          "bbox": [
+            21,
+            38,
+            3975,
+            2978
+          ]
+        }
+      ],
+      "primary": {
+        "class_name": "sculpture statue",
+        "confidence": 0.3748,
+        "bbox": [
+          1752,
+          1370,
+          2481,
+          2758
+        ]
+      },
+      "is_correct": true,
+      "best_iou": 0.7505,
+      "ground_truth_boxes": [
+        [
+          1683,
+          1081,
+          2496,
+          2783
+        ],
+        [
+          1693,
+          1213,
+          2409,
+          2747
+        ]
+      ]
+    },
+    "DSC_3089.JPG": {
+      "rating": "good",
+      "detections": [
+        {
+          "class_name": "statue on display",
+          "confidence": 0.5654,
+          "bbox": [
+            2646,
+            870,
+            3582,
+            2049
+          ]
+        },
+        {
+          "class_name": "painted mural",
+          "confidence": 0.3401,
+          "bbox": [
+            473,
+            809,
+            1561,
+            2632
+          ]
+        },
+        {
+          "class_name": "figurine",
+          "confidence": 0.3109,
+          "bbox": [
+            80,
+            1179,
+            473,
+            2004
+          ]
+        }
+      ],
+      "primary": {
+        "class_name": "statue on display",
+        "confidence": 0.5654,
+        "bbox": [
+          2646,
+          870,
+          3582,
+          2049
+        ]
+      },
+      "is_correct": true,
+      "best_iou": 0.8411,
+      "ground_truth_boxes": [
+        [
+          385,
+          745,
+          1683,
+          2740
+        ],
+        [
+          1674,
+          673,
+          2647,
+          2047
+        ],
+        [
+          2576,
+          833,
+          3616,
+          2002
+        ],
+        [
+          1683,
+          2056,
+          2629,
+          2665
+        ]
+      ]
+    },
+    "DSC_3148.JPG": {
+      "rating": "good",
+      "detections": [
+        {
+          "class_name": "mural",
+          "confidence": 0.4767,
+          "bbox": [
+            275,
+            666,
+            3876,
+            2644
+          ]
+        }
+      ],
+      "primary": {
+        "class_name": "mural",
+        "confidence": 0.4767,
+        "bbox": [
+          275,
+          666,
+          3876,
+          2644
+        ]
+      },
+      "is_correct": true,
+      "best_iou": 0.8419,
+      "ground_truth_boxes": [
+        [
+          305,
+          328,
+          3865,
+          2635
+        ]
+      ]
+    },
+    "DSC_3152.JPG": {
+      "rating": "good",
+      "detections": [
+        {
+          "class_name": "framed artwork",
+          "confidence": 0.6745,
+          "bbox": [
+            833,
+            460,
+            2958,
+            2443
+          ]
+        },
+        {
+          "class_name": "mosaic",
+          "confidence": 0.296,
+          "bbox": [
+            3390,
+            2220,
+            3789,
+            2454
+          ]
+        }
+      ],
+      "primary": {
+        "class_name": "framed artwork",
+        "confidence": 0.6745,
+        "bbox": [
+          833,
+          460,
+          2958,
+          2443
+        ]
+      },
+      "is_correct": true,
+      "best_iou": 0.7112,
+      "ground_truth_boxes": [
+        [
+          1065,
+          683,
+          2723,
+          2221
+        ],
+        [
+          627,
+          249,
+          3124,
+          2622
+        ]
+      ]
+    },
+    "DSC_3157.JPG": {
+      "rating": "good",
+      "detections": [
+        {
+          "class_name": "street art",
+          "confidence": 0.315,
+          "bbox": [
+            393,
+            1121,
+            1048,
+            1952
+          ]
+        },
+        {
+          "class_name": "painting artwork mural",
+          "confidence": 0.3011,
+          "bbox": [
+            424,
+            725,
+            2560,
+            3081
+          ]
+        },
+        {
+          "class_name": "figure",
+          "confidence": 0.2565,
+          "bbox": [
+            2516,
+            2595,
+            2650,
+            2820
+          ]
+        }
+      ],
+      "primary": {
+        "class_name": "painting artwork mural",
+        "confidence": 0.3011,
+        "bbox": [
+          424,
+          725,
+          2560,
+          3081
+        ]
+      },
+      "is_correct": true,
+      "best_iou": 0.7475,
+      "ground_truth_boxes": [
+        [
+          252,
+          766,
+          2825,
+          3303
+        ]
+      ]
+    },
+    "DSC_3201.JPG": {
+      "rating": "good",
+      "detections": [
+        {
+          "class_name": "framed artwork",
+          "confidence": 0.6085,
+          "bbox": [
+            123,
+            441,
+            3709,
+            2551
+          ]
+        },
+        {
+          "class_name": "painted figure",
+          "confidence": 0.3934,
+          "bbox": [
+            1406,
+            573,
+            1995,
+            1768
+          ]
+        }
+      ],
+      "primary": {
+        "class_name": "framed artwork",
+        "confidence": 0.6085,
+        "bbox": [
+          123,
+          441,
+          3709,
+          2551
+        ]
+      },
+      "is_correct": true,
+      "best_iou": 0.8711,
+      "ground_truth_boxes": [
+        [
+          172,
+          251,
+          3772,
+          2505
+        ]
+      ]
+    },
+    "DSC_3338.JPG": {
+      "rating": "good",
+      "detections": [
+        {
+          "class_name": "mural",
+          "confidence": 0.8433,
+          "bbox": [
+            271,
+            528,
+            2708,
+            3457
+          ]
+        },
+        {
+          "class_name": "mosaic",
+          "confidence": 0.2687,
+          "bbox": [
+            2202,
+            2970,
+            2978,
+            3471
+          ]
+        }
+      ],
+      "primary": {
+        "class_name": "mural",
+        "confidence": 0.8433,
+        "bbox": [
+          271,
+          528,
+          2708,
+          3457
+        ]
+      },
+      "is_correct": true,
+      "best_iou": 0.3897,
+      "ground_truth_boxes": [
+        [
+          729,
+          1390,
+          2312,
+          3147
+        ],
+        [
+          1012,
+          10,
+          2992,
+          1413
+        ],
+        [
+          730,
+          1413,
+          2190,
+          3187
+        ]
+      ]
+    },
+    "DSC_3412.JPG": {
+      "rating": "good",
+      "detections": [
+        {
+          "class_name": "artwork decorative art",
+          "confidence": 0.3483,
+          "bbox": [
+            1128,
+            1883,
+            2100,
+            2819
+          ]
+        },
+        {
+          "class_name": "figure figurine",
+          "confidence": 0.2673,
+          "bbox": [
+            950,
+            1544,
+            1226,
+            1913
+          ]
+        },
+        {
+          "class_name": "street art",
+          "confidence": 0.2612,
+          "bbox": [
+            0,
+            806,
+            2999,
+            3985
+          ]
+        }
+      ],
+      "primary": {
+        "class_name": "artwork decorative art",
+        "confidence": 0.3483,
+        "bbox": [
+          1128,
+          1883,
+          2100,
+          2819
+        ]
+      },
+      "is_correct": true,
+      "best_iou": 0.898,
+      "ground_truth_boxes": [
+        [
+          1115,
+          1885,
+          2152,
+          2858
+        ]
+      ]
+    },
+    "DSC_3614.JPG": {
+      "rating": "good",
+      "detections": [
+        {
+          "class_name": "painted figure",
+          "confidence": 0.4194,
+          "bbox": [
+            2074,
+            1531,
+            2232,
+            1966
+          ]
+        },
+        {
+          "class_name": "street art",
+          "confidence": 0.3391,
+          "bbox": [
+            112,
+            1277,
+            913,
+            2979
+          ]
+        }
+      ],
+      "primary": {
+        "class_name": "painted figure",
+        "confidence": 0.4194,
+        "bbox": [
+          2074,
+          1531,
+          2232,
+          1966
+        ]
+      },
+      "is_correct": true,
+      "best_iou": 0.3962,
+      "ground_truth_boxes": [
+        [
+          2029,
+          1188,
+          2252,
+          1966
+        ]
+      ]
+    },
+    "DSC_3667.JPG": {
+      "rating": "good",
+      "detections": [
+        {
+          "class_name": "mural",
+          "confidence": 0.4352,
+          "bbox": [
+            706,
+            299,
+            3773,
+            2375
+          ]
+        },
+        {
+          "class_name": "mosaic",
+          "confidence": 0.3362,
+          "bbox": [
+            234,
+            1815,
+            1633,
+            2493
+          ]
+        },
+        {
+          "class_name": "figure figurine",
+          "confidence": 0.3299,
+          "bbox": [
+            637,
+            756,
+            1341,
+            1873
+          ]
+        },
+        {
+          "class_name": "figure figurine",
+          "confidence": 0.3283,
+          "bbox": [
+            1376,
+            964,
+            1914,
+            1929
+          ]
+        },
+        {
+          "class_name": "street",
+          "confidence": 0.2916,
+          "bbox": [
+            3,
+            7,
+            238,
+            526
+          ]
+        },
+        {
+          "class_name": "mosaic",
+          "confidence": 0.2684,
+          "bbox": [
+            1657,
+            1937,
+            3973,
+            2871
+          ]
+        }
+      ],
+      "primary": {
+        "class_name": "mural",
+        "confidence": 0.4352,
+        "bbox": [
+          706,
+          299,
+          3773,
+          2375
+        ]
+      },
+      "is_correct": true,
+      "best_iou": 0.3277,
+      "ground_truth_boxes": [
+        [
+          616,
+          696,
+          1372,
+          1892
+        ],
+        [
+          1976,
+          399,
+          3252,
+          2034
+        ],
+        [
+          1407,
+          905,
+          1927,
+          1928
+        ],
+        [
+          1396,
+          978,
+          1893,
+          1920
+        ],
+        [
+          653,
+          756,
+          1329,
+          1867
+        ],
+        [
+          2040,
+          511,
+          3147,
+          1640
+        ],
+        [
+          1991,
+          467,
+          3209,
+          2000
+        ],
+        [
+          644,
+          760,
+          1338,
+          1867
+        ],
+        [
+          2004,
+          458,
+          3173,
+          2000
+        ]
+      ]
+    },
+    "DSC_3672.JPG": {
+      "rating": "good",
+      "detections": [
+        {
+          "class_name": "painted mural",
+          "confidence": 0.6629,
+          "bbox": [
+            1120,
+            743,
+            3254,
+            2529
+          ]
+        },
+        {
+          "class_name": "street",
+          "confidence": 0.2994,
+          "bbox": [
+            13,
+            175,
+            644,
+            1681
+          ]
+        },
+        {
+          "class_name": "figure",
+          "confidence": 0.2806,
+          "bbox": [
+            1195,
+            335,
+            1986,
+            2484
+          ]
+        }
+      ],
+      "primary": {
+        "class_name": "painted mural",
+        "confidence": 0.6629,
+        "bbox": [
+          1120,
+          743,
+          3254,
+          2529
+        ]
+      },
+      "is_correct": true,
+      "best_iou": 0.4712,
+      "ground_truth_boxes": [
+        [
+          1043,
+          341,
+          2127,
+          2527
+        ],
+        [
+          1492,
+          1278,
+          3443,
+          2852
+        ]
+      ]
+    },
+    "DSC_3892.JPG": {
+      "rating": "good",
+      "detections": [
+        {
+          "class_name": "painted mural",
+          "confidence": 0.7351,
+          "bbox": [
+            0,
+            3,
+            3812,
+            2989
+          ]
+        },
+        {
+          "class_name": "painted figure figurine",
+          "confidence": 0.3595,
+          "bbox": [
+            1652,
+            473,
+            2740,
+            2315
+          ]
+        }
+      ],
+      "primary": {
+        "class_name": "painted figure figurine",
+        "confidence": 0.3595,
+        "bbox": [
+          1652,
+          473,
+          2740,
+          2315
+        ]
+      },
+      "is_correct": true,
+      "best_iou": 0.9505,
+      "ground_truth_boxes": [
+        [
+          1629,
+          411,
+          2732,
+          2376
+        ],
+        [
+          2656,
+          549,
+          3305,
+          1873
+        ],
+        [
+          1658,
+          493,
+          2724,
+          2280
+        ]
+      ]
+    },
+    "DSC_3894.JPG": {
+      "rating": "good",
+      "detections": [
+        {
+          "class_name": "tile art",
+          "confidence": 0.5479,
+          "bbox": [
+            2591,
+            2725,
+            3204,
+            2978
+          ]
+        },
+        {
+          "class_name": "mural",
+          "confidence": 0.405,
+          "bbox": [
+            618,
+            709,
+            3447,
+            2476
+          ]
+        },
+        {
+          "class_name": "tile art",
+          "confidence": 0.2726,
+          "bbox": [
+            831,
+            1980,
+            946,
+            2094
+          ]
+        }
+      ],
+      "primary": {
+        "class_name": "mural",
+        "confidence": 0.405,
+        "bbox": [
+          618,
+          709,
+          3447,
+          2476
+        ]
+      },
+      "is_correct": true,
+      "best_iou": 0.8644,
+      "ground_truth_boxes": [
+        [
+          420,
+          670,
+          3563,
+          2510
+        ]
+      ]
+    },
+    "DSC_3935.JPG": {
+      "rating": "good",
+      "detections": [
+        {
+          "class_name": "painted figure",
+          "confidence": 0.3669,
+          "bbox": [
+            1602,
+            932,
+            3281,
+            2222
+          ]
+        },
+        {
+          "class_name": "sculpture on pedestal",
+          "confidence": 0.3589,
+          "bbox": [
+            3294,
+            1869,
+            3602,
+            2270
+          ]
+        },
+        {
+          "class_name": "mural",
+          "confidence": 0.3557,
+          "bbox": [
+            158,
+            2,
+            3951,
+            2244
+          ]
+        },
+        {
+          "class_name": "painted figure",
+          "confidence": 0.3386,
+          "bbox": [
+            1545,
+            871,
+            2432,
+            1983
+          ]
+        },
+        {
+          "class_name": "wall-mounted art",
+          "confidence": 0.3033,
+          "bbox": [
+            5,
+            16,
+            508,
+            2283
+          ]
+        },
+        {
+          "class_name": "figure",
+          "confidence": 0.2981,
+          "bbox": [
+            600,
+            947,
+            1647,
+            2179
+          ]
+        }
+      ],
+      "primary": {
+        "class_name": "painted figure",
+        "confidence": 0.3669,
+        "bbox": [
+          1602,
+          932,
+          3281,
+          2222
+        ]
+      },
+      "is_correct": true,
+      "best_iou": 0.5312,
+      "ground_truth_boxes": [
+        [
+          554,
+          914,
+          3572,
+          2265
+        ],
+        [
+          462,
+          1040,
+          3262,
+          2298
+        ],
+        [
+          453,
+          1031,
+          3236,
+          2280
+        ]
+      ]
+    },
+    "DSC_3937.JPG": {
+      "rating": "good",
+      "detections": [
+        {
+          "class_name": "mural",
+          "confidence": 0.5144,
+          "bbox": [
+            1168,
+            242,
+            1896,
+            3656
+          ]
+        }
+      ],
+      "primary": {
+        "class_name": "mural",
+        "confidence": 0.5144,
+        "bbox": [
+          1168,
+          242,
+          1896,
+          3656
+        ]
+      },
+      "is_correct": true,
+      "best_iou": 0.7644,
+      "ground_truth_boxes": [
+        [
+          1102,
+          89,
+          1995,
+          3572
+        ]
+      ]
+    },
+    "DSC_3950.JPG": {
+      "rating": "good",
+      "detections": [
+        {
+          "class_name": "painted figure",
+          "confidence": 0.3395,
+          "bbox": [
+            2308,
+            1119,
+            3253,
+            2017
+          ]
+        },
+        {
+          "class_name": "painted mural",
+          "confidence": 0.3132,
+          "bbox": [
+            714,
+            767,
+            3386,
+            2563
+          ]
+        }
+      ],
+      "primary": {
+        "class_name": "painted mural",
+        "confidence": 0.3132,
+        "bbox": [
+          714,
+          767,
+          3386,
+          2563
+        ]
+      },
+      "is_correct": true,
+      "best_iou": 0.9351,
+      "ground_truth_boxes": [
+        [
+          723,
+          803,
+          3372,
+          2497
+        ]
+      ]
+    },
+    "DSC_4020.JPG": {
+      "rating": "good",
+      "detections": [
+        {
+          "class_name": "tile art",
+          "confidence": 0.4518,
+          "bbox": [
+            1198,
+            1218,
+            1414,
+            1433
+          ]
+        },
+        {
+          "class_name": "artistic object",
+          "confidence": 0.2812,
+          "bbox": [
+            372,
+            1801,
+            716,
+            2326
+          ]
+        },
+        {
+          "class_name": "exhibit",
+          "confidence": 0.2661,
+          "bbox": [
+            248,
+            15,
+            2429,
+            3242
+          ]
+        },
+        {
+          "class_name": "wall art",
+          "confidence": 0.2657,
+          "bbox": [
+            958,
+            674,
+            1941,
+            1529
+          ]
+        }
+      ],
+      "primary": {
+        "class_name": "tile art",
+        "confidence": 0.4518,
+        "bbox": [
+          1198,
+          1218,
+          1414,
+          1433
+        ]
+      },
+      "is_correct": true,
+      "best_iou": 0.9681,
+      "ground_truth_boxes": [
+        [
+          1197,
+          1216,
+          1412,
+          1431
+        ],
+        [
+          370,
+          1801,
+          715,
+          2326
+        ]
+      ]
+    },
+    "DSC_4089.JPG": {
+      "rating": "good",
+      "detections": [
+        {
+          "class_name": "decorative art",
+          "confidence": 0.3279,
+          "bbox": [
+            1462,
+            1107,
+            2057,
+            1448
+          ]
+        },
+        {
+          "class_name": "figurine",
+          "confidence": 0.2912,
+          "bbox": [
+            1676,
+            1810,
+            1961,
+            2044
+          ]
+        },
+        {
+          "class_name": "wall art",
+          "confidence": 0.2764,
+          "bbox": [
+            31,
+            19,
+            2289,
+            1457
+          ]
+        },
+        {
+          "class_name": "street",
+          "confidence": 0.2633,
+          "bbox": [
+            2870,
+            1945,
+            3252,
+            2431
+          ]
+        },
+        {
+          "class_name": "##ne",
+          "confidence": 0.2571,
+          "bbox": [
+            954,
+            1180,
+            1175,
+            1435
+          ]
+        }
+      ],
+      "primary": {
+        "class_name": "decorative art",
+        "confidence": 0.3279,
+        "bbox": [
+          1462,
+          1107,
+          2057,
+          1448
+        ]
+      },
+      "is_correct": true,
+      "best_iou": 0.4116,
+      "ground_truth_boxes": [
+        [
+          934,
+          1042,
+          2051,
+          1477
+        ]
+      ]
+    },
+    "DSC_4103_0.JPG": {
+      "rating": "good",
+      "detections": [
+        {
+          "class_name": "painting artwork mural wall art",
+          "confidence": 0.3254,
+          "bbox": [
+            1202,
+            822,
+            2721,
+            1990
+          ]
+        },
+        {
+          "class_name": "sculpture statue painted figure",
+          "confidence": 0.301,
+          "bbox": [
+            1747,
+            1656,
+            2044,
+            2177
+          ]
+        },
+        {
+          "class_name": "mosaic",
+          "confidence": 0.2924,
+          "bbox": [
+            1239,
+            898,
+            2169,
+            1382
+          ]
+        },
+        {
+          "class_name": "art installation exhibit street",
+          "confidence": 0.2921,
+          "bbox": [
+            3321,
+            174,
+            3978,
+            2915
+          ]
+        },
+        {
+          "class_name": "painted figure",
+          "confidence": 0.2885,
+          "bbox": [
+            1281,
+            1461,
+            1612,
+            1772
+          ]
+        }
+      ],
+      "primary": {
+        "class_name": "painting artwork mural wall art",
+        "confidence": 0.3254,
+        "bbox": [
+          1202,
+          822,
+          2721,
+          1990
+        ]
+      },
+      "is_correct": true,
+      "best_iou": 0.7589,
+      "ground_truth_boxes": [
+        [
+          1225,
+          835,
+          2732,
+          2315
+        ]
+      ]
+    },
+    "DSC_4107.JPG": {
+      "rating": "good",
+      "detections": [
+        {
+          "class_name": "painted mural",
+          "confidence": 0.3387,
+          "bbox": [
+            2586,
+            2282,
+            2674,
+            2499
+          ]
+        },
+        {
+          "class_name": "painted mural",
+          "confidence": 0.3363,
+          "bbox": [
+            2533,
+            1913,
+            2802,
+            2196
+          ]
+        },
+        {
+          "class_name": "mural",
+          "confidence": 0.3342,
+          "bbox": [
+            0,
+            18,
+            2458,
+            2988
+          ]
+        },
+        {
+          "class_name": "sculpture statue figure",
+          "confidence": 0.3168,
+          "bbox": [
+            888,
+            904,
+            2148,
+            1976
+          ]
+        },
+        {
+          "class_name": "mosaic",
+          "confidence": 0.2671,
+          "bbox": [
+            2554,
+            2174,
+            2941,
+            2289
+          ]
+        }
+      ],
+      "primary": {
+        "class_name": "sculpture statue figure",
+        "confidence": 0.3168,
+        "bbox": [
+          888,
+          904,
+          2148,
+          1976
+        ]
+      },
+      "is_correct": true,
+      "best_iou": 0.8324,
+      "ground_truth_boxes": [
+        [
+          914,
+          877,
+          2292,
+          2010
+        ],
+        [
+          947,
+          933,
+          1916,
+          1964
+        ]
+      ]
+    },
+    "DSC_4115.JPG": {
+      "rating": "good",
+      "detections": [
+        {
+          "class_name": "exhibit",
+          "confidence": 0.3006,
+          "bbox": [
+            40,
+            22,
+            2980,
+            3976
+          ]
+        },
+        {
+          "class_name": "mosaic mural art",
+          "confidence": 0.2632,
+          "bbox": [
+            1358,
+            1280,
+            1835,
+            1632
+          ]
+        },
+        {
+          "class_name": "figure",
+          "confidence": 0.2571,
+          "bbox": [
+            1,
+            3550,
+            137,
+            3745
+          ]
+        },
+        {
+          "class_name": "figure",
+          "confidence": 0.2566,
+          "bbox": [
+            1440,
+            3283,
+            1711,
+            3471
+          ]
+        }
+      ],
+      "primary": {
+        "class_name": "mosaic mural art",
+        "confidence": 0.2632,
+        "bbox": [
+          1358,
+          1280,
+          1835,
+          1632
+        ]
+      },
+      "is_correct": true,
+      "best_iou": 0.9881,
+      "ground_truth_boxes": [
+        [
+          1357,
+          1280,
+          1833,
+          1630
+        ]
+      ]
+    },
+    "DSC_4135.JPG": {
+      "rating": "good",
+      "detections": [
+        {
+          "class_name": "mural",
+          "confidence": 0.5405,
+          "bbox": [
+            964,
+            662,
+            3190,
+            2432
+          ]
+        }
+      ],
+      "primary": {
+        "class_name": "mural",
+        "confidence": 0.5405,
+        "bbox": [
+          964,
+          662,
+          3190,
+          2432
+        ]
+      },
+      "is_correct": true,
+      "best_iou": 0.7851,
+      "ground_truth_boxes": [
+        [
+          1060,
+          737,
+          3385,
+          2573
+        ]
+      ]
+    },
+    "DSC_4158.JPG": {
+      "rating": "good",
+      "detections": [
+        {
+          "class_name": "street",
+          "confidence": 0.2957,
+          "bbox": [
+            868,
+            1454,
+            1108,
+            1846
+          ]
+        },
+        {
+          "class_name": "mosaic",
+          "confidence": 0.2722,
+          "bbox": [
+            1401,
+            628,
+            2782,
+            1843
+          ]
+        },
+        {
+          "class_name": "figure",
+          "confidence": 0.2669,
+          "bbox": [
+            1039,
+            1683,
+            1109,
+            1852
+          ]
+        },
+        {
+          "class_name": "street",
+          "confidence": 0.2652,
+          "bbox": [
+            205,
+            525,
+            790,
+            2973
+          ]
+        },
+        {
+          "class_name": "street",
+          "confidence": 0.2566,
+          "bbox": [
+            285,
+            1297,
+            443,
+            1983
+          ]
+        },
+        {
+          "class_name": "figure",
+          "confidence": 0.2519,
+          "bbox": [
+            967,
+            1678,
+            1057,
+            1875
+          ]
+        }
+      ],
+      "primary": {
+        "class_name": "mosaic",
+        "confidence": 0.2722,
+        "bbox": [
+          1401,
+          628,
+          2782,
+          1843
+        ]
+      },
+      "is_correct": true,
+      "best_iou": 0.5492,
+      "ground_truth_boxes": [
+        [
+          1349,
+          463,
+          2860,
+          2485
+        ]
+      ]
+    },
+    "DSC_4163.JPG": {
+      "rating": "good",
+      "detections": [
+        {
+          "class_name": "sculpture painted figure",
+          "confidence": 0.2924,
+          "bbox": [
+            1264,
+            1607,
+            1514,
+            1926
+          ]
+        },
+        {
+          "class_name": "mosaic",
+          "confidence": 0.292,
+          "bbox": [
+            1554,
+            1486,
+            1776,
+            1751
+          ]
+        },
+        {
+          "class_name": "figurine",
+          "confidence": 0.2904,
+          "bbox": [
+            1510,
+            2343,
+            1640,
+            2572
+          ]
+        },
+        {
+          "class_name": "street",
+          "confidence": 0.2836,
+          "bbox": [
+            147,
+            2530,
+            428,
+            3947
+          ]
+        },
+        {
+          "class_name": "exhibit",
+          "confidence": 0.277,
+          "bbox": [
+            611,
+            814,
+            2387,
+            3185
+          ]
+        }
+      ],
+      "primary": {
+        "class_name": "sculpture painted figure",
+        "confidence": 0.2924,
+        "bbox": [
+          1264,
+          1607,
+          1514,
+          1926
+        ]
+      },
+      "is_correct": true,
+      "best_iou": 0.9827,
+      "ground_truth_boxes": [
+        [
+          1263,
+          1607,
+          1513,
+          1923
+        ]
+      ]
+    },
+    "DSC_4168.JPG": {
+      "rating": "good",
+      "detections": [
+        {
+          "class_name": "painted figure figurine",
+          "confidence": 0.3688,
+          "bbox": [
+            957,
+            1696,
+            1195,
+            1908
+          ]
+        },
+        {
+          "class_name": "decorated sign",
+          "confidence": 0.3568,
+          "bbox": [
+            1348,
+            1167,
+            1770,
+            1574
+          ]
+        },
+        {
+          "class_name": "street art",
+          "confidence": 0.3239,
+          "bbox": [
+            160,
+            2069,
+            1024,
+            3249
+          ]
+        }
+      ],
+      "primary": {
+        "class_name": "painted figure figurine",
+        "confidence": 0.3688,
+        "bbox": [
+          957,
+          1696,
+          1195,
+          1908
+        ]
+      },
+      "is_correct": true,
+      "best_iou": 0.9783,
+      "ground_truth_boxes": [
+        [
+          955,
+          1695,
+          1194,
+          1907
+        ]
+      ]
+    },
+    "DSC_4198.JPG": {
+      "rating": "good",
+      "detections": [
+        {
+          "class_name": "painted figure figurine",
+          "confidence": 0.3598,
+          "bbox": [
+            1197,
+            1581,
+            1994,
+            2169
+          ]
+        },
+        {
+          "class_name": "mosaic",
+          "confidence": 0.3009,
+          "bbox": [
+            1988,
+            1158,
+            2985,
+            2166
+          ]
+        },
+        {
+          "class_name": "sculpture",
+          "confidence": 0.2624,
+          "bbox": [
+            21,
+            2700,
+            1247,
+            3926
+          ]
+        }
+      ],
+      "primary": {
+        "class_name": "painted figure figurine",
+        "confidence": 0.3598,
+        "bbox": [
+          1197,
+          1581,
+          1994,
+          2169
+        ]
+      },
+      "is_correct": true,
+      "best_iou": 0.7575,
+      "ground_truth_boxes": [
+        [
+          1199,
+          1504,
+          2002,
+          2271
+        ]
+      ]
+    },
+    "DSC_4201.JPG": {
+      "rating": "good",
+      "detections": [
+        {
+          "class_name": "mural",
+          "confidence": 0.4777,
+          "bbox": [
+            9,
+            814,
+            3252,
+            1607
+          ]
+        },
+        {
+          "class_name": "figure",
+          "confidence": 0.2562,
+          "bbox": [
+            2680,
+            1147,
+            3254,
+            1523
+          ]
+        },
+        {
+          "class_name": "mosaic",
+          "confidence": 0.2501,
+          "bbox": [
+            9,
+            843,
+            797,
+            1152
+          ]
+        }
+      ],
+      "primary": {
+        "class_name": "mural",
+        "confidence": 0.4777,
+        "bbox": [
+          9,
+          814,
+          3252,
+          1607
+        ]
+      },
+      "is_correct": true,
+      "best_iou": 0.5215,
+      "ground_truth_boxes": [
+        [
+          619,
+          978,
+          2762,
+          1613
+        ]
+      ]
+    },
+    "DSC_4294.JPG": {
+      "rating": "good",
+      "detections": [
+        {
+          "class_name": "vase",
+          "confidence": 0.6485,
+          "bbox": [
+            1597,
+            645,
+            1714,
+            781
+          ]
+        },
+        {
+          "class_name": "vase",
+          "confidence": 0.5853,
+          "bbox": [
+            1582,
+            981,
+            1696,
+            1112
+          ]
+        },
+        {
+          "class_name": "painted figure figurine",
+          "confidence": 0.3299,
+          "bbox": [
+            1518,
+            814,
+            1663,
+            950
+          ]
+        },
+        {
+          "class_name": "exhibit",
+          "confidence": 0.3007,
+          "bbox": [
+            983,
+            376,
+            2651,
+            2254
+          ]
+        },
+        {
+          "class_name": "mosaic",
+          "confidence": 0.2596,
+          "bbox": [
+            1738,
+            1725,
+            1912,
+            1880
+          ]
+        },
+        {
+          "class_name": "art installation",
+          "confidence": 0.256,
+          "bbox": [
+            1283,
+            630,
+            1948,
+            1341
+          ]
+        },
+        {
+          "class_name": "mosaic",
+          "confidence": 0.2524,
+          "bbox": [
+            1017,
+            1981,
+            1291,
+            2437
+          ]
+        },
+        {
+          "class_name": "art",
+          "confidence": 0.2505,
+          "bbox": [
+            2064,
+            1888,
+            3249,
+            2434
+          ]
+        }
+      ],
+      "primary": {
+        "class_name": "art installation",
+        "confidence": 0.256,
+        "bbox": [
+          1283,
+          630,
+          1948,
+          1341
+        ]
+      },
+      "is_correct": true,
+      "best_iou": 0.9872,
+      "ground_truth_boxes": [
+        [
+          1280,
+          627,
+          1948,
+          1338
+        ]
+      ]
+    },
+    "DSC_4302.JPG": {
+      "rating": "good",
+      "detections": [
+        {
+          "class_name": "exhibit",
+          "confidence": 0.3055,
+          "bbox": [
+            819,
+            614,
+            3180,
+            2386
+          ]
+        },
+        {
+          "class_name": "mosaic",
+          "confidence": 0.2822,
+          "bbox": [
+            1954,
+            960,
+            2174,
+            1116
+          ]
+        },
+        {
+          "class_name": "pottery",
+          "confidence": 0.2746,
+          "bbox": [
+            3237,
+            2663,
+            3394,
+            2764
+          ]
+        },
+        {
+          "class_name": "figurine",
+          "confidence": 0.2631,
+          "bbox": [
+            3457,
+            2009,
+            3583,
+            2142
+          ]
+        }
+      ],
+      "primary": {
+        "class_name": "mosaic",
+        "confidence": 0.2822,
+        "bbox": [
+          1954,
+          960,
+          2174,
+          1116
+        ]
+      },
+      "is_correct": true,
+      "best_iou": 0.9821,
+      "ground_truth_boxes": [
+        [
+          1951,
+          960,
+          2173,
+          1116
+        ]
+      ]
+    },
+    "DSC_4303.JPG": {
+      "rating": "good",
+      "detections": [
+        {
+          "class_name": "sculpture statue painted figure",
+          "confidence": 0.3381,
+          "bbox": [
+            2675,
+            2162,
+            2870,
+            2448
+          ]
+        },
+        {
+          "class_name": "figurine",
+          "confidence": 0.2956,
+          "bbox": [
+            1862,
+            2245,
+            1987,
+            2393
+          ]
+        },
+        {
+          "class_name": "street",
+          "confidence": 0.2913,
+          "bbox": [
+            847,
+            843,
+            1187,
+            2069
+          ]
+        },
+        {
+          "class_name": "sculpture statue",
+          "confidence": 0.2805,
+          "bbox": [
+            1866,
+            995,
+            2168,
+            1480
+          ]
+        },
+        {
+          "class_name": "figure",
+          "confidence": 0.273,
+          "bbox": [
+            2482,
+            2179,
+            2615,
+            2394
+          ]
+        },
+        {
+          "class_name": "mosaic",
+          "confidence": 0.2716,
+          "bbox": [
+            1316,
+            2181,
+            1590,
+            2373
+          ]
+        }
+      ],
+      "primary": {
+        "class_name": "sculpture statue",
+        "confidence": 0.2805,
+        "bbox": [
+          1866,
+          995,
+          2168,
+          1480
+        ]
+      },
+      "is_correct": true,
+      "best_iou": 0.966,
+      "ground_truth_boxes": [
+        [
+          1862,
+          991,
+          2164,
+          1480
+        ]
+      ]
+    },
+    "DSC_4304.JPG": {
+      "rating": "good",
+      "detections": [
+        {
+          "class_name": "sculpture statue painted figure",
+          "confidence": 0.3544,
+          "bbox": [
+            1811,
+            1038,
+            2310,
+            1749
+          ]
+        },
+        {
+          "class_name": "sculpture statue painted figurene",
+          "confidence": 0.3193,
+          "bbox": [
+            3328,
+            2659,
+            3642,
+            2993
+          ]
+        },
+        {
+          "class_name": "street",
+          "confidence": 0.3122,
+          "bbox": [
+            1254,
+            548,
+            1552,
+            1832
+          ]
+        },
+        {
+          "class_name": "mosaic",
+          "confidence": 0.2956,
+          "bbox": [
+            986,
+            2659,
+            1350,
+            2917
+          ]
+        },
+        {
+          "class_name": "painted figure",
+          "confidence": 0.2951,
+          "bbox": [
+            2867,
+            2667,
+            3125,
+            2991
+          ]
+        },
+        {
+          "class_name": "street",
+          "confidence": 0.2748,
+          "bbox": [
+            842,
+            1185,
+            1080,
+            1661
+          ]
+        },
+        {
+          "class_name": "figne",
+          "confidence": 0.2582,
+          "bbox": [
+            2652,
+            2694,
+            2812,
+            2968
+          ]
+        },
+        {
+          "class_name": "exhibit",
+          "confidence": 0.254,
+          "bbox": [
+            864,
+            615,
+            3177,
+            2384
+          ]
+        }
+      ],
+      "primary": {
+        "class_name": "sculpture statue painted figure",
+        "confidence": 0.3544,
+        "bbox": [
+          1811,
+          1038,
+          2310,
+          1749
+        ]
+      },
+      "is_correct": true,
+      "best_iou": 0.9845,
+      "ground_truth_boxes": [
+        [
+          1809,
+          1036,
+          2307,
+          1747
+        ]
+      ]
+    },
+    "DSC_4304~2.JPG": {
+      "rating": "good",
+      "detections": [
+        {
+          "class_name": "sculpture statue painted figure",
+          "confidence": 0.331,
+          "bbox": [
+            1042,
+            756,
+            1443,
+            1336
+          ]
+        },
+        {
+          "class_name": "street",
+          "confidence": 0.3061,
+          "bbox": [
+            254,
+            109,
+            734,
+            1423
+          ]
+        },
+        {
+          "class_name": "exhibit",
+          "confidence": 0.2692,
+          "bbox": [
+            48,
+            27,
+            2503,
+            1874
+          ]
+        }
+      ],
+      "primary": {
+        "class_name": "sculpture statue painted figure",
+        "confidence": 0.331,
+        "bbox": [
+          1042,
+          756,
+          1443,
+          1336
+        ]
+      },
+      "is_correct": true,
+      "best_iou": 0.9808,
+      "ground_truth_boxes": [
+        [
+          982,
+          596,
+          1156,
+          725
+        ],
+        [
+          1040,
+          754,
+          1440,
+          1334
+        ]
+      ]
+    },
+    "DSC_4305.JPG": {
+      "rating": "good",
+      "detections": [
+        {
+          "class_name": "statue painted figure",
+          "confidence": 0.3462,
+          "bbox": [
+            2086,
+            519,
+            2306,
+            1009
+          ]
+        },
+        {
+          "class_name": "street",
+          "confidence": 0.3173,
+          "bbox": [
+            2558,
+            1876,
+            2849,
+            2105
+          ]
+        },
+        {
+          "class_name": "decorative art",
+          "confidence": 0.2676,
+          "bbox": [
+            826,
+            1080,
+            1161,
+            1692
+          ]
+        },
+        {
+          "class_name": "mosaic",
+          "confidence": 0.2629,
+          "bbox": [
+            1962,
+            1810,
+            2341,
+            2261
+          ]
+        },
+        {
+          "class_name": "street",
+          "confidence": 0.2575,
+          "bbox": [
+            2426,
+            1397,
+            2848,
+            2432
+          ]
+        }
+      ],
+      "primary": {
+        "class_name": "statue painted figure",
+        "confidence": 0.3462,
+        "bbox": [
+          2086,
+          519,
+          2306,
+          1009
+        ]
+      },
+      "is_correct": true,
+      "best_iou": 0.9799,
+      "ground_truth_boxes": [
+        [
+          2085,
+          519,
+          2303,
+          1008
+        ],
+        [
+          823,
+          1077,
+          1161,
+          1690
+        ]
+      ]
+    },
+    "DSC_4306.JPG": {
+      "rating": "good",
+      "detections": [
+        {
+          "class_name": "street art",
+          "confidence": 0.3458,
+          "bbox": [
+            2574,
+            425,
+            3245,
+            1701
+          ]
+        },
+        {
+          "class_name": "sculpture statue figurine",
+          "confidence": 0.3148,
+          "bbox": [
+            1585,
+            999,
+            2057,
+            1705
+          ]
+        },
+        {
+          "class_name": "painted figure figurine",
+          "confidence": 0.3081,
+          "bbox": [
+            1934,
+            1881,
+            2137,
+            2099
+          ]
+        },
+        {
+          "class_name": "mosaic",
+          "confidence": 0.2992,
+          "bbox": [
+            2326,
+            1290,
+            2583,
+            1541
+          ]
+        },
+        {
+          "class_name": "exhibit",
+          "confidence": 0.2663,
+          "bbox": [
+            37,
+            20,
+            3229,
+            2425
+          ]
+        }
+      ],
+      "primary": {
+        "class_name": "sculpture statue figurine",
+        "confidence": 0.3148,
+        "bbox": [
+          1585,
+          999,
+          2057,
+          1705
+        ]
+      },
+      "is_correct": true,
+      "best_iou": 0.8964,
+      "ground_truth_boxes": [
+        [
+          1609,
+          1020,
+          2066,
+          1699
+        ]
+      ]
+    },
+    "DSC_4328.JPG": {
+      "rating": "good",
+      "detections": [
+        {
+          "class_name": "framed artwork",
+          "confidence": 0.7932,
+          "bbox": [
+            701,
+            526,
+            2294,
+            3403
+          ]
+        },
+        {
+          "class_name": "framed artwork",
+          "confidence": 0.4591,
+          "bbox": [
+            2645,
+            917,
+            3000,
+            3386
+          ]
+        },
+        {
+          "class_name": "figurine",
+          "confidence": 0.43,
+          "bbox": [
+            1713,
+            1518,
+            2137,
+            2263
+          ]
+        }
+      ],
+      "primary": {
+        "class_name": "framed artwork",
+        "confidence": 0.7932,
+        "bbox": [
+          701,
+          526,
+          2294,
+          3403
+        ]
+      },
+      "is_correct": true,
+      "best_iou": 0.7981,
+      "ground_truth_boxes": [
+        [
+          792,
+          654,
+          2162,
+          3324
+        ]
+      ]
+    },
+    "DSC_4332.JPG": {
+      "rating": "good",
+      "detections": [
+        {
+          "class_name": "vase",
+          "confidence": 0.8355,
+          "bbox": [
+            4,
+            158,
+            886,
+            2571
+          ]
+        },
+        {
+          "class_name": "painting mural",
+          "confidence": 0.3137,
+          "bbox": [
+            940,
+            530,
+            3104,
+            2386
+          ]
+        }
+      ],
+      "primary": {
+        "class_name": "painting mural",
+        "confidence": 0.3137,
+        "bbox": [
+          940,
+          530,
+          3104,
+          2386
+        ]
+      },
+      "is_correct": true,
+      "best_iou": 0.9122,
+      "ground_truth_boxes": [
+        [
+          1043,
+          510,
+          3052,
+          2372
+        ],
+        [
+          1067,
+          542,
+          3040,
+          2338
+        ]
+      ]
+    },
+    "DSC_4375.JPG": {
+      "rating": "good",
+      "detections": [
+        {
+          "class_name": "painted figure figurine",
+          "confidence": 0.3268,
+          "bbox": [
+            1899,
+            1539,
+            2196,
+            1807
+          ]
+        },
+        {
+          "class_name": "exhibit",
+          "confidence": 0.2765,
+          "bbox": [
+            422,
+            355,
+            3571,
+            2669
+          ]
+        },
+        {
+          "class_name": "figure",
+          "confidence": 0.2617,
+          "bbox": [
+            1827,
+            1339,
+            2035,
+            1659
+          ]
+        }
+      ],
+      "primary": {
+        "class_name": "painted figure figurine",
+        "confidence": 0.3268,
+        "bbox": [
+          1899,
+          1539,
+          2196,
+          1807
+        ]
+      },
+      "is_correct": true,
+      "best_iou": 0.3416,
+      "ground_truth_boxes": [
+        [
+          1794,
+          1289,
+          2220,
+          1836
+        ]
+      ]
+    },
+    "DSC_4379.JPG": {
+      "rating": "good",
+      "detections": [
+        {
+          "class_name": "painted figure",
+          "confidence": 0.3873,
+          "bbox": [
+            1935,
+            1180,
+            2355,
+            1489
+          ]
+        },
+        {
+          "class_name": "art exhibit",
+          "confidence": 0.3224,
+          "bbox": [
+            36,
+            60,
+            2995,
+            2957
+          ]
+        }
+      ],
+      "primary": {
+        "class_name": "painted figure",
+        "confidence": 0.3873,
+        "bbox": [
+          1935,
+          1180,
+          2355,
+          1489
+        ]
+      },
+      "is_correct": true,
+      "best_iou": 0.9795,
+      "ground_truth_boxes": [
+        [
+          1933,
+          1178,
+          2351,
+          1489
+        ]
+      ]
+    },
+    "DSC_4381.JPG": {
+      "rating": "good",
+      "detections": [
+        {
+          "class_name": "decorated sign",
+          "confidence": 0.3269,
+          "bbox": [
+            6,
+            1862,
+            2268,
+            2712
+          ]
+        },
+        {
+          "class_name": "statue painted figure",
+          "confidence": 0.2839,
+          "bbox": [
+            1912,
+            986,
+            2066,
+            1345
+          ]
+        },
+        {
+          "class_name": "sculpture",
+          "confidence": 0.2505,
+          "bbox": [
+            1862,
+            1625,
+            2117,
+            1952
+          ]
+        }
+      ],
+      "primary": {
+        "class_name": "sculpture",
+        "confidence": 0.2505,
+        "bbox": [
+          1862,
+          1625,
+          2117,
+          1952
+        ]
+      },
+      "is_correct": true,
+      "best_iou": 0.9689,
+      "ground_truth_boxes": [
+        [
+          1858,
+          1622,
+          2116,
+          1951
+        ]
+      ]
+    },
+    "DSC_4382.JPG": {
+      "rating": "good",
+      "detections": [
+        {
+          "class_name": "statue on display",
+          "confidence": 0.5284,
+          "bbox": [
+            1884,
+            1279,
+            2420,
+            1974
+          ]
+        },
+        {
+          "class_name": "sculpture on pedestal",
+          "confidence": 0.3898,
+          "bbox": [
+            2505,
+            1289,
+            2767,
+            1904
+          ]
+        },
+        {
+          "class_name": "mosaic",
+          "confidence": 0.3381,
+          "bbox": [
+            2089,
+            2227,
+            2896,
+            2418
+          ]
+        },
+        {
+          "class_name": "street art",
+          "confidence": 0.3094,
+          "bbox": [
+            3359,
+            1898,
+            3750,
+            2924
+          ]
+        },
+        {
+          "class_name": "##ne",
+          "confidence": 0.2516,
+          "bbox": [
+            3276,
+            1990,
+            3417,
+            2257
+          ]
+        }
+      ],
+      "primary": {
+        "class_name": "statue on display",
+        "confidence": 0.5284,
+        "bbox": [
+          1884,
+          1279,
+          2420,
+          1974
+        ]
+      },
+      "is_correct": true,
+      "best_iou": 0.8718,
+      "ground_truth_boxes": [
+        [
+          1883,
+          1267,
+          2452,
+          2018
+        ]
+      ]
+    },
+    "DSC_4396.JPG": {
+      "rating": "good",
+      "detections": [
+        {
+          "class_name": "painted figure",
+          "confidence": 0.4489,
+          "bbox": [
+            828,
+            1007,
+            1478,
+            2376
+          ]
+        },
+        {
+          "class_name": "mosaic",
+          "confidence": 0.3766,
+          "bbox": [
+            1279,
+            829,
+            3386,
+            2248
+          ]
+        },
+        {
+          "class_name": "street art",
+          "confidence": 0.3255,
+          "bbox": [
+            1611,
+            903,
+            2156,
+            2413
+          ]
+        },
+        {
+          "class_name": "framed artwork",
+          "confidence": 0.292,
+          "bbox": [
+            1,
+            0,
+            898,
+            157
+          ]
+        }
+      ],
+      "primary": {
+        "class_name": "painted figure",
+        "confidence": 0.4489,
+        "bbox": [
+          828,
+          1007,
+          1478,
+          2376
+        ]
+      },
+      "is_correct": true,
+      "best_iou": 0.6595,
+      "ground_truth_boxes": [
+        [
+          776,
+          819,
+          3407,
+          2459
+        ],
+        [
+          1640,
+          933,
+          2124,
+          2107
+        ],
+        [
+          858,
+          1040,
+          1307,
+          2347
+        ],
+        [
+          1640,
+          933,
+          2129,
+          2111
+        ],
+        [
+          1644,
+          938,
+          2129,
+          2107
+        ]
+      ]
+    },
+    "DSC_4399.JPG": {
+      "rating": "good",
+      "detections": [
+        {
+          "class_name": "painted figure",
+          "confidence": 0.406,
+          "bbox": [
+            1876,
+            1336,
+            2799,
+            1849
+          ]
+        },
+        {
+          "class_name": "painted figure figurine",
+          "confidence": 0.3906,
+          "bbox": [
+            881,
+            1420,
+            1410,
+            1854
+          ]
+        },
+        {
+          "class_name": "mosaic",
+          "confidence": 0.3789,
+          "bbox": [
+            1168,
+            170,
+            2499,
+            1365
+          ]
+        },
+        {
+          "class_name": "painted figure figurine",
+          "confidence": 0.33,
+          "bbox": [
+            1530,
+            1403,
+            2007,
+            1861
+          ]
+        }
+      ],
+      "primary": {
+        "class_name": "painted figure",
+        "confidence": 0.406,
+        "bbox": [
+          1876,
+          1336,
+          2799,
+          1849
+        ]
+      },
+      "is_correct": true,
+      "best_iou": 0.398,
+      "ground_truth_boxes": [
+        [
+          856,
+          1291,
+          2852,
+          1887
+        ]
+      ]
+    },
+    "DSC_4411.JPG": {
+      "rating": "good",
+      "detections": [
+        {
+          "class_name": "mosaic",
+          "confidence": 0.3275,
+          "bbox": [
+            2100,
+            2345,
+            2689,
+            2569
+          ]
+        },
+        {
+          "class_name": "figure",
+          "confidence": 0.2636,
+          "bbox": [
+            778,
+            857,
+            3069,
+            2617
+          ]
+        }
+      ],
+      "primary": {
+        "class_name": "figure",
+        "confidence": 0.2636,
+        "bbox": [
+          778,
+          857,
+          3069,
+          2617
+        ]
+      },
+      "is_correct": true,
+      "best_iou": 0.6493,
+      "ground_truth_boxes": [
+        [
+          985,
+          1126,
+          2803,
+          2566
+        ],
+        [
+          1009,
+          1164,
+          2769,
+          2538
+        ],
+        [
+          1013,
+          1169,
+          2769,
+          2542
+        ]
+      ]
+    },
+    "DSC_4414.JPG": {
+      "rating": "good",
+      "detections": [
+        {
+          "class_name": "mural",
+          "confidence": 0.4128,
+          "bbox": [
+            413,
+            904,
+            1461,
+            2479
+          ]
+        },
+        {
+          "class_name": "mural",
+          "confidence": 0.3654,
+          "bbox": [
+            0,
+            4,
+            392,
+            2483
+          ]
+        },
+        {
+          "class_name": "painting",
+          "confidence": 0.354,
+          "bbox": [
+            3606,
+            1914,
+            3966,
+            2221
+          ]
+        },
+        {
+          "class_name": "sculpture statue",
+          "confidence": 0.3517,
+          "bbox": [
+            1551,
+            682,
+            2370,
+            2420
+          ]
+        }
+      ],
+      "primary": {
+        "class_name": "sculpture statue",
+        "confidence": 0.3517,
+        "bbox": [
+          1551,
+          682,
+          2370,
+          2420
+        ]
+      },
+      "is_correct": true,
+      "best_iou": 0.9916,
+      "ground_truth_boxes": [
+        [
+          1547,
+          680,
+          2369,
+          2418
+        ]
+      ]
+    },
+    "IMG-20230110-WA0001.jpg": {
+      "rating": "good",
+      "detections": [
+        {
+          "class_name": "wall-mounted art",
+          "confidence": 0.5896,
+          "bbox": [
+            175,
+            159,
+            842,
+            675
+          ]
+        },
+        {
+          "class_name": "figurine",
+          "confidence": 0.3509,
+          "bbox": [
+            774,
+            601,
+            903,
+            679
+          ]
+        },
+        {
+          "class_name": "figurine",
+          "confidence": 0.2727,
+          "bbox": [
+            51,
+            605,
+            177,
+            677
+          ]
+        },
+        {
+          "class_name": "fig",
+          "confidence": 0.2547,
+          "bbox": [
+            287,
+            607,
+            413,
+            677
+          ]
+        }
+      ],
+      "primary": {
+        "class_name": "wall-mounted art",
+        "confidence": 0.5896,
+        "bbox": [
+          175,
+          159,
+          842,
+          675
+        ]
+      },
+      "is_correct": true,
+      "best_iou": 0.6279,
+      "ground_truth_boxes": [
+        [
+          41,
+          79,
+          989,
+          676
+        ],
+        [
+          324,
+          102,
+          925,
+          669
+        ]
+      ]
+    },
+    "WP_20131116_017.jpg": {
+      "rating": "good",
+      "detections": [
+        {
+          "class_name": "mural",
+          "confidence": 0.6498,
+          "bbox": [
+            714,
+            1997,
+            1619,
+            2897
+          ]
+        },
+        {
+          "class_name": "statue on display",
+          "confidence": 0.3321,
+          "bbox": [
+            1438,
+            1309,
+            1842,
+            1851
+          ]
+        },
+        {
+          "class_name": "sculpture statue",
+          "confidence": 0.3318,
+          "bbox": [
+            70,
+            546,
+            1113,
+            2175
+          ]
+        }
+      ],
+      "primary": {
+        "class_name": "mural",
+        "confidence": 0.6498,
+        "bbox": [
+          714,
+          1997,
+          1619,
+          2897
+        ]
+      },
+      "is_correct": true,
+      "best_iou": 0.8668,
+      "ground_truth_boxes": [
+        [
+          717,
+          1953,
+          1592,
+          2842
+        ],
+        [
+          61,
+          557,
+          926,
+          1895
+        ],
+        [
+          1379,
+          1233,
+          1872,
+          1866
+        ]
+      ]
+    },
+    "WP_20140222_15_38_04_Pro.jpg": {
+      "rating": "good",
+      "detections": [
+        {
+          "class_name": "sculpture on pedestal",
+          "confidence": 0.6781,
+          "bbox": [
+            465,
+            537,
+            1939,
+            3174
+          ]
+        },
+        {
+          "class_name": "painted figure",
+          "confidence": 0.2946,
+          "bbox": [
+            79,
+            665,
+            1053,
+            1669
+          ]
+        },
+        {
+          "class_name": "artistic object",
+          "confidence": 0.271,
+          "bbox": [
+            474,
+            1635,
+            815,
+            1987
+          ]
+        }
+      ],
+      "primary": {
+        "class_name": "sculpture on pedestal",
+        "confidence": 0.6781,
+        "bbox": [
+          465,
+          537,
+          1939,
+          3174
+        ]
+      },
+      "is_correct": true,
+      "best_iou": 0.9102,
+      "ground_truth_boxes": [
+        [
+          437,
+          526,
+          1968,
+          2614
+        ],
+        [
+          520,
+          589,
+          1938,
+          3084
+        ]
+      ]
+    },
+    "WP_20140222_17_39_20_Pro.jpg": {
+      "rating": "good",
+      "detections": [
+        {
+          "class_name": "mosaic",
+          "confidence": 0.3077,
+          "bbox": [
+            911,
+            405,
+            1327,
+            464
+          ]
+        },
+        {
+          "class_name": "art installation exhibit",
+          "confidence": 0.2859,
+          "bbox": [
+            753,
+            437,
+            2823,
+            1531
+          ]
+        },
+        {
+          "class_name": "painted figure",
+          "confidence": 0.2613,
+          "bbox": [
+            959,
+            449,
+            1106,
+            643
+          ]
+        }
+      ],
+      "primary": {
+        "class_name": "art installation exhibit",
+        "confidence": 0.2859,
+        "bbox": [
+          753,
+          437,
+          2823,
+          1531
+        ]
+      },
+      "is_correct": true,
+      "best_iou": 0.7506,
+      "ground_truth_boxes": [
+        [
+          440,
+          376,
+          2856,
+          1437
+        ],
+        [
+          762,
+          454,
+          2273,
+          1401
+        ],
+        [
+          781,
+          458,
+          2052,
+          1354
+        ]
+      ]
+    },
+    "20201003_173051.jpg": {
+      "rating": "good",
+      "detections": [
+        {
+          "class_name": "statue on display",
+          "confidence": 0.7555,
+          "bbox": [
+            1,
+            834,
+            331,
+            1889
+          ]
+        },
+        {
+          "class_name": "sculpture on pedestal",
+          "confidence": 0.7126,
+          "bbox": [
+            71,
+            2156,
+            1108,
+            2922
+          ]
+        },
+        {
+          "class_name": "sculpture on pedestal",
+          "confidence": 0.6174,
+          "bbox": [
+            1367,
+            1446,
+            1693,
+            2203
+          ]
+        },
+        {
+          "class_name": "vase",
+          "confidence": 0.4742,
+          "bbox": [
+            1228,
+            2114,
+            1787,
+            3023
+          ]
+        },
+        {
+          "class_name": "sculpture on pedestal",
+          "confidence": 0.3692,
+          "bbox": [
+            0,
+            1808,
+            369,
+            2685
+          ]
+        },
+        {
+          "class_name": "sculpture statue",
+          "confidence": 0.3226,
+          "bbox": [
+            1133,
+            456,
+            3108,
+            2489
+          ]
+        },
+        {
+          "class_name": "mosaic",
+          "confidence": 0.2982,
+          "bbox": [
+            2815,
+            1223,
+            4019,
+            1568
+          ]
+        },
+        {
+          "class_name": "wall art",
+          "confidence": 0.2948,
+          "bbox": [
+            2383,
+            1202,
+            3367,
+            3003
+          ]
+        }
+      ],
+      "primary": {
+        "class_name": "sculpture on pedestal",
+        "confidence": 0.7126,
+        "bbox": [
+          71,
+          2156,
+          1108,
+          2922
+        ]
+      },
+      "is_correct": false,
+      "best_iou": 0.0018,
+      "ground_truth_boxes": [
+        [
+          1082,
+          325,
+          3148,
+          2520
+        ],
+        [
+          2213,
+          484,
+          3096,
+          1250
+        ]
+      ]
+    },
+    "20210808_162451.jpg": {
+      "rating": "bad_detection",
+      "comment": "The mosaic first crop is a bad detection of an exhibit label. The second crop is good but could have been wider as it only focuses on a detail.",
+      "detections": [
+        {
+          "class_name": "mural",
+          "confidence": 0.7506,
+          "bbox": [
+            191,
+            7,
+            3910,
+            3007
+          ]
+        },
+        {
+          "class_name": "mosaic",
+          "confidence": 0.2543,
+          "bbox": [
+            389,
+            1755,
+            1155,
+            2923
+          ]
+        }
+      ],
+      "primary": {
+        "class_name": "mural",
+        "confidence": 0.7506,
+        "bbox": [
+          191,
+          7,
+          3910,
+          3007
+        ]
+      },
+      "is_correct": false,
+      "best_iou": 0,
+      "ground_truth_boxes": []
+    },
+    "20210815_163856.jpg": {
+      "rating": "good",
+      "detections": [
+        {
+          "class_name": "painted figure",
+          "confidence": 0.4156,
+          "bbox": [
+            424,
+            1460,
+            611,
+            1785
+          ]
+        },
+        {
+          "class_name": "painted figure figurine",
+          "confidence": 0.3311,
+          "bbox": [
+            1831,
+            1300,
+            2097,
+            1549
+          ]
+        },
+        {
+          "class_name": "street art",
+          "confidence": 0.3081,
+          "bbox": [
+            810,
+            1089,
+            999,
+            1517
+          ]
+        },
+        {
+          "class_name": "street",
+          "confidence": 0.2884,
+          "bbox": [
+            487,
+            1091,
+            598,
+            1505
+          ]
+        },
+        {
+          "class_name": "art installation exhibit",
+          "confidence": 0.2761,
+          "bbox": [
+            986,
+            629,
+            3099,
+            2390
+          ]
+        }
+      ],
+      "primary": {
+        "class_name": "art installation exhibit",
+        "confidence": 0.2761,
+        "bbox": [
+          986,
+          629,
+          3099,
+          2390
+        ]
+      },
+      "is_correct": false,
+      "best_iou": 0.0241,
+      "ground_truth_boxes": [
+        [
+          1781,
+          1291,
+          2131,
+          1547
+        ]
+      ]
+    },
+    "20210910_203723.jpg": {
+      "rating": "other",
+      "detections": [
+        {
+          "class_name": "painted figure",
+          "confidence": 0.3821,
+          "bbox": [
+            202,
+            1249,
+            748,
+            2872
+          ]
+        },
+        {
+          "class_name": "art installation",
+          "confidence": 0.2606,
+          "bbox": [
+            354,
+            429,
+            2529,
+            3599
+          ]
+        }
+      ],
+      "primary": {
+        "class_name": "painted figure",
+        "confidence": 0.3821,
+        "bbox": [
+          202,
+          1249,
+          748,
+          2872
+        ]
+      },
+      "is_correct": false,
+      "best_iou": 0,
+      "ground_truth_boxes": []
+    },
+    "20210911_152658.jpg": {
+      "rating": "bad_detection",
+      "detections": [
+        {
+          "class_name": "pottery",
+          "confidence": 0.3755,
+          "bbox": [
+            0,
+            3144,
+            113,
+            3262
+          ]
+        },
+        {
+          "class_name": "decorated sign",
+          "confidence": 0.3381,
+          "bbox": [
+            1482,
+            2580,
+            2020,
+            2971
+          ]
+        },
+        {
+          "class_name": "sculpture statue painted figure",
+          "confidence": 0.337,
+          "bbox": [
+            2167,
+            950,
+            2486,
+            1508
+          ]
+        },
+        {
+          "class_name": "mosaic",
+          "confidence": 0.2896,
+          "bbox": [
+            1041,
+            976,
+            1668,
+            1433
+          ]
+        },
+        {
+          "class_name": "exhibit",
+          "confidence": 0.2592,
+          "bbox": [
+            18,
+            19,
+            3003,
+            4008
+          ]
+        }
+      ],
+      "primary": {
+        "class_name": "sculpture statue painted figure",
+        "confidence": 0.337,
+        "bbox": [
+          2167,
+          950,
+          2486,
+          1508
+        ]
+      },
+      "is_correct": false,
+      "best_iou": 0,
+      "ground_truth_boxes": [
+        [
+          1501,
+          1161,
+          1880,
+          1521
+        ]
+      ]
+    },
+    "20220605_141224.jpg": {
+      "rating": "good",
+      "detections": [
+        {
+          "class_name": "exhibit",
+          "confidence": 0.363,
+          "bbox": [
+            119,
+            740,
+            1991,
+            1819
+          ]
+        },
+        {
+          "class_name": "painted figure",
+          "confidence": 0.3475,
+          "bbox": [
+            3058,
+            575,
+            3708,
+            2578
+          ]
+        },
+        {
+          "class_name": "painted figure",
+          "confidence": 0.3266,
+          "bbox": [
+            2686,
+            522,
+            3004,
+            2571
+          ]
+        },
+        {
+          "class_name": "mosaic",
+          "confidence": 0.2891,
+          "bbox": [
+            1168,
+            1471,
+            1601,
+            1673
+          ]
+        },
+        {
+          "class_name": "mosaic",
+          "confidence": 0.2563,
+          "bbox": [
+            370,
+            1478,
+            739,
+            1677
+          ]
+        }
+      ],
+      "primary": {
+        "class_name": "painted figure",
+        "confidence": 0.3266,
+        "bbox": [
+          2686,
+          522,
+          3004,
+          2571
+        ]
+      },
+      "is_correct": false,
+      "best_iou": 0.2897,
+      "ground_truth_boxes": [
+        [
+          2655,
+          481,
+          3721,
+          2591
+        ]
+      ]
+    },
+    "20220626_134231.jpg": {
+      "rating": "good",
+      "detections": [
+        {
+          "class_name": "painted figure",
+          "confidence": 0.3358,
+          "bbox": [
+            2530,
+            958,
+            3315,
+            2067
+          ]
+        },
+        {
+          "class_name": "figure figurine",
+          "confidence": 0.2994,
+          "bbox": [
+            781,
+            1017,
+            1127,
+            1631
+          ]
+        },
+        {
+          "class_name": "artwork",
+          "confidence": 0.2774,
+          "bbox": [
+            604,
+            749,
+            3649,
+            2561
+          ]
+        },
+        {
+          "class_name": "mosaic",
+          "confidence": 0.2739,
+          "bbox": [
+            1553,
+            1366,
+            1905,
+            2059
+          ]
+        },
+        {
+          "class_name": "painted figure",
+          "confidence": 0.2627,
+          "bbox": [
+            1947,
+            1071,
+            2567,
+            2108
+          ]
+        }
+      ],
+      "primary": {
+        "class_name": "painted figure",
+        "confidence": 0.3358,
+        "bbox": [
+          2530,
+          958,
+          3315,
+          2067
+        ]
+      },
+      "is_correct": false,
+      "best_iou": 0.1579,
+      "ground_truth_boxes": [
+        [
+          600,
+          748,
+          3647,
+          2558
+        ]
+      ]
+    },
+    "DSC_0001_BURST20241121142123881.JPG": {
+      "rating": "other",
+      "detections": [
+        {
+          "class_name": "painted figure",
+          "confidence": 0.4527,
+          "bbox": [
+            2297,
+            232,
+            2742,
+            1240
+          ]
+        },
+        {
+          "class_name": "painting",
+          "confidence": 0.3445,
+          "bbox": [
+            171,
+            541,
+            2890,
+            2422
+          ]
+        },
+        {
+          "class_name": "artistic object",
+          "confidence": 0.3141,
+          "bbox": [
+            2138,
+            749,
+            2451,
+            1071
+          ]
+        }
+      ],
+      "primary": {
+        "class_name": "painted figure",
+        "confidence": 0.4527,
+        "bbox": [
+          2297,
+          232,
+          2742,
+          1240
+        ]
+      },
+      "is_correct": false,
+      "best_iou": 0.0073,
+      "ground_truth_boxes": [
+        [
+          278,
+          1094,
+          2465,
+          2447
+        ]
+      ]
+    },
+    "DSC_0155.JPG": {
+      "rating": "bad_detection",
+      "detections": [
+        {
+          "class_name": "vase",
+          "confidence": 0.3634,
+          "bbox": [
+            796,
+            1279,
+            2333,
+            2658
+          ]
+        },
+        {
+          "class_name": "painted figure",
+          "confidence": 0.3446,
+          "bbox": [
+            1290,
+            2804,
+            1946,
+            3568
+          ]
+        },
+        {
+          "class_name": "mosaic",
+          "confidence": 0.3042,
+          "bbox": [
+            11,
+            907,
+            798,
+            1744
+          ]
+        },
+        {
+          "class_name": "figurine",
+          "confidence": 0.2582,
+          "bbox": [
+            2106,
+            2720,
+            2603,
+            3075
+          ]
+        },
+        {
+          "class_name": "figne",
+          "confidence": 0.2571,
+          "bbox": [
+            1472,
+            1794,
+            1685,
+            2233
+          ]
+        }
+      ],
+      "primary": {
+        "class_name": "painted figure",
+        "confidence": 0.3446,
+        "bbox": [
+          1290,
+          2804,
+          1946,
+          3568
+        ]
+      },
+      "is_correct": false,
+      "best_iou": 0,
+      "ground_truth_boxes": [
+        [
+          772,
+          1285,
+          2342,
+          2698
+        ]
+      ]
+    },
+    "DSC_0274.JPG": {
+      "rating": "bad_detection",
+      "comment": "Misses most of the mural.",
+      "detections": [
+        {
+          "class_name": "mosaic",
+          "confidence": 0.3212,
+          "bbox": [
+            925,
+            2381,
+            1673,
+            2733
+          ]
+        },
+        {
+          "class_name": "decorated sign",
+          "confidence": 0.2861,
+          "bbox": [
+            723,
+            320,
+            3282,
+            2687
+          ]
+        },
+        {
+          "class_name": "painted figure",
+          "confidence": 0.285,
+          "bbox": [
+            1112,
+            1521,
+            2165,
+            2359
+          ]
+        },
+        {
+          "class_name": "painted figure",
+          "confidence": 0.2826,
+          "bbox": [
+            2239,
+            1425,
+            2786,
+            2050
+          ]
+        }
+      ],
+      "primary": {
+        "class_name": "painted figure",
+        "confidence": 0.285,
+        "bbox": [
+          1112,
+          1521,
+          2165,
+          2359
+        ]
+      },
+      "is_correct": false,
+      "best_iou": 0.1458,
+      "ground_truth_boxes": [
+        [
+          720,
+          320,
+          3280,
+          2684
+        ]
+      ]
+    },
+    "DSC_0493.JPG": {
+      "rating": "bad_detection",
+      "detections": [
+        {
+          "class_name": "painted figure",
+          "confidence": 0.438,
+          "bbox": [
+            981,
+            1005,
+            1154,
+            1444
+          ]
+        },
+        {
+          "class_name": "mosaic",
+          "confidence": 0.3259,
+          "bbox": [
+            834,
+            1004,
+            1035,
+            1128
+          ]
+        },
+        {
+          "class_name": "artistic object",
+          "confidence": 0.3219,
+          "bbox": [
+            210,
+            1435,
+            883,
+            2987
+          ]
+        },
+        {
+          "class_name": "decorative",
+          "confidence": 0.2536,
+          "bbox": [
+            3368,
+            1174,
+            3885,
+            2487
+          ]
+        }
+      ],
+      "primary": {
+        "class_name": "painted figure",
+        "confidence": 0.438,
+        "bbox": [
+          981,
+          1005,
+          1154,
+          1444
+        ]
+      },
+      "is_correct": false,
+      "best_iou": 0.0052,
+      "ground_truth_boxes": [
+        [
+          1105,
+          768,
+          3149,
+          2777
+        ]
+      ]
+    },
+    "DSC_0988.JPG": {
+      "rating": "good",
+      "detections": [
+        {
+          "class_name": "mural",
+          "confidence": 0.6627,
+          "bbox": [
+            1244,
+            354,
+            3483,
+            2316
+          ]
+        },
+        {
+          "class_name": "figure figurine",
+          "confidence": 0.4092,
+          "bbox": [
+            2108,
+            1154,
+            2497,
+            1593
+          ]
+        },
+        {
+          "class_name": "painted figure",
+          "confidence": 0.3623,
+          "bbox": [
+            2582,
+            1165,
+            3253,
+            2063
+          ]
+        }
+      ],
+      "primary": {
+        "class_name": "mural",
+        "confidence": 0.6627,
+        "bbox": [
+          1244,
+          354,
+          3483,
+          2316
+        ]
+      },
+      "is_correct": false,
+      "best_iou": 0.2679,
+      "ground_truth_boxes": [
+        [
+          2127,
+          1046,
+          3274,
+          2072
+        ],
+        [
+          2502,
+          1178,
+          3231,
+          2053
+        ]
+      ]
+    },
+    "DSC_3065.JPG": {
+      "rating": "bad_detection",
+      "detections": [
+        {
+          "class_name": "painted figure",
+          "confidence": 0.3049,
+          "bbox": [
+            1379,
+            516,
+            2082,
+            1167
+          ]
+        },
+        {
+          "class_name": "decorated sign",
+          "confidence": 0.2894,
+          "bbox": [
+            814,
+            615,
+            2936,
+            2387
+          ]
+        },
+        {
+          "class_name": "figurine",
+          "confidence": 0.2795,
+          "bbox": [
+            1349,
+            1140,
+            1793,
+            1491
+          ]
+        },
+        {
+          "class_name": "figure",
+          "confidence": 0.2682,
+          "bbox": [
+            1978,
+            1032,
+            2729,
+            1385
+          ]
+        }
+      ],
+      "primary": {
+        "class_name": "painted figure",
+        "confidence": 0.3049,
+        "bbox": [
+          1379,
+          516,
+          2082,
+          1167
+        ]
+      },
+      "is_correct": false,
+      "best_iou": 0.0869,
+      "ground_truth_boxes": [
+        [
+          665,
+          414,
+          2963,
+          2707
+        ]
+      ]
+    },
+    "DSC_3367.JPG": {
+      "rating": "good",
+      "detections": [
+        {
+          "class_name": "figurine",
+          "confidence": 0.3129,
+          "bbox": [
+            1860,
+            1948,
+            2071,
+            2404
+          ]
+        },
+        {
+          "class_name": "painted figure",
+          "confidence": 0.2769,
+          "bbox": [
+            904,
+            2584,
+            1621,
+            3192
+          ]
+        }
+      ],
+      "primary": {
+        "class_name": "painted figure",
+        "confidence": 0.2769,
+        "bbox": [
+          904,
+          2584,
+          1621,
+          3192
+        ]
+      },
+      "is_correct": false,
+      "best_iou": 0.2164,
+      "ground_truth_boxes": [
+        [
+          885,
+          1335,
+          1782,
+          3581
+        ],
+        [
+          1835,
+          1888,
+          2092,
+          2465
+        ]
+      ]
+    },
+    "DSC_3401.JPG": {
+      "rating": "bad_detection",
+      "comment": "Should have detected the small man behind an apple mosaic.",
+      "detections": [
+        {
+          "class_name": "sculpture on pedestal",
+          "confidence": 0.4564,
+          "bbox": [
+            1186,
+            1585,
+            1427,
+            1956
+          ]
+        },
+        {
+          "class_name": "mosaic wall art",
+          "confidence": 0.3289,
+          "bbox": [
+            46,
+            1751,
+            571,
+            2164
+          ]
+        },
+        {
+          "class_name": "sculpture statue",
+          "confidence": 0.317,
+          "bbox": [
+            1327,
+            450,
+            2943,
+            2709
+          ]
+        },
+        {
+          "class_name": "sculpture statue",
+          "confidence": 0.3094,
+          "bbox": [
+            883,
+            474,
+            1711,
+            2693
+          ]
+        },
+        {
+          "class_name": "statue",
+          "confidence": 0.2759,
+          "bbox": [
+            2552,
+            447,
+            3413,
+            2705
+          ]
+        }
+      ],
+      "primary": {
+        "class_name": "sculpture statue",
+        "confidence": 0.317,
+        "bbox": [
+          1327,
+          450,
+          2943,
+          2709
+        ]
+      },
+      "is_correct": false,
+      "best_iou": 0.0101,
+      "ground_truth_boxes": [
+        [
+          1182,
+          1582,
+          1427,
+          1956
+        ]
+      ]
+    },
+    "DSC_4042.JPG": {
+      "rating": "bad_detection",
+      "detections": [
+        {
+          "class_name": "street art",
+          "confidence": 0.3694,
+          "bbox": [
+            456,
+            1792,
+            701,
+            2475
+          ]
+        },
+        {
+          "class_name": "painting",
+          "confidence": 0.3201,
+          "bbox": [
+            1400,
+            1356,
+            1750,
+            2559
+          ]
+        },
+        {
+          "class_name": "decorative art",
+          "confidence": 0.2773,
+          "bbox": [
+            2181,
+            573,
+            2577,
+            1137
+          ]
+        },
+        {
+          "class_name": "exhibit",
+          "confidence": 0.2559,
+          "bbox": [
+            456,
+            2419,
+            1069,
+            2926
+          ]
+        }
+      ],
+      "primary": {
+        "class_name": "painting",
+        "confidence": 0.3201,
+        "bbox": [
+          1400,
+          1356,
+          1750,
+          2559
+        ]
+      },
+      "is_correct": false,
+      "best_iou": 0,
+      "ground_truth_boxes": [
+        [
+          2178,
+          569,
+          2573,
+          1133
+        ]
+      ]
+    },
+    "DSC_4048.JPG": {
+      "rating": "good",
+      "detections": [
+        {
+          "class_name": "figurine",
+          "confidence": 0.2874,
+          "bbox": [
+            1552,
+            706,
+            1683,
+            864
+          ]
+        },
+        {
+          "class_name": "exhibit",
+          "confidence": 0.2605,
+          "bbox": [
+            421,
+            319,
+            3563,
+            2659
+          ]
+        }
+      ],
+      "primary": {
+        "class_name": "figurine",
+        "confidence": 0.2874,
+        "bbox": [
+          1552,
+          706,
+          1683,
+          864
+        ]
+      },
+      "is_correct": false,
+      "best_iou": 0.123,
+      "ground_truth_boxes": [
+        [
+          1389,
+          578,
+          1834,
+          956
+        ]
+      ]
+    },
+    "DSC_4063.JPG": {
+      "rating": "other",
+      "detections": [
+        {
+          "class_name": "art installation",
+          "confidence": 0.3269,
+          "bbox": [
+            650,
+            277,
+            3680,
+            2388
+          ]
+        },
+        {
+          "class_name": "mosaic",
+          "confidence": 0.285,
+          "bbox": [
+            1332,
+            690,
+            2565,
+            1089
+          ]
+        },
+        {
+          "class_name": "decorative art",
+          "confidence": 0.2738,
+          "bbox": [
+            2876,
+            1311,
+            3229,
+            1663
+          ]
+        },
+        {
+          "class_name": "mosaic",
+          "confidence": 0.2665,
+          "bbox": [
+            1347,
+            1276,
+            1928,
+            1709
+          ]
+        },
+        {
+          "class_name": "fig",
+          "confidence": 0.2501,
+          "bbox": [
+            1274,
+            1140,
+            1390,
+            1258
+          ]
+        }
+      ],
+      "primary": {
+        "class_name": "mosaic",
+        "confidence": 0.285,
+        "bbox": [
+          1332,
+          690,
+          2565,
+          1089
+        ]
+      },
+      "is_correct": false,
+      "best_iou": 0,
+      "ground_truth_boxes": []
+    },
+    "DSC_4074.JPG": {
+      "rating": "other",
+      "detections": [
+        {
+          "class_name": "art installation",
+          "confidence": 0.3665,
+          "bbox": [
+            751,
+            18,
+            3331,
+            2395
+          ]
+        }
+      ],
+      "primary": {
+        "class_name": "art installation",
+        "confidence": 0.3665,
+        "bbox": [
+          751,
+          18,
+          3331,
+          2395
+        ]
+      },
+      "is_correct": false,
+      "best_iou": 0,
+      "ground_truth_boxes": []
+    },
+    "DSC_4101_0.JPG": {
+      "rating": "good",
+      "detections": [
+        {
+          "class_name": "painted figure",
+          "confidence": 0.3821,
+          "bbox": [
+            619,
+            5,
+            963,
+            436
+          ]
+        },
+        {
+          "class_name": "street art",
+          "confidence": 0.3642,
+          "bbox": [
+            1754,
+            614,
+            3036,
+            2016
+          ]
+        },
+        {
+          "class_name": "exhibit",
+          "confidence": 0.2681,
+          "bbox": [
+            25,
+            23,
+            3967,
+            2965
+          ]
+        }
+      ],
+      "primary": {
+        "class_name": "street art",
+        "confidence": 0.3642,
+        "bbox": [
+          1754,
+          614,
+          3036,
+          2016
+        ]
+      },
+      "is_correct": false,
+      "best_iou": 0.1513,
+      "ground_truth_boxes": [
+        [
+          2043,
+          1358,
+          2589,
+          1856
+        ]
+      ]
+    },
+    "DSC_4162.JPG": {
+      "rating": "bad_detection",
+      "detections": [
+        {
+          "class_name": "figurine",
+          "confidence": 0.2997,
+          "bbox": [
+            1105,
+            2186,
+            1397,
+            2369
+          ]
+        },
+        {
+          "class_name": "statue figure",
+          "confidence": 0.2803,
+          "bbox": [
+            780,
+            1164,
+            1364,
+            2221
+          ]
+        },
+        {
+          "class_name": "mosaic",
+          "confidence": 0.2792,
+          "bbox": [
+            1594,
+            995,
+            1784,
+            1272
+          ]
+        },
+        {
+          "class_name": "exhibit",
+          "confidence": 0.2581,
+          "bbox": [
+            618,
+            836,
+            2964,
+            2569
+          ]
+        }
+      ],
+      "primary": {
+        "class_name": "statue figure",
+        "confidence": 0.2803,
+        "bbox": [
+          780,
+          1164,
+          1364,
+          2221
+        ]
+      },
+      "is_correct": false,
+      "best_iou": 0,
+      "ground_truth_boxes": [
+        [
+          1552,
+          2853,
+          1712,
+          3003
+        ]
+      ]
+    },
+    "DSC_4166.JPG": {
+      "rating": "good",
+      "detections": [
+        {
+          "class_name": "vase",
+          "confidence": 0.3942,
+          "bbox": [
+            661,
+            2251,
+            754,
+            2415
+          ]
+        },
+        {
+          "class_name": "street art",
+          "confidence": 0.3906,
+          "bbox": [
+            1344,
+            1626,
+            1755,
+            2085
+          ]
+        },
+        {
+          "class_name": "painted figure figurine",
+          "confidence": 0.3238,
+          "bbox": [
+            1486,
+            1867,
+            1658,
+            2063
+          ]
+        },
+        {
+          "class_name": "sculpture on pedestal",
+          "confidence": 0.2999,
+          "bbox": [
+            737,
+            2185,
+            843,
+            2384
+          ]
+        }
+      ],
+      "primary": {
+        "class_name": "street art",
+        "confidence": 0.3906,
+        "bbox": [
+          1344,
+          1626,
+          1755,
+          2085
+        ]
+      },
+      "is_correct": false,
+      "best_iou": 0.2967,
+      "ground_truth_boxes": [
+        [
+          1475,
+          1827,
+          1695,
+          2097
+        ],
+        [
+          1493,
+          1880,
+          1653,
+          2057
+        ],
+        [
+          1487,
+          1880,
+          1650,
+          2063
+        ],
+        [
+          1490,
+          1880,
+          1653,
+          2060
+        ]
+      ]
+    },
+    "DSC_4205.JPG": {
+      "rating": "good",
+      "detections": [
+        {
+          "class_name": "mural",
+          "confidence": 0.7127,
+          "bbox": [
+            64,
+            532,
+            3967,
+            1978
+          ]
+        },
+        {
+          "class_name": "statue on display",
+          "confidence": 0.5961,
+          "bbox": [
+            559,
+            1255,
+            960,
+            2069
+          ]
+        },
+        {
+          "class_name": "art decorative art",
+          "confidence": 0.3855,
+          "bbox": [
+            1452,
+            1251,
+            3152,
+            2022
+          ]
+        },
+        {
+          "class_name": "painted figure figurine",
+          "confidence": 0.3812,
+          "bbox": [
+            950,
+            1218,
+            1449,
+            2058
+          ]
+        },
+        {
+          "class_name": "figure figurine",
+          "confidence": 0.3435,
+          "bbox": [
+            3173,
+            1151,
+            3755,
+            2063
+          ]
+        },
+        {
+          "class_name": "mosaic",
+          "confidence": 0.262,
+          "bbox": [
+            312,
+            465,
+            1172,
+            1189
+          ]
+        }
+      ],
+      "primary": {
+        "class_name": "mural",
+        "confidence": 0.7127,
+        "bbox": [
+          64,
+          532,
+          3967,
+          1978
+        ]
+      },
+      "is_correct": false,
+      "best_iou": 0.085,
+      "ground_truth_boxes": [
+        [
+          556,
+          1253,
+          960,
+          2067
+        ],
+        [
+          947,
+          1218,
+          1449,
+          2058
+        ],
+        [
+          3169,
+          1147,
+          3751,
+          2062
+        ]
+      ]
+    },
+    "DSC_4291.JPG": {
+      "rating": "bad_detection",
+      "detections": [
+        {
+          "class_name": "mosaic",
+          "confidence": 0.3218,
+          "bbox": [
+            1442,
+            1582,
+            2123,
+            1907
+          ]
+        },
+        {
+          "class_name": "figure figne",
+          "confidence": 0.2614,
+          "bbox": [
+            1171,
+            1751,
+            1471,
+            1919
+          ]
+        },
+        {
+          "class_name": "mosaic",
+          "confidence": 0.2538,
+          "bbox": [
+            1562,
+            2968,
+            2425,
+            3129
+          ]
+        }
+      ],
+      "primary": {
+        "class_name": "mosaic",
+        "confidence": 0.3218,
+        "bbox": [
+          1442,
+          1582,
+          2123,
+          1907
+        ]
+      },
+      "is_correct": false,
+      "best_iou": 0.0159,
+      "ground_truth_boxes": [
+        [
+          1170,
+          1749,
+          1469,
+          1918
+        ]
+      ]
+    },
+    "DSC_4311.JPG": {
+      "rating": "bad_detection",
+      "detections": [
+        {
+          "class_name": "mosaic",
+          "confidence": 0.3149,
+          "bbox": [
+            1465,
+            1930,
+            2207,
+            2102
+          ]
+        }
+      ],
+      "primary": {
+        "class_name": "mosaic",
+        "confidence": 0.3149,
+        "bbox": [
+          1465,
+          1930,
+          2207,
+          2102
+        ]
+      },
+      "is_correct": false,
+      "best_iou": 0,
+      "ground_truth_boxes": [
+        [
+          2003,
+          1298,
+          2229,
+          1503
+        ]
+      ]
+    },
+    "DSC_4312.JPG": {
+      "rating": "bad_detection",
+      "detections": [
+        {
+          "class_name": "mosaic",
+          "confidence": 0.3056,
+          "bbox": [
+            677,
+            1927,
+            1757,
+            2190
+          ]
+        },
+        {
+          "class_name": "street",
+          "confidence": 0.2648,
+          "bbox": [
+            1818,
+            833,
+            2128,
+            1059
+          ]
+        },
+        {
+          "class_name": "decorative",
+          "confidence": 0.2539,
+          "bbox": [
+            1552,
+            926,
+            1757,
+            1225
+          ]
+        },
+        {
+          "class_name": "##ne",
+          "confidence": 0.2504,
+          "bbox": [
+            1675,
+            919,
+            1762,
+            1021
+          ]
+        }
+      ],
+      "primary": {
+        "class_name": "mosaic",
+        "confidence": 0.3056,
+        "bbox": [
+          677,
+          1927,
+          1757,
+          2190
+        ]
+      },
+      "is_correct": false,
+      "best_iou": 0,
+      "ground_truth_boxes": [
+        [
+          1549,
+          925,
+          1755,
+          1222
+        ]
+      ]
+    },
+    "DSC_4371.JPG": {
+      "rating": "bad_detection",
+      "detections": [
+        {
+          "class_name": "painted figure",
+          "confidence": 0.2972,
+          "bbox": [
+            2229,
+            1530,
+            2318,
+            1755
+          ]
+        },
+        {
+          "class_name": "art installation",
+          "confidence": 0.2769,
+          "bbox": [
+            817,
+            612,
+            2611,
+            2384
+          ]
+        },
+        {
+          "class_name": "mosaic",
+          "confidence": 0.2566,
+          "bbox": [
+            2011,
+            1510,
+            2186,
+            1671
+          ]
+        }
+      ],
+      "primary": {
+        "class_name": "art installation",
+        "confidence": 0.2769,
+        "bbox": [
+          817,
+          612,
+          2611,
+          2384
+        ]
+      },
+      "is_correct": false,
+      "best_iou": 0.0087,
+      "ground_truth_boxes": [
+        [
+          2009,
+          1507,
+          2182,
+          1667
+        ]
+      ]
+    },
+    "DSC_4385.JPG": {
+      "rating": "bad_detection",
+      "detections": [
+        {
+          "class_name": "mosaic",
+          "confidence": 0.3116,
+          "bbox": [
+            1536,
+            1606,
+            2202,
+            1869
+          ]
+        },
+        {
+          "class_name": "mosaic",
+          "confidence": 0.2996,
+          "bbox": [
+            1794,
+            1162,
+            2134,
+            1560
+          ]
+        },
+        {
+          "class_name": "figurine",
+          "confidence": 0.2974,
+          "bbox": [
+            2045,
+            2193,
+            2294,
+            2405
+          ]
+        },
+        {
+          "class_name": "figure",
+          "confidence": 0.2591,
+          "bbox": [
+            587,
+            1217,
+            1913,
+            2799
+          ]
+        }
+      ],
+      "primary": {
+        "class_name": "figure",
+        "confidence": 0.2591,
+        "bbox": [
+          587,
+          1217,
+          1913,
+          2799
+        ]
+      },
+      "is_correct": false,
+      "best_iou": 0.0191,
+      "ground_truth_boxes": [
+        [
+          1791,
+          1160,
+          2133,
+          1560
+        ]
+      ]
+    },
+    "DSC_4388.JPG": {
+      "rating": "bad_detection",
+      "detections": [
+        {
+          "class_name": "framed artwork",
+          "confidence": 0.4491,
+          "bbox": [
+            713,
+            2030,
+            897,
+            2345
+          ]
+        },
+        {
+          "class_name": "art street art",
+          "confidence": 0.3138,
+          "bbox": [
+            1306,
+            856,
+            1801,
+            1257
+          ]
+        },
+        {
+          "class_name": "exhibit",
+          "confidence": 0.2918,
+          "bbox": [
+            664,
+            500,
+            2596,
+            1947
+          ]
+        },
+        {
+          "class_name": "painted figure",
+          "confidence": 0.2744,
+          "bbox": [
+            4,
+            2227,
+            176,
+            2441
+          ]
+        },
+        {
+          "class_name": "figure",
+          "confidence": 0.2595,
+          "bbox": [
+            659,
+            1492,
+            829,
+            1690
+          ]
+        }
+      ],
+      "primary": {
+        "class_name": "framed artwork",
+        "confidence": 0.4491,
+        "bbox": [
+          713,
+          2030,
+          897,
+          2345
+        ]
+      },
+      "is_correct": false,
+      "best_iou": 0,
+      "ground_truth_boxes": [
+        [
+          1489,
+          1067,
+          1663,
+          1245
+        ]
+      ]
+    },
+    "WP_20170624_15_17_38_Pro.jpg": {
+      "rating": "other",
+      "detections": [
+        {
+          "class_name": "exhibit",
+          "confidence": 0.2734,
+          "bbox": [
+            406,
+            210,
+            2901,
+            1630
+          ]
+        }
+      ],
+      "primary": {
+        "class_name": "exhibit",
+        "confidence": 0.2734,
+        "bbox": [
+          406,
+          210,
+          2901,
+          1630
+        ]
+      },
+      "is_correct": false,
+      "best_iou": 0,
+      "ground_truth_boxes": []
+    }
+  }
+}

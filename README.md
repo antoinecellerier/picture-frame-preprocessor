@@ -7,6 +7,7 @@ Smart image preprocessor for e-ink picture frames. Uses local ML to detect art s
 ## Features
 
 - **ML-powered smart cropping** -- YOLO-World + Grounding DINO ensemble detects art, sculptures, murals, and more
+- **Focal point detection** -- for large murals that fill the frame, a second Grounding DINO pass finds faces/figures inside the primary to use as the crop anchor
 - **Contextual zoom** -- zooms in on small or distant subjects, leaves large ones untouched
 - **Multi-crop** -- detects multiple art pieces and produces separate crops for each
 - **Batch processing** -- parallel workers with model caching
