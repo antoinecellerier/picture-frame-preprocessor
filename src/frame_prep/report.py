@@ -208,10 +208,11 @@ def generate_result_image(image_path, detections, cropper, max_width=400):
         buffer = io.BytesIO()
         cropped.save(buffer, format='JPEG', quality=90)
         img_data = base64.b64encode(buffer.getvalue()).decode()
-        return f"data:image/jpeg;base64,{img_data}", zoom_applied
+        primary_fills_frame = getattr(cropper, 'last_primary_fills_frame', False)
+        return f"data:image/jpeg;base64,{img_data}", zoom_applied, primary_fills_frame
     except Exception as e:
         print(f"Error generating result for {image_path}: {e}")
-        return None, 1.0
+        return None, 1.0, False
 
 
 def generate_multi_crop_images(image_path, detections, cropper, max_width=250):
@@ -373,8 +374,9 @@ def generate_report(input_dir=None, ground_truth_path=None, output_file=None,
         multi_crop_images = []
         crop_targets = []
         auto_filtered = detection_result['art_score'] < MIN_ART_SCORE
+        primary_fills_frame = False
         if not auto_filtered:
-            result_image, zoom_applied = generate_result_image(
+            result_image, zoom_applied, primary_fills_frame = generate_result_image(
                 image_path,
                 detection_result['all_detections'],
                 cropper
@@ -412,6 +414,7 @@ def generate_report(input_dir=None, ground_truth_path=None, output_file=None,
             'art_score': detection_result['art_score'],
             'is_not_art': is_not_art,
             'auto_filtered': auto_filtered,
+            'primary_fills_frame': primary_fills_frame,
         })
 
     accuracy = (correct_count / total_with_gt * 100) if total_with_gt > 0 else 0
@@ -976,6 +979,7 @@ def generate_report(input_dir=None, ground_truth_path=None, output_file=None,
             <button class="filter-btn" onclick="filterResults('incorrect')">Incorrect ({sum(1 for r in results if r['has_ground_truth'] and not r['is_correct'] and not r.get('is_not_art'))})</button>
             <button class="filter-btn" onclick="filterResults('not-art')">Not Art ({sum(1 for r in results if r.get('is_not_art'))})</button>
             <button class="filter-btn" onclick="filterResults('no-gt')">No Ground Truth ({sum(1 for r in results if not r['has_ground_truth'] and not r.get('is_not_art'))})</button>
+            <button class="filter-btn" onclick="filterResults('big-primary')">Big Primary ({sum(1 for r in results if r.get('primary_fills_frame'))})</button>
             <button class="export-btn" onclick="exportFeedback()">Export Feedback</button>
         </div>
     </div>
@@ -1049,7 +1053,7 @@ def generate_report(input_dir=None, ground_truth_path=None, output_file=None,
                 </div>"""
 
         html += f"""
-        <div class="result-card {status_class}" data-status="{status_class}" data-index="{idx}">
+        <div class="result-card {status_class}" data-status="{status_class}" data-index="{idx}" data-big-primary="{'true' if result.get('primary_fills_frame') else 'false'}">
             <div class="result-header">
                 <div class="result-title">{result['filename']}</div>
                 <div class="result-meta">
@@ -1154,6 +1158,8 @@ def generate_report(input_dir=None, ground_truth_path=None, output_file=None,
             cards.forEach(card => {
                 if (filter === 'all') {
                     card.style.display = 'block';
+                } else if (filter === 'big-primary') {
+                    card.style.display = card.dataset.bigPrimary === 'true' ? 'block' : 'none';
                 } else {
                     card.style.display = card.dataset.status === filter ? 'block' : 'none';
                 }

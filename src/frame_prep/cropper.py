@@ -39,6 +39,7 @@ class SmartCropper:
         self.last_crop_box: Optional[Tuple[int, int, int, int]] = None
         self.last_zoom_applied: float = 1.0
         self.last_primary_detection: Optional[Detection] = None
+        self.last_primary_fills_frame: bool = False
 
     def crop_image(
         self,
@@ -99,7 +100,31 @@ class SmartCropper:
 
         # Store for reporting
         self.last_primary_detection = primary
+        self.last_primary_fills_frame = False
         anchor_x, anchor_y = primary.center
+        zoom_subject = primary
+
+        # When the primary fills the frame (contextual zoom would be 1.0),
+        # it already occupies the full target screen and can't be meaningfully
+        # zoomed into. In that case, use the best inner detection as a focal
+        # point to zoom into a specific sub-region of the large subject.
+        test_crop = self._calculate_crop_window(
+            image_size=(width, height),
+            anchor_point=(anchor_x, anchor_y)
+        )
+        test_cw = test_crop[2] - test_crop[0]
+        test_ch = test_crop[3] - test_crop[1]
+        if self._calculate_contextual_zoom(primary.bbox, test_cw, test_ch) <= 1.0:
+            self.last_primary_fills_frame = True
+            inner_dets = self._get_quality_inner_detections(primary, detections, (width, height))
+            if inner_dets:
+                # Shift anchor to the focal point but keep zoom against the primary —
+                # we want to frame as much of the piece as possible, just better centred.
+                anchor_x, anchor_y = inner_dets[0].center
+                # Ensure the crop window still fully contains the primary bbox
+                anchor_x, anchor_y = self._clamp_anchor_to_primary(
+                    anchor_x, anchor_y, primary.bbox, (width, height)
+                )
 
         # Calculate crop window
         crop_window = self._calculate_crop_window(
@@ -116,7 +141,7 @@ class SmartCropper:
         # Calculate contextual zoom based on subject size relative to crop window
         crop_width = crop_window[2] - crop_window[0]
         crop_height = crop_window[3] - crop_window[1]
-        subject_bbox = primary.bbox
+        subject_bbox = zoom_subject.bbox
 
         contextual_zoom = self._calculate_contextual_zoom(
             subject_bbox=subject_bbox,
@@ -442,43 +467,34 @@ class SmartCropper:
             bx1, by1, bx2, by2 = primary.bbox
             subject_width = bx2 - bx1
 
-            if subject_width > crop_w * 1.3:
-                # Primary is wider than a single crop.  Use other detections
-                # that fall inside the primary as natural focal points rather
-                # than splitting uniformly.
-                img_area = width * height
-                edge_margin = 0.01
-                inner_dets = []
-                for d in detections:
-                    if d is primary:
-                        continue
-                    if self._bbox_overlap_ratio(d.bbox, primary.bbox) <= 0.5:
-                        continue
-                    # Apply same quality filters as secondary crops
-                    dx1, dy1, dx2, dy2 = d.bbox
-                    if (dx1 < width * edge_margin or
-                        dy1 < height * edge_margin or
-                        dx2 > width * (1 - edge_margin) or
-                        dy2 > height * (1 - edge_margin)):
-                        continue
-                    det_area = (dx2 - dx1) * (dy2 - dy1)
-                    if det_area < img_area * 0.015:
-                        continue
-                    inner_dets.append(d)
+            # Trigger focal-point logic when:
+            # (a) primary is physically wider than a single crop window, OR
+            # (b) primary fills the frame (zoom would be 1.0 — it doesn't fit
+            #     on the target screen without showing it at reduced scale)
+            test_crop = self._calculate_crop_window((width, height), primary.center)
+            test_cw = test_crop[2] - test_crop[0]
+            test_ch = test_crop[3] - test_crop[1]
+            primary_fills_frame = (
+                self._calculate_contextual_zoom(primary.bbox, test_cw, test_ch) <= 1.0
+            )
 
-                # Sort inner detections by primary-score so the most
-                # interesting ones come first
-                inner_dets.sort(
-                    key=lambda d: ArtFeatureDetector._get_class_multiplier(d.class_name) * d.confidence,
-                    reverse=True
+            if subject_width > crop_w * 1.3 or primary_fills_frame:
+                # Primary is too large for a single crop to zoom into.
+                # Use inner detections as natural focal points.
+                inner_dets = self._get_quality_inner_detections(
+                    primary, detections, (width, height)
                 )
 
                 if inner_dets:
-                    # Use inner detections as anchor points
+                    # Use inner detections as anchor points, clamped so the
+                    # crop window still fully contains the primary bbox
                     for det in inner_dets:
+                        ax, ay = self._clamp_anchor_to_primary(
+                            det.center[0], det.center[1], primary.bbox, (width, height)
+                        )
                         cw = self._calculate_crop_window(
                             image_size=(width, height),
-                            anchor_point=det.center
+                            anchor_point=(ax, ay)
                         )
                         overlaps = any(
                             self._calculate_iou(cw, ecw) > 0.3
@@ -590,6 +606,85 @@ class SmartCropper:
             results.append((cropped, det, contextual_zoom))
 
         return results
+
+    def _clamp_anchor_to_primary(
+        self,
+        anchor_x: int,
+        anchor_y: int,
+        primary_bbox: Tuple[int, int, int, int],
+        image_size: Tuple[int, int]
+    ) -> Tuple[int, int]:
+        """
+        Clamp anchor so the crop window fully contains the primary bbox.
+
+        Uses a reference crop at the image centre to determine crop dimensions
+        (crop width/height are aspect-ratio driven and don't depend on anchor).
+        The primary bbox is clipped to image bounds before clamping so that
+        OOB detections don't artificially expand the constraint range.
+        """
+        width, height = image_size
+        px1, py1, px2, py2 = primary_bbox
+        # Clip primary to image bounds (handles OOB model extrapolations)
+        px1 = max(0, px1); py1 = max(0, py1)
+        px2 = min(width, px2); py2 = min(height, py2)
+
+        # Get crop dimensions using a neutral centre anchor
+        ref = self._calculate_crop_window((width, height), (width // 2, height // 2))
+        cw = ref[2] - ref[0]
+        ch = ref[3] - ref[1]
+
+        # Unified clamp for both axes:
+        #   When primary fits in crop  → keeps crop containing primary
+        #   When primary wider/taller → keeps crop within primary
+        # Formula: clamp to [min(px1+cw/2, px2-cw/2), max(px1+cw/2, px2-cw/2)]
+        ax_lo = min(px1 + cw / 2, px2 - cw / 2)
+        ax_hi = max(px1 + cw / 2, px2 - cw / 2)
+        anchor_x = int(max(ax_lo, min(ax_hi, anchor_x)))
+
+        ay_lo = min(py1 + ch / 2, py2 - ch / 2)
+        ay_hi = max(py1 + ch / 2, py2 - ch / 2)
+        anchor_y = int(max(ay_lo, min(ay_hi, anchor_y)))
+
+        return anchor_x, anchor_y
+
+    def _get_quality_inner_detections(
+        self,
+        primary: Detection,
+        detections: List[Detection],
+        image_size: tuple
+    ) -> List[Detection]:
+        """
+        Find quality detections that fall inside the primary bbox.
+
+        Applies edge and size filters identical to secondary crop filters.
+        Returns list sorted by class_multiplier * confidence (best first).
+        """
+        width, height = image_size
+        img_area = width * height
+        edge_margin = 0.01
+        inner_dets = []
+        for d in detections:
+            if d is primary:
+                continue
+            if self._bbox_overlap_ratio(d.bbox, primary.bbox) <= 0.5:
+                continue
+            if d.confidence < self.MULTI_CROP_SECONDARY_CONFIDENCE:
+                continue
+            dx1, dy1, dx2, dy2 = d.bbox
+            if (dx1 < width * edge_margin or
+                dy1 < height * edge_margin or
+                dx2 > width * (1 - edge_margin) or
+                dy2 > height * (1 - edge_margin)):
+                continue
+            det_area = (dx2 - dx1) * (dy2 - dy1)
+            if det_area < img_area * 0.015:
+                continue
+            inner_dets.append(d)
+        inner_dets.sort(
+            key=lambda d: ArtFeatureDetector._get_class_multiplier(d.class_name) * d.confidence,
+            reverse=True
+        )
+        return inner_dets
 
     @staticmethod
     def _calculate_iou(

@@ -504,14 +504,16 @@ class ArtFeatureDetector:
             # Edge penalty: detections touching the image boundary are likely
             # cut off / extending beyond the frame, and probably not the
             # photographer's intended subject.
+            # OOB coordinates (beyond image dimensions) indicate model
+            # extrapolation, not a real edge — don't penalise those edges.
             if self._last_image_size:
                 bx1, by1, bx2, by2 = det.bbox
                 margin = 0.01  # 1% of dimension
                 edges_touching = sum([
-                    bx1 < img_width * margin,
-                    by1 < img_height * margin,
-                    bx2 > img_width * (1 - margin),
-                    by2 > img_height * (1 - margin),
+                    0 <= bx1 < img_width * margin,
+                    0 <= by1 < img_height * margin,
+                    img_width * (1 - margin) < bx2 <= img_width,
+                    img_height * (1 - margin) < by2 <= img_height,
                 ])
                 if edges_touching >= 2:
                     score *= 0.4  # Strongly penalize corner/multi-edge
