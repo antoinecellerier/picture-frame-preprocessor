@@ -128,11 +128,16 @@ class SmartCropper:
         test_ch = test_crop[3] - test_crop[1]
         if self._calculate_contextual_zoom(primary.bbox, test_cw, test_ch) <= 1.0:
             self.last_primary_fills_frame = True
-            # Combine regular detections with focal detections for inner anchor
-            # selection — focal dets are safe here since we're already past
-            # primary selection and only using them as candidate crop anchors.
-            inner_candidates = detections + (focal_detections or [])
-            inner_dets = self._get_quality_inner_detections(primary, inner_candidates, (width, height))
+            # 3D art (sculpture, statue, etc.) is its own focal point — don't
+            # shift the anchor to background elements like framed artwork.
+            if not ArtFeatureDetector.is_3d_art(primary.class_name):
+                # Combine regular detections with focal detections for inner anchor
+                # selection — focal dets are safe here since we're already past
+                # primary selection and only using them as candidate crop anchors.
+                inner_candidates = detections + (focal_detections or [])
+                inner_dets = self._get_quality_inner_detections(primary, inner_candidates, (width, height))
+            else:
+                inner_dets = []
             if inner_dets:
                 # Shift anchor to the focal point but keep zoom against the primary —
                 # we want to frame as much of the piece as possible, just better centred.
@@ -501,10 +506,14 @@ class SmartCropper:
             if subject_width > crop_w * 1.3 or primary_fills_frame:
                 # Primary is too large for a single crop to zoom into.
                 # Use inner detections as natural focal points.
-                inner_candidates = detections + (focal_detections or [])
-                inner_dets = self._get_quality_inner_detections(
-                    primary, inner_candidates, (width, height)
-                )
+                # 3D art is its own focal point — skip inner anchor logic.
+                if not ArtFeatureDetector.is_3d_art(primary.class_name):
+                    inner_candidates = detections + (focal_detections or [])
+                    inner_dets = self._get_quality_inner_detections(
+                        primary, inner_candidates, (width, height)
+                    )
+                else:
+                    inner_dets = []
 
                 if inner_dets:
                     # Use inner detections as anchor points, clamped so the

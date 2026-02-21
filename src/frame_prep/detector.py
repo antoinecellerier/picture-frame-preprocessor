@@ -332,7 +332,6 @@ class ArtFeatureDetector:
     # but don't identify the specific subject; often produce large bboxes
     _scene_art_classes = {
         'wall art', 'wall-mounted art', 'art on wall',
-        'street art',
         'art installation',
         'decorated sign',
         'gallery piece',
@@ -398,8 +397,9 @@ class ArtFeatureDetector:
 
         Tiers (checked in order):
         - Specific art (5.0x): mosaic, sculpture, painting, etc.
+        - Art / street art (3.5x): 'art' exact; 'street art' substring
         - Generic scene (0.3x): exhibit, display (full-image bboxes)
-        - Scene art (2.0x): mural, street art, wall art, etc.
+        - Scene art (2.0x): wall art, art installation, etc.
         - COCO art-related (2.5x): vase, bird, horse, etc.
         - Person (0.4x)
         - Avoid (0.05x): trash, traffic light, etc.
@@ -415,6 +415,11 @@ class ArtFeatureDetector:
         # Standalone "art" class (from Grounding DINO) — specific enough
         # to indicate actual art, but too short for safe substring matching
         if class_lower == 'art':
+            return 3.5
+
+        # 'street art' — names an actual medium but bboxes can be wide, so
+        # sits between specific art (5.0x) and generic scene art (2.0x).
+        if 'street art' in class_lower:
             return 3.5
 
         # Tier 3: Generic catch-all labels (exact match only —
