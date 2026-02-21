@@ -40,6 +40,10 @@ Output is 480x800 JPEG by default (3:5 portrait ratio for e-ink frames).
 
 ![Street art sample](samples/sample_street_art.jpg)
 
+**Focal point detection** -- wide mural fills the frame, second pass finds the face/figure to use as crop anchor:
+
+![Focal detection sample](samples/sample_focal_detection.jpg)
+
 ## Documentation
 
 - **[Usage Reference](docs/USAGE.md)** -- full CLI options, cropping strategies, performance tuning

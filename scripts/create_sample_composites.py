@@ -181,3 +181,9 @@ if __name__ == "__main__":
         ["20220321_171136", "20220109_160326"],
         "sample_street_art.jpg",
     )
+
+    # Focal point detection: wide mural → face/figure anchor crop
+    create_composite(
+        ["DSC_0153"],
+        "sample_focal_detection.jpg",
+    )
