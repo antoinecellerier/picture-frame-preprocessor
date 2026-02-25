@@ -89,6 +89,7 @@ class Detection:
     confidence: float
     class_name: str
     area: int
+    original_class: Optional[str] = None  # Set by SigLIPClassVerifier if reclassified
 
     @property
     def center(self) -> Tuple[int, int]:

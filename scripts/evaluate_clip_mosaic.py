@@ -21,7 +21,7 @@ from PIL import Image, ImageOps
 # Add src to path
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
-from frame_prep.clip_detector import CLIPMosaicDetector
+from frame_prep.clip_detector import CLIPMosaicDetector, CLIP_MODEL_ID, SIGLIP2_MODEL_ID
 
 GROUND_TRUTH_PATH = Path("test_real_images/mosaic_ground_truth.json")
 IMAGE_DIR = Path("test_real_images/input")
@@ -39,6 +39,12 @@ def parse_args():
         type=float,
         default=None,
         help="Single-point evaluation at this threshold (default: sweep)",
+    )
+    p.add_argument(
+        "--model",
+        default=CLIP_MODEL_ID,
+        help=f"Model ID to use (default: {CLIP_MODEL_ID}). "
+             f"Use '{SIGLIP2_MODEL_ID}' for SigLIP2.",
     )
     p.add_argument(
         "--no-cache",
@@ -308,9 +314,9 @@ def main():
     n_total = len(gt)
     print(f"  {n_total} images, {n_mosaic} mosaics, {n_total - n_mosaic} non-mosaics")
 
-    detector = CLIPMosaicDetector(threshold=0.0)
+    detector = CLIPMosaicDetector(threshold=0.0, model_id=args.model)
 
-    print(f"\nLoading CLIP model ({CLIPMosaicDetector.MODEL_ID})...")
+    print(f"\nLoading model ({args.model})...")
     detector._load_clip()
     print("  Model loaded.")
 

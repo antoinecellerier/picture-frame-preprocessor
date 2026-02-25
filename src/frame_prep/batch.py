@@ -101,6 +101,7 @@ def init_worker(config):
         filter_non_art=config.get('filter_non_art', defaults.FILTER_NON_ART),
         multi_crop=config.get('multi_crop', False),
         clip_mosaic=config.get('clip_mosaic', False),
+        siglip_verify=config.get('siglip_verify', False),
     )
 
 

@@ -8,7 +8,7 @@ from PIL.ExifTags import TAGS
 
 from .detector import ArtFeatureDetector, OptimizedEnsembleDetector
 from .cropper import SmartCropper
-from .clip_detector import CLIPMosaicDetector
+from .clip_detector import CLIPMosaicDetector, SigLIPClassVerifier
 from .utils import validate_image, ensure_directory
 from . import defaults
 
@@ -46,6 +46,7 @@ class ImagePreprocessor:
         filter_non_art: bool = defaults.FILTER_NON_ART,
         multi_crop: bool = False,
         clip_mosaic: bool = False,
+        siglip_verify: bool = False,
     ):
         """
         Initialize preprocessor.
@@ -60,6 +61,7 @@ class ImagePreprocessor:
             filter_non_art: Filter out non-art images by score threshold
             multi_crop: Generate one crop per viable art subject
             clip_mosaic: Enable CLIP-based mosaic detection (experimental)
+            siglip_verify: Enable SigLIP2 class verification/correction (experimental)
         """
         self.target_width = target_width
         self.target_height = target_height
@@ -68,6 +70,7 @@ class ImagePreprocessor:
         self.filter_non_art = filter_non_art
         self.multi_crop = multi_crop
         self.clip_mosaic = clip_mosaic
+        self.siglip_verify = siglip_verify
 
         self.detector = detector or ArtFeatureDetector()
         self.cropper = cropper or SmartCropper(target_width, target_height)
@@ -79,6 +82,8 @@ class ImagePreprocessor:
         self._clip_candidate_detector = OptimizedEnsembleDetector(
             confidence_threshold=0.10
         ) if clip_mosaic else None
+        # SigLIP2 class verifier — only instantiated when siglip_verify=True.
+        self._class_verifier = SigLIPClassVerifier() if siglip_verify else None
 
     def process_image(
         self,
@@ -144,6 +149,14 @@ class ImagePreprocessor:
                         # Fallback for detectors that don't support image_path
                         detections = self.detector.detect(img, verbose=verbose)
 
+                    # === SIGLIP CLASS VERIFICATION ===
+                    # Correct mislabelled detections (e.g. real person detected as
+                    # "painted figure") before primary selection sees the classes.
+                    if self.siglip_verify and detections:
+                        detections = self._class_verifier.verify_all(
+                            detections, img, width, height, verbose=verbose
+                        )
+
                     # Get primary subject and art score
                     primary = None
                     if detections and hasattr(self.detector, 'get_primary_subject_with_score'):
@@ -201,6 +214,7 @@ class ImagePreprocessor:
                             'bbox': det.bbox,
                             'confidence': det.confidence,
                             'class_name': det.class_name,
+                            'original_class': det.original_class,
                             'is_primary': det == primary
                         })
 

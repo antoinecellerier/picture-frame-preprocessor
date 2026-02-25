@@ -40,6 +40,8 @@ def common_options(f):
                   help='Generate one crop per viable art subject (e.g., multiple statues or mural panels)')
     @click.option('--clip-mosaic', is_flag=True,
                   help='Enable CLIP-based mosaic detection (experimental, slower)')
+    @click.option('--siglip-verify', is_flag=True,
+                  help='Enable SigLIP2 class verification/correction (experimental, slower)')
     @click.option('--verbose', '-v', is_flag=True, help='Verbose output')
     @functools.wraps(f)
     def wrapper(*args, **kwargs):
@@ -103,7 +105,8 @@ def cli():
               help='Output directory or file path')
 @common_options
 def process(input, output, width, height, strategy, model, confidence, single_model,
-            ensemble, zoom, quality, no_two_pass, no_filter, multi_crop, clip_mosaic, verbose):
+            ensemble, zoom, quality, no_two_pass, no_filter, multi_crop, clip_mosaic,
+            siglip_verify, verbose):
     """Process a single image for e-ink display."""
 
     try:
@@ -120,6 +123,7 @@ def process(input, output, width, height, strategy, model, confidence, single_mo
             filter_non_art=defaults.FILTER_NON_ART and not no_filter,
             multi_crop=multi_crop,
             clip_mosaic=clip_mosaic,
+            siglip_verify=siglip_verify,
         )
 
         # Determine output path
@@ -196,7 +200,7 @@ def process(input, output, width, height, strategy, model, confidence, single_mo
 def batch(input, output, workers, skip_existing, recursive, no_openvino,
           threads_per_worker, width, height, strategy, model, confidence,
           single_model, ensemble, zoom, quality, no_two_pass, no_filter,
-          multi_crop, clip_mosaic, verbose):
+          multi_crop, clip_mosaic, siglip_verify, verbose):
     """Batch process a directory of images for e-ink display."""
     from .batch import run_batch
 
@@ -218,6 +222,7 @@ def batch(input, output, workers, skip_existing, recursive, no_openvino,
         'filter_non_art': defaults.FILTER_NON_ART and not no_filter,
         'multi_crop': multi_crop,
         'clip_mosaic': clip_mosaic,
+        'siglip_verify': siglip_verify,
     }
 
     sys.exit(run_batch(input, output, config, workers=workers))
@@ -236,7 +241,7 @@ def batch(input, output, workers, skip_existing, recursive, no_openvino,
 @common_options
 def report(input_dir, ground_truth, output_file, width, height, strategy, model,
            confidence, single_model, ensemble, zoom, quality, no_two_pass,
-           no_filter, multi_crop, clip_mosaic, verbose):
+           no_filter, multi_crop, clip_mosaic, siglip_verify, verbose):
     """Generate an interactive HTML detection report."""
     from .report import generate_report as _generate_report
 
@@ -251,6 +256,7 @@ def report(input_dir, ground_truth, output_file, width, height, strategy, model,
         detector=detector,
         cropper=cropper,
         clip_mosaic=clip_mosaic,
+        siglip_verify=siglip_verify,
         verbose=verbose,
     )
 

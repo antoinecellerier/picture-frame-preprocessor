@@ -9,13 +9,14 @@ from datetime import datetime
 
 from .detector import OptimizedEnsembleDetector, ArtFeatureDetector
 from .cropper import SmartCropper
-from .clip_detector import CLIPMosaicDetector
+from .clip_detector import CLIPMosaicDetector, SigLIPClassVerifier
 from . import defaults
 from .defaults import MIN_ART_SCORE
 
 # Module-level singletons — models load lazily on first use.
 _clip_detector = CLIPMosaicDetector(threshold=0.022)
 _clip_candidate_detector = OptimizedEnsembleDetector(confidence_threshold=0.10)
+_siglip_verifier = SigLIPClassVerifier()
 
 
 def calculate_iou(box1, box2):
@@ -147,7 +148,8 @@ def draw_boxes_on_image(image_path, detections, ground_truth_boxes=None,
         return None
 
 
-def run_detection(image_path, detector, verbose=False, cropper=None, clip_mosaic=False):
+def run_detection(image_path, detector, verbose=False, cropper=None, clip_mosaic=False,
+                  siglip_verify=False):
     """Run detection on an image and return results."""
     try:
         img = Image.open(image_path)
@@ -159,6 +161,17 @@ def run_detection(image_path, detector, verbose=False, cropper=None, clip_mosaic
             detections = detector.detect(img, verbose=verbose, image_path=image_path)
         except TypeError:
             detections = detector.detect(img, verbose=verbose)
+
+        # === SIGLIP CLASS VERIFICATION ===
+        # Correct mislabelled detections before primary selection.
+        if siglip_verify and detections:
+            img_w, img_h = img.size
+            detections = _siglip_verifier.verify_all(
+                detections, img, img_w, img_h, verbose=verbose
+            )
+        siglip_corrected_count = sum(
+            1 for d in detections if d.original_class is not None
+        )
 
         # Get primary by smart selection algorithm (with score)
         primary = None
@@ -237,13 +250,15 @@ def run_detection(image_path, detector, verbose=False, cropper=None, clip_mosaic
             'clip_count': clip_count,
             'clip_max_score': clip_max_score,
             'clip_primary_selected': clip_primary_selected,
+            'siglip_corrected_count': siglip_corrected_count,
         }
     except Exception as e:
         print(f"Error detecting in {image_path}: {e}")
         return {'all_detections': [], 'focal_detections': [], 'primary': None,
                 'primary_by_confidence': None, 'selection_changed': False,
                 'count': 0, 'art_score': 0.0,
-                'clip_count': 0, 'clip_max_score': None, 'clip_primary_selected': False}
+                'clip_count': 0, 'clip_max_score': None, 'clip_primary_selected': False,
+                'siglip_corrected_count': 0}
 
 
 def check_accuracy(primary, ground_truth_boxes, iou_threshold=0.3):
@@ -359,7 +374,8 @@ def generate_multi_crop_images(image_path, detections, cropper, focal_detections
 
 
 def generate_report(input_dir=None, ground_truth_path=None, output_file=None,
-                    detector=None, cropper=None, clip_mosaic=False, verbose=False):
+                    detector=None, cropper=None, clip_mosaic=False,
+                    siglip_verify=False, verbose=False):
     """Generate interactive HTML report.
 
     Args:
@@ -445,7 +461,8 @@ def generate_report(input_dir=None, ground_truth_path=None, output_file=None,
             gt_boxes.append(det_data['bbox'])
 
         # Run detection with optimized ensemble (uses caching, verbose for two-pass info)
-        detection_result = run_detection(image_path, detector, verbose=True, cropper=cropper, clip_mosaic=clip_mosaic)
+        detection_result = run_detection(image_path, detector, verbose=True, cropper=cropper,
+                                         clip_mosaic=clip_mosaic, siglip_verify=siglip_verify)
 
         # Check accuracy using smart primary selection
         # Exclude not_art images from accuracy denominator
@@ -520,6 +537,7 @@ def generate_report(input_dir=None, ground_truth_path=None, output_file=None,
             'clip_count': detection_result.get('clip_count', 0),
             'clip_max_score': detection_result.get('clip_max_score'),
             'clip_primary_selected': detection_result.get('clip_primary_selected', False),
+            'siglip_corrected_count': detection_result.get('siglip_corrected_count', 0),
         })
 
     accuracy = (correct_count / total_with_gt * 100) if total_with_gt > 0 else 0
@@ -1117,6 +1135,7 @@ def generate_report(input_dir=None, ground_truth_path=None, output_file=None,
             <button class="filter-btn" onclick="filterResults('no-gt')">No Ground Truth ({sum(1 for r in results if not r['has_ground_truth'] and not r.get('is_not_art'))})</button>
             <button class="filter-btn" onclick="filterResults('big-primary')">Big Primary ({sum(1 for r in results if r.get('primary_fills_frame'))})</button>
             <button class="filter-btn" onclick="filterResults('clip')">CLIP Fired ({sum(1 for r in results if r.get('clip_count', 0) > 0)})</button>
+            <button class="filter-btn" onclick="filterResults('siglip')">SigLIP Corrected ({sum(1 for r in results if r.get('siglip_corrected_count', 0) > 0)})</button>
             <button class="export-btn" onclick="exportFeedback()">Export Feedback</button>
         </div>
     </div>
@@ -1146,6 +1165,9 @@ def generate_report(input_dir=None, ground_truth_path=None, output_file=None,
             # Show if selection algorithm chose differently than confidence-based
             if result['selection_changed'] and result['primary_by_confidence']:
                 primary_info += f"<br><span style='color: #059669; font-size: 12px;'>Changed from: {result['primary_by_confidence'].class_name} (conf: {result['primary_by_confidence'].confidence:.3f})</span>"
+            # Show if SigLIP reclassified this detection
+            if result['primary'].original_class:
+                primary_info += f"<br><span style='color: #f97316; font-size: 12px;'>SigLIP reclassified from: {result['primary'].original_class}</span>"
 
         # Show art score
         art_score = result.get('art_score', 0.0)
@@ -1182,6 +1204,12 @@ def generate_report(input_dir=None, ground_truth_path=None, output_file=None,
             else:
                 clip_badge = f"<span class='badge' style='background: #ede9fe; color: #6d28d9;'>CLIP: {clip_count} {noun} ({clip_max:.3f})</span>"
 
+        siglip_badge = ""
+        siglip_corrected = result.get('siglip_corrected_count', 0)
+        if siglip_corrected > 0:
+            noun = "correction" if siglip_corrected == 1 else "corrections"
+            siglip_badge = f"<span class='badge' style='background: #fed7aa; color: #9a3412;'>SigLIP: {siglip_corrected} {noun}</span>"
+
         # Generate result image HTML if available
         result_img_html = ""
         multi_crop_images = result.get('multi_crop_images', [])
@@ -1201,7 +1229,7 @@ def generate_report(input_dir=None, ground_truth_path=None, output_file=None,
                 </div>"""
 
         html += f"""
-        <div class="result-card {status_class}" data-status="{status_class}" data-index="{idx}" data-big-primary="{'true' if result.get('primary_fills_frame') else 'false'}" data-clip="{'true' if result.get('clip_count', 0) > 0 else 'false'}">
+        <div class="result-card {status_class}" data-status="{status_class}" data-index="{idx}" data-big-primary="{'true' if result.get('primary_fills_frame') else 'false'}" data-clip="{'true' if result.get('clip_count', 0) > 0 else 'false'}" data-siglip="{'true' if result.get('siglip_corrected_count', 0) > 0 else 'false'}">
             <div class="result-header">
                 <div class="result-title">{result['filename']}</div>
                 <div class="result-meta">
@@ -1210,6 +1238,7 @@ def generate_report(input_dir=None, ground_truth_path=None, output_file=None,
                     {selection_badge}
                     {multi_crop_badge}
                     {clip_badge}
+                    {siglip_badge}
                     <span>Detections: {result['detection_count']}</span>
                     {art_score_info}
                     <span>Zoom: {result['zoom_applied']:.2f}x</span>
@@ -1290,6 +1319,7 @@ def generate_report(input_dir=None, ground_truth_path=None, output_file=None,
             'clip_count': result.get('clip_count', 0),
             'clip_max_score': round(result['clip_max_score'], 4) if result.get('clip_max_score') is not None else None,
             'clip_primary_selected': result.get('clip_primary_selected', False),
+            'siglip_corrected_count': result.get('siglip_corrected_count', 0),
         })
 
     html += """
@@ -1314,6 +1344,8 @@ def generate_report(input_dir=None, ground_truth_path=None, output_file=None,
                     card.style.display = card.dataset.bigPrimary === 'true' ? 'block' : 'none';
                 } else if (filter === 'clip') {
                     card.style.display = card.dataset.clip === 'true' ? 'block' : 'none';
+                } else if (filter === 'siglip') {
+                    card.style.display = card.dataset.siglip === 'true' ? 'block' : 'none';
                 } else {
                     card.style.display = card.dataset.status === filter ? 'block' : 'none';
                 }
