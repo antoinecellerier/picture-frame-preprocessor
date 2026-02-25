@@ -38,6 +38,8 @@ def common_options(f):
                   help='Disable non-art image filtering (process all images regardless of art score)')
     @click.option('--multi-crop', is_flag=True,
                   help='Generate one crop per viable art subject (e.g., multiple statues or mural panels)')
+    @click.option('--clip-mosaic', is_flag=True,
+                  help='Enable CLIP-based mosaic detection (experimental, slower)')
     @click.option('--verbose', '-v', is_flag=True, help='Verbose output')
     @functools.wraps(f)
     def wrapper(*args, **kwargs):
@@ -101,7 +103,7 @@ def cli():
               help='Output directory or file path')
 @common_options
 def process(input, output, width, height, strategy, model, confidence, single_model,
-            ensemble, zoom, quality, no_two_pass, no_filter, multi_crop, verbose):
+            ensemble, zoom, quality, no_two_pass, no_filter, multi_crop, clip_mosaic, verbose):
     """Process a single image for e-ink display."""
 
     try:
@@ -116,7 +118,8 @@ def process(input, output, width, height, strategy, model, confidence, single_mo
             strategy=strategy,
             quality=quality,
             filter_non_art=defaults.FILTER_NON_ART and not no_filter,
-            multi_crop=multi_crop
+            multi_crop=multi_crop,
+            clip_mosaic=clip_mosaic,
         )
 
         # Determine output path
@@ -193,7 +196,7 @@ def process(input, output, width, height, strategy, model, confidence, single_mo
 def batch(input, output, workers, skip_existing, recursive, no_openvino,
           threads_per_worker, width, height, strategy, model, confidence,
           single_model, ensemble, zoom, quality, no_two_pass, no_filter,
-          multi_crop, verbose):
+          multi_crop, clip_mosaic, verbose):
     """Batch process a directory of images for e-ink display."""
     from .batch import run_batch
 
@@ -214,6 +217,7 @@ def batch(input, output, workers, skip_existing, recursive, no_openvino,
         'threads_per_worker': threads_per_worker,
         'filter_non_art': defaults.FILTER_NON_ART and not no_filter,
         'multi_crop': multi_crop,
+        'clip_mosaic': clip_mosaic,
     }
 
     sys.exit(run_batch(input, output, config, workers=workers))
@@ -232,7 +236,7 @@ def batch(input, output, workers, skip_existing, recursive, no_openvino,
 @common_options
 def report(input_dir, ground_truth, output_file, width, height, strategy, model,
            confidence, single_model, ensemble, zoom, quality, no_two_pass,
-           no_filter, multi_crop, verbose):
+           no_filter, multi_crop, clip_mosaic, verbose):
     """Generate an interactive HTML detection report."""
     from .report import generate_report as _generate_report
 
@@ -246,6 +250,7 @@ def report(input_dir, ground_truth, output_file, width, height, strategy, model,
         output_file=output_file,
         detector=detector,
         cropper=cropper,
+        clip_mosaic=clip_mosaic,
         verbose=verbose,
     )
 

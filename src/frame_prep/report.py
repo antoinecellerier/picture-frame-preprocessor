@@ -9,8 +9,13 @@ from datetime import datetime
 
 from .detector import OptimizedEnsembleDetector, ArtFeatureDetector
 from .cropper import SmartCropper
+from .clip_detector import CLIPMosaicDetector
 from . import defaults
 from .defaults import MIN_ART_SCORE
+
+# Module-level singletons — models load lazily on first use.
+_clip_detector = CLIPMosaicDetector(threshold=0.022)
+_clip_candidate_detector = OptimizedEnsembleDetector(confidence_threshold=0.10)
 
 
 def calculate_iou(box1, box2):
@@ -142,7 +147,7 @@ def draw_boxes_on_image(image_path, detections, ground_truth_boxes=None,
         return None
 
 
-def run_detection(image_path, detector, verbose=False, cropper=None):
+def run_detection(image_path, detector, verbose=False, cropper=None, clip_mosaic=False):
     """Run detection on an image and return results."""
     try:
         img = Image.open(image_path)
@@ -162,6 +167,38 @@ def run_detection(image_path, detector, verbose=False, cropper=None):
             primary, art_score = detector.get_primary_subject_with_score(detections)
         elif detections:
             primary = detector.get_primary_subject(detections)
+
+        # === CLIP MOSAIC DETECTION ===
+        # Low-conf candidate pass provides extra bbox zones for CLIP without
+        # polluting the main detection list.
+        clip_dets = []
+        if clip_mosaic:
+            try:
+                candidate_dets = _clip_candidate_detector.detect(
+                    img, verbose=False, image_path=str(image_path)
+                )
+            except TypeError:
+                candidate_dets = _clip_candidate_detector.detect(img, verbose=False)
+            clip_dets = _clip_detector.detect(
+                img, detections,
+                candidate_detections=candidate_dets,
+                verbose=verbose,
+            )
+        clip_count = len(clip_dets)
+        clip_max_score = max(d.confidence for d in clip_dets) if clip_dets else None
+        if clip_dets:
+            if verbose:
+                print(f"  CLIP: {len(clip_dets)} mosaic detection(s)")
+            detections.extend(clip_dets)
+            if hasattr(detector, 'get_primary_subject_with_score'):
+                primary, art_score = detector.get_primary_subject_with_score(detections)
+            else:
+                primary = detector.get_primary_subject(detections)
+        clip_primary_selected = (
+            primary is not None
+            and clip_dets
+            and any(primary.bbox == d.bbox for d in clip_dets)
+        )
 
         # === FOCAL POINT DETECTION ===
         # When primary fills the frame, run a focused pass on the primary's
@@ -197,12 +234,16 @@ def run_detection(image_path, detector, verbose=False, cropper=None):
             'selection_changed': selection_changed,
             'count': len(detections),
             'art_score': art_score,
+            'clip_count': clip_count,
+            'clip_max_score': clip_max_score,
+            'clip_primary_selected': clip_primary_selected,
         }
     except Exception as e:
         print(f"Error detecting in {image_path}: {e}")
         return {'all_detections': [], 'focal_detections': [], 'primary': None,
                 'primary_by_confidence': None, 'selection_changed': False,
-                'count': 0, 'art_score': 0.0}
+                'count': 0, 'art_score': 0.0,
+                'clip_count': 0, 'clip_max_score': None, 'clip_primary_selected': False}
 
 
 def check_accuracy(primary, ground_truth_boxes, iou_threshold=0.3):
@@ -318,7 +359,7 @@ def generate_multi_crop_images(image_path, detections, cropper, focal_detections
 
 
 def generate_report(input_dir=None, ground_truth_path=None, output_file=None,
-                    detector=None, cropper=None, verbose=False):
+                    detector=None, cropper=None, clip_mosaic=False, verbose=False):
     """Generate interactive HTML report.
 
     Args:
@@ -404,7 +445,7 @@ def generate_report(input_dir=None, ground_truth_path=None, output_file=None,
             gt_boxes.append(det_data['bbox'])
 
         # Run detection with optimized ensemble (uses caching, verbose for two-pass info)
-        detection_result = run_detection(image_path, detector, verbose=True, cropper=cropper)
+        detection_result = run_detection(image_path, detector, verbose=True, cropper=cropper, clip_mosaic=clip_mosaic)
 
         # Check accuracy using smart primary selection
         # Exclude not_art images from accuracy denominator
@@ -476,6 +517,9 @@ def generate_report(input_dir=None, ground_truth_path=None, output_file=None,
             'is_not_art': is_not_art,
             'auto_filtered': auto_filtered,
             'primary_fills_frame': primary_fills_frame,
+            'clip_count': detection_result.get('clip_count', 0),
+            'clip_max_score': detection_result.get('clip_max_score'),
+            'clip_primary_selected': detection_result.get('clip_primary_selected', False),
         })
 
     accuracy = (correct_count / total_with_gt * 100) if total_with_gt > 0 else 0
@@ -1072,6 +1116,7 @@ def generate_report(input_dir=None, ground_truth_path=None, output_file=None,
             <button class="filter-btn" onclick="filterResults('not-art')">Not Art ({sum(1 for r in results if r.get('is_not_art'))})</button>
             <button class="filter-btn" onclick="filterResults('no-gt')">No Ground Truth ({sum(1 for r in results if not r['has_ground_truth'] and not r.get('is_not_art'))})</button>
             <button class="filter-btn" onclick="filterResults('big-primary')">Big Primary ({sum(1 for r in results if r.get('primary_fills_frame'))})</button>
+            <button class="filter-btn" onclick="filterResults('clip')">CLIP Fired ({sum(1 for r in results if r.get('clip_count', 0) > 0)})</button>
             <button class="export-btn" onclick="exportFeedback()">Export Feedback</button>
         </div>
     </div>
@@ -1126,6 +1171,17 @@ def generate_report(input_dir=None, ground_truth_path=None, output_file=None,
         if multi_crop_images:
             multi_crop_badge = f"<span class='badge' style='background: #dbeafe; color: #1e40af;'>Multi-crop: {len(multi_crop_images)}</span>"
 
+        clip_badge = ""
+        clip_count = result.get('clip_count', 0)
+        if clip_count > 0:
+            clip_max = result.get('clip_max_score', 0.0) or 0.0
+            clip_primary = result.get('clip_primary_selected', False)
+            noun = "mosaic" if clip_count == 1 else "mosaics"
+            if clip_primary:
+                clip_badge = f"<span class='badge' style='background: #7c3aed; color: white;'>CLIP primary: mosaic ({clip_max:.3f})</span>"
+            else:
+                clip_badge = f"<span class='badge' style='background: #ede9fe; color: #6d28d9;'>CLIP: {clip_count} {noun} ({clip_max:.3f})</span>"
+
         # Generate result image HTML if available
         result_img_html = ""
         multi_crop_images = result.get('multi_crop_images', [])
@@ -1145,7 +1201,7 @@ def generate_report(input_dir=None, ground_truth_path=None, output_file=None,
                 </div>"""
 
         html += f"""
-        <div class="result-card {status_class}" data-status="{status_class}" data-index="{idx}" data-big-primary="{'true' if result.get('primary_fills_frame') else 'false'}">
+        <div class="result-card {status_class}" data-status="{status_class}" data-index="{idx}" data-big-primary="{'true' if result.get('primary_fills_frame') else 'false'}" data-clip="{'true' if result.get('clip_count', 0) > 0 else 'false'}">
             <div class="result-header">
                 <div class="result-title">{result['filename']}</div>
                 <div class="result-meta">
@@ -1153,6 +1209,7 @@ def generate_report(input_dir=None, ground_truth_path=None, output_file=None,
                     {not_art_badge}
                     {selection_badge}
                     {multi_crop_badge}
+                    {clip_badge}
                     <span>Detections: {result['detection_count']}</span>
                     {art_score_info}
                     <span>Zoom: {result['zoom_applied']:.2f}x</span>
@@ -1230,6 +1287,9 @@ def generate_report(input_dir=None, ground_truth_path=None, output_file=None,
             'ground_truth_boxes': result['ground_truth_boxes'],
             'art_score': round(result.get('art_score', 0.0), 4),
             'is_not_art': result.get('is_not_art', False),
+            'clip_count': result.get('clip_count', 0),
+            'clip_max_score': round(result['clip_max_score'], 4) if result.get('clip_max_score') is not None else None,
+            'clip_primary_selected': result.get('clip_primary_selected', False),
         })
 
     html += """
@@ -1252,6 +1312,8 @@ def generate_report(input_dir=None, ground_truth_path=None, output_file=None,
                     card.style.display = 'block';
                 } else if (filter === 'big-primary') {
                     card.style.display = card.dataset.bigPrimary === 'true' ? 'block' : 'none';
+                } else if (filter === 'clip') {
+                    card.style.display = card.dataset.clip === 'true' ? 'block' : 'none';
                 } else {
                     card.style.display = card.dataset.status === filter ? 'block' : 'none';
                 }

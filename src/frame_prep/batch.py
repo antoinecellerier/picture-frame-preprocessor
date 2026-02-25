@@ -99,7 +99,8 @@ def init_worker(config):
         strategy=config['strategy'],
         quality=config['quality'],
         filter_non_art=config.get('filter_non_art', defaults.FILTER_NON_ART),
-        multi_crop=config.get('multi_crop', False)
+        multi_crop=config.get('multi_crop', False),
+        clip_mosaic=config.get('clip_mosaic', False),
     )
 
 
