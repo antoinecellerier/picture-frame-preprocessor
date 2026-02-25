@@ -114,17 +114,28 @@ When primary bbox is wider than crop and no quality inner detections exist, use 
 
 **Approach:** Run composition analyzer on the primary bbox region, pick highest-saliency point as crop anchor.
 
-### 2. Boost "street art" class multiplier (2 bad_detection)
+### 2. ~~Boost "street art" class multiplier~~ — DONE (2026-02-21)
 
-"street art" currently gets 2.0x (scene_art tier). Several images have central street art losing to less-relevant 5.0x detections. Consider bumping to 3.0-3.5x, or add context: if the image has many street-level detections, boost street art classes.
+Bumped to 3.5x (between specific-art 5.0x and scene-art 2.0x). Removed from `_scene_art_classes`, added explicit substring check in `_get_class_multiplier`.
 
-**Risk:** Could cause regressions where actual "street art" label is a misdetection (sign, lamp post).
+### 3. OpenCV tile-pattern detector for mosaics (4 bad_detection)
 
-### 3. YOLO-World prompt engineering for mosaics (4 bad_detection)
+Several small mosaic/tile art pieces go undetected by both YOLO-World and DINO.
 
-Several small mosaic/tile art pieces go undetected. Try adding specific prompts:
-- "small mosaic tile", "decorative tile", "tile artwork on wall"
-- "chalk drawing on ground", "pavement art"
+**Prompt engineering is high-risk** (lessons from 2026-02-22):
+- YOLO-World's 28-class list is zero-sum — adding classes steals attention from existing ones
+- DINO mosaic synonyms (tile/ceramic/stone mosaic) also caused regressions
+- Tightening the pass-2 skip threshold (0.30→0.35 conf, 1%→2% area) made things much worse
+- "cartoon figure" caused many changes good and bad; avoid similar broad-figure prompts
+
+**Better approach:** OpenCV tile-pattern detector — purely additive, zero regression risk:
+- Detect periodic grid structure using edge detection or FFT analysis
+- Emit a synthetic `Detection` with class `'mosaic'` when a tile grid is found
+- Since it only adds detections (never removes), existing good images can't regress
+
+### 3a. "Street name sign" / "road sign" to avoid-list
+
+Adding `'street name sign'`, `'road sign'`, `'name plate'` to `_avoid_classes` (0.05x) would suppress sign false positives more specifically than the old broad `'sign'` entry (which was removed to preserve street art cases). Low-risk — only affects images where these specific classes appear.
 
 ### 4. Person-as-art filtering (2 bad_crop)
 
