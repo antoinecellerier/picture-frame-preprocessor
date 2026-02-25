@@ -146,12 +146,50 @@ Adding `'street name sign'`, `'road sign'`, `'name plate'` to `_avoid_classes` (
 
 When "painted figure" detection overlaps significantly with a person-shaped bbox and is small/off-center, deprioritize it. DSC_0001_BURST and 20210815_163856 both have actual people misclassified as "painted figure".
 
+**SigLIPClassVerifier tried (2026-02-25) — FAILED:**
+- Result: 88/116 (75.9%) vs 89/116 (76.7%) baseline — net -1
+- Root problem: SigLIP2 zero-shot on a tight bbox crop **cannot distinguish "human depicted in artwork" from "real human"**. A mosaic figure, mural person, or clay figurine all score high on "person" prompts because SigLIP sees the visual form, not semantic context (painting vs real person).
+- Protection list (`_CLEARLY_ART_KEYWORDS`) helps when detection class name is explicit (e.g., "mosaic figure") but fails for generic classes like "painted figure", "figure", "figure figne".
+- `--siglip-verify` flag kept as an opt-in experiment; it's disabled by default and hurts accuracy when enabled.
+
+**What would actually work:**
+- Context-aware VLM query with the **full image + bounding box** — ask "is the person in [region] a real visitor or depicted in artwork?". Florence-2 or PaliGemma would be candidates for this.
+- Or: confidence + position heuristics — real people tend to be at image edges, have lower detection confidence (< 0.30), and appear in multi-person groups.
+
 ### 5. Misclassification cleanup (3 bad_detection)
 
 Hard problems requiring model-level improvements:
 - Glass reflections (DSC_3065)
 - Sign vs art (DSC_4042, DSC_4381)
 - Partial mural fragments (DSC_4059)
+
+---
+
+## Alternative Models Evaluated (2026-02-25)
+
+### Detection backbone alternatives to YOLO-World + Grounding DINO 1.5
+
+| Model | Detection | Region Description | HF Available | Notes |
+|-------|-----------|-------------------|--------------|-------|
+| **DINO-X** (IDEA Research, Nov 2024) | ★★★★★ | ★★★★★ native | API-only | +5.8 AP on LVIS rare classes; unified region QA; not open-source yet |
+| **OWLv2** (Google, 2024) | ★★★★★ | ✗ | ✓ `google/owlv2-large-patch14` | Better on small objects vs Grounding DINO; could help small mosaic detection |
+| **Florence-2** (Microsoft, 2024) | ✗ (secondary) | ★★★★★ | ✓ `microsoft/Florence-2-large` (0.77B) | `<REGION_TO_DESCRIPTION>` takes full image + bbox → ideal for "painted vs real" |
+| **Moondream2** | ✗ (secondary) | ★★★★★ VQA | ✓ `vikhyatk/moondream2` (2B/0.5B) | Ask "Is this a painted figure or real person?" on bbox region; very small |
+| **YOLO11** (Ultralytics, 2024) | ★★★ | ✗ | ✓ | NOT open-vocabulary; YOLO-World still the standard |
+| **YOLO26** (Ultralytics, Jan 2026) | ★★★★ | ✗ | Emerging | New open-vocabulary YOLO; evaluate when stable |
+
+### Most promising next experiments
+
+**For "painted figure vs real person" (items 4 + bad_crop):**
+- **Florence-2 `<REGION_TO_DESCRIPTION>`**: Takes full image + bbox coordinates, returns region description preserving context. Parse output for "painting", "sculpture", "artwork" vs "visitor", "person". Only need to query the primary detection.
+- **Moondream2 VQA (0.5B)**: Ask "Is the person in this image a real person or depicted in artwork?" on the bbox crop. Fast at 0.5B, fine-tuned for fine-grained distinctions.
+
+**For small mosaic detection (items 3 + bad_detection):**
+- **OWLv2**: EVALUATED (2026-02-26) — does not beat baseline. Best F1=0.293 (art_only prompts) vs baseline F1=0.529. Root cause: assigns high scores to colorful murals/frescoes — no clean threshold exists. Not worth integrating.
+- **Next direction**: Expand scope to all art classes using the new `art_class_ground_truth.json`. Build a multi-class evaluator and test models on the full taxonomy (painting/mural/mosaic/sculpture/ceramic/street_art/installation). Accept fuzzy boundaries (mural vs street_art vs painting is sometimes ambiguous).
+
+**For full detection upgrade:**
+- **DINO-X**: Wait for open-source release. Currently API-only via IDEA Research SDK. Would be a direct drop-in upgrade to Grounding DINO 1.5 with native region QA.
 
 ---
 
