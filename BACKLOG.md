@@ -118,20 +118,25 @@ When primary bbox is wider than crop and no quality inner detections exist, use 
 
 Bumped to 3.5x (between specific-art 5.0x and scene-art 2.0x). Removed from `_scene_art_classes`, added explicit substring check in `_get_class_multiplier`.
 
-### 3. OpenCV tile-pattern detector for mosaics (4 bad_detection)
+### 3. Mosaic detection (4+ bad_detection) — OpenCV approach FAILED
 
 Several small mosaic/tile art pieces go undetected by both YOLO-World and DINO.
+
+**OpenCV Hough Lines approach built and evaluated (2026-02-25) — DISABLED:**
+- `src/frame_prep/pattern_detector.py`: `TilePatternDetector` with Hough Lines + pairwise spacing voting
+- Evaluated against `test_real_images/mosaic_ground_truth.json` (28 mosaics / 94 non-mosaics)
+- Best result: precision=50%, recall=14% at threshold=0.040 (4 TP, 4 FP)
+- **Root problem**: Hough Lines fire on text rows, shelves, building facades — can't distinguish mosaic grout lines. 10/28 mosaics score 0.0 (completely undetectable by edge approach).
+- Threshold set to 1.0 (effectively disabled) — the class is kept for future experiments.
 
 **Prompt engineering is high-risk** (lessons from 2026-02-22):
 - YOLO-World's 28-class list is zero-sum — adding classes steals attention from existing ones
 - DINO mosaic synonyms (tile/ceramic/stone mosaic) also caused regressions
-- Tightening the pass-2 skip threshold (0.30→0.35 conf, 1%→2% area) made things much worse
-- "cartoon figure" caused many changes good and bad; avoid similar broad-figure prompts
 
-**Better approach:** OpenCV tile-pattern detector — purely additive, zero regression risk:
-- Detect periodic grid structure using edge detection or FFT analysis
-- Emit a synthetic `Detection` with class `'mosaic'` when a tile grid is found
-- Since it only adds detections (never removes), existing good images can't regress
+**Next approach to try: CLIP zero-shot classifier**
+- `openai/clip-vit-base-patch32` (~150MB) for binary mosaic/not-mosaic classification
+- Semantic understanding should handle text/architecture confusion that defeats edge detection
+- Ground truth available: `test_real_images/mosaic_ground_truth.json` to evaluate precision/recall
 
 ### 3a. "Street name sign" / "road sign" to avoid-list
 

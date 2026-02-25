@@ -42,6 +42,7 @@ cache/
 reports/*
 !reports/.gitkeep
 !reports/feedback/
+!reports/mosaic_annotator.html
 test_output/
 
 # Test results (intermediate outputs, can be regenerated)

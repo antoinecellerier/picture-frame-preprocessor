@@ -1,0 +1,1039 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Mosaic Region Annotator</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: #1a1a1a;
+      color: #e0e0e0;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    /* ── Header ── */
+    #header {
+      background: #2a2a2a;
+      border-bottom: 2px solid #4CAF50;
+      padding: 10px 18px;
+      display: flex;
+      align-items: center;
+      gap: 18px;
+      flex-shrink: 0;
+      flex-wrap: wrap;
+    }
+
+    #header h1 {
+      color: #4CAF50;
+      font-size: 1.2rem;
+      white-space: nowrap;
+    }
+
+    #progress-text {
+      color: #FFD700;
+      font-size: 1rem;
+      font-weight: bold;
+      white-space: nowrap;
+    }
+
+    #header-buttons {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    /* ── Buttons ── */
+    button {
+      font-family: inherit;
+      cursor: pointer;
+      border: none;
+      border-radius: 4px;
+      padding: 7px 14px;
+      font-size: 0.85rem;
+      transition: filter 0.15s;
+    }
+    button:hover { filter: brightness(1.15); }
+    button:active { filter: brightness(0.9); }
+
+    .btn-green  { background: #4CAF50; color: #fff; }
+    .btn-blue   { background: #2196F3; color: #fff; }
+    .btn-red    { background: #e53935; color: #fff; }
+    .btn-orange { background: #FF9800; color: #fff; }
+    .btn-gray   { background: #555; color: #ddd; }
+    .btn-export { background: #9C27B0; color: #fff; font-weight: bold; }
+
+    /* ── Main body ── */
+    #main {
+      display: flex;
+      flex: 1;
+      overflow: hidden;
+    }
+
+    /* ── Sidebar ── */
+    #sidebar {
+      width: 220px;
+      min-width: 170px;
+      background: #232323;
+      border-right: 1px solid #3a3a3a;
+      overflow-y: auto;
+      flex-shrink: 0;
+    }
+
+    #sidebar-header {
+      padding: 8px 10px;
+      background: #2a2a2a;
+      border-bottom: 1px solid #3a3a3a;
+      font-size: 0.75rem;
+      color: #aaa;
+      position: sticky;
+      top: 0;
+      z-index: 5;
+    }
+
+    .sidebar-item {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 5px 8px;
+      cursor: pointer;
+      border-bottom: 1px solid #2a2a2a;
+      font-size: 0.78rem;
+      user-select: none;
+      transition: background 0.1s;
+    }
+    .sidebar-item:hover { background: #2d2d2d; }
+    .sidebar-item.active { background: #1a3a1a; border-left: 3px solid #4CAF50; }
+
+    .sidebar-item .fname {
+      flex: 1;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .sidebar-badge {
+      font-size: 0.7rem;
+      border-radius: 3px;
+      padding: 1px 5px;
+      white-space: nowrap;
+    }
+
+    .score-green  { background: #1b5e20; color: #a5d6a7; }
+    .score-yellow { background: #4a3800; color: #ffe082; }
+    .score-red    { background: #5c1010; color: #ef9a9a; }
+
+    .status-annotated { background: #1b5e20; color: #a5d6a7; }
+    .status-nomosaic  { background: #37474f; color: #90a4ae; }
+    .status-skipped   { background: #4a4a4a; color: #aaa; }
+
+    /* ── Image panel ── */
+    #image-panel {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      background: #111;
+    }
+
+    #image-toolbar {
+      background: #2a2a2a;
+      border-bottom: 1px solid #3a3a3a;
+      padding: 7px 12px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+      flex-shrink: 0;
+    }
+
+    #filename-display {
+      font-size: 0.9rem;
+      font-weight: bold;
+      color: #e0e0e0;
+      flex: 1;
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    #score-badge {
+      font-size: 0.8rem;
+      font-weight: bold;
+      padding: 3px 10px;
+      border-radius: 4px;
+    }
+
+    #box-count-label {
+      font-size: 0.8rem;
+      color: #aaa;
+      white-space: nowrap;
+    }
+
+    /* ── Image canvas wrapper ── */
+    #canvas-wrapper {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      position: relative;
+      padding: 8px;
+    }
+
+    #img-container {
+      position: relative;
+      display: inline-flex;
+      align-items: flex-start;
+      /* size set dynamically */
+      cursor: crosshair;
+    }
+
+    #display-img {
+      display: block;
+      max-width: 100%;
+      max-height: 100%;
+      object-fit: contain;
+      user-select: none;
+      pointer-events: none;
+    }
+
+    #draw-canvas {
+      position: absolute;
+      top: 0;
+      left: 0;
+      cursor: crosshair;
+    }
+
+    /* ── Bottom info bar ── */
+    #info-bar {
+      background: #2a2a2a;
+      border-top: 1px solid #3a3a3a;
+      padding: 5px 12px;
+      font-size: 0.75rem;
+      color: #888;
+      display: flex;
+      gap: 20px;
+      flex-shrink: 0;
+    }
+
+    #info-bar kbd {
+      background: #444;
+      color: #ddd;
+      padding: 1px 5px;
+      border-radius: 3px;
+      font-size: 0.72rem;
+      font-family: monospace;
+    }
+
+    /* ── Box labels overlay (inside canvas-wrapper, positioned) ── */
+    .box-label {
+      position: absolute;
+      background: rgba(0,0,0,0.7);
+      color: #fff;
+      font-size: 0.72rem;
+      padding: 1px 5px;
+      border-radius: 3px 3px 0 0;
+      pointer-events: none;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      line-height: 1.4;
+    }
+
+    .box-delete-btn {
+      pointer-events: all;
+      background: #e53935;
+      color: #fff;
+      border: none;
+      border-radius: 2px;
+      font-size: 0.65rem;
+      padding: 0 4px;
+      cursor: pointer;
+      line-height: 1.4;
+    }
+
+    /* notes input */
+    #notes-area {
+      background: #2a2a2a;
+      border-top: 1px solid #3a3a3a;
+      padding: 5px 12px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-shrink: 0;
+    }
+
+    #notes-area label {
+      font-size: 0.8rem;
+      color: #aaa;
+      white-space: nowrap;
+    }
+
+    #notes-input {
+      flex: 1;
+      background: #333;
+      border: 1px solid #555;
+      color: #e0e0e0;
+      border-radius: 4px;
+      padding: 4px 8px;
+      font-size: 0.8rem;
+      font-family: inherit;
+    }
+    #notes-input:focus { outline: 1px solid #4CAF50; }
+  </style>
+</head>
+<body>
+
+<!-- ── HEADER ── -->
+<div id="header">
+  <h1>Mosaic Annotator</h1>
+  <span id="progress-text">0/122 annotated</span>
+  <div id="header-buttons">
+    <button class="btn-blue" onclick="navigate(-1)">&#8592; Prev</button>
+    <button class="btn-blue" onclick="navigate(1)">Next &#8594;</button>
+    <button class="btn-green" id="btn-no-mosaic" onclick="markNoMosaic()">No Mosaic (N)</button>
+    <button class="btn-orange" onclick="addWholeImage()">Whole Image (W)</button>
+    <button class="btn-red" onclick="clearBoxes()">Clear All Regions</button>
+    <button class="btn-gray" onclick="jumpToNext()">Next Unannotated</button>
+    <button class="btn-export" onclick="exportJSON()">&#8595; Export JSON</button>
+  </div>
+</div>
+
+<!-- ── MAIN ── -->
+<div id="main">
+
+  <!-- Sidebar -->
+  <div id="sidebar">
+    <div id="sidebar-header">Images (sorted by tile score ↓)</div>
+    <div id="sidebar-list"></div>
+  </div>
+
+  <!-- Image panel -->
+  <div id="image-panel">
+    <div id="image-toolbar">
+      <span id="filename-display">—</span>
+      <span id="score-badge"></span>
+      <span id="box-count-label"></span>
+    </div>
+
+    <div id="canvas-wrapper">
+      <div id="img-container">
+        <img id="display-img" src="" alt="image" draggable="false">
+        <canvas id="draw-canvas"></canvas>
+      </div>
+    </div>
+
+    <div id="notes-area">
+      <label>Notes:</label>
+      <input id="notes-input" type="text" placeholder="Optional notes for this image..."
+             oninput="saveNotes()">
+    </div>
+
+    <div id="info-bar">
+      <span><kbd>←</kbd><kbd>→</kbd> navigate</span>
+      <span><kbd>N</kbd> no mosaic</span>
+      <span><kbd>W</kbd> whole image</span>
+      <span><kbd>Del</kbd>/<kbd>Backspace</kbd> remove last box</span>
+      <span>Drag on image to draw region</span>
+    </div>
+  </div>
+</div>
+
+<script>
+// ─────────────────────────────────────────────
+// DATA
+// ─────────────────────────────────────────────
+const IMAGES = [
+  {"filename":"DSC_3950.JPG","tile_score":0.1369},
+  {"filename":"DSC_3401.JPG","tile_score":0.0711},
+  {"filename":"20210808_162451.jpg","tile_score":0.0637},
+  {"filename":"DSC_0274.JPG","tile_score":0.0631},
+  {"filename":"DSC_4381.JPG","tile_score":0.0591},
+  {"filename":"DSC_4371.JPG","tile_score":0.0533},
+  {"filename":"DSC_4294.JPG","tile_score":0.0451},
+  {"filename":"20210910_191256.jpg","tile_score":0.0421},
+  {"filename":"20210626_160627.jpg","tile_score":0.0385},
+  {"filename":"DSC_3089.JPG","tile_score":0.0385},
+  {"filename":"DSC_4411.JPG","tile_score":0.0385},
+  {"filename":"20220321_171136.jpg","tile_score":0.0366},
+  {"filename":"DSC_4303.JPG","tile_score":0.0323},
+  {"filename":"20210606_141906.jpg","tile_score":0.032},
+  {"filename":"DSC_4382.JPG","tile_score":0.0303},
+  {"filename":"20220424_143915.jpg","tile_score":0.0286},
+  {"filename":"20210626_172859.jpg","tile_score":0.0284},
+  {"filename":"DSC_4396.JPG","tile_score":0.0275},
+  {"filename":"20220626_134318.jpg","tile_score":0.0271},
+  {"filename":"20220626_134231.jpg","tile_score":0.0268},
+  {"filename":"DSC_2764.JPG","tile_score":0.0264},
+  {"filename":"WP_20131116_017.jpg","tile_score":0.0263},
+  {"filename":"DSC_4312.JPG","tile_score":0.0249},
+  {"filename":"DSC_4089.JPG","tile_score":0.0234},
+  {"filename":"DSC_2846.JPG","tile_score":0.023},
+  {"filename":"DSC_4158.JPG","tile_score":0.0226},
+  {"filename":"DSC_4379.JPG","tile_score":0.0214},
+  {"filename":"DSC_0493.JPG","tile_score":0.0199},
+  {"filename":"20210815_163856.jpg","tile_score":0.0193},
+  {"filename":"20200926_163413.jpg","tile_score":0.0184},
+  {"filename":"DSC_4302.JPG","tile_score":0.0181},
+  {"filename":"DSC_4304~2.JPG","tile_score":0.0179},
+  {"filename":"20210424_155333.jpg","tile_score":0.0175},
+  {"filename":"DSC_4135.JPG","tile_score":0.0148},
+  {"filename":"20210116_140023.jpg","tile_score":0.0137},
+  {"filename":"DSC_3412.JPG","tile_score":0.0137},
+  {"filename":"20220219_145944.jpg","tile_score":0.0135},
+  {"filename":"20210626_170725.jpg","tile_score":0.0133},
+  {"filename":"20210626_143410.jpg","tile_score":0.0132},
+  {"filename":"DSC_4375.JPG","tile_score":0.013},
+  {"filename":"DSC_4388.JPG","tile_score":0.013},
+  {"filename":"DSC_3614.JPG","tile_score":0.0124},
+  {"filename":"DSC_0314.JPG","tile_score":0.0123},
+  {"filename":"DSC_0988.JPG","tile_score":0.0121},
+  {"filename":"20210303_151750.jpg","tile_score":0.012},
+  {"filename":"DSC_4414.JPG","tile_score":0.0118},
+  {"filename":"DSC_4048.JPG","tile_score":0.0117},
+  {"filename":"DSC_3065.JPG","tile_score":0.0114},
+  {"filename":"20210911_152658.jpg","tile_score":0.0113},
+  {"filename":"DSC_3167.JPG","tile_score":0.0112},
+  {"filename":"20191124_100445.jpg","tile_score":0.0109},
+  {"filename":"20190929_112829.jpg","tile_score":0.0099},
+  {"filename":"20210530_135908.jpg","tile_score":0.0094},
+  {"filename":"DSC_3338.JPG","tile_score":0.0092},
+  {"filename":"DSC_4311.JPG","tile_score":0.0086},
+  {"filename":"DSC_4291.JPG","tile_score":0.0085},
+  {"filename":"DSC_4101_0.JPG","tile_score":0.0084},
+  {"filename":"DSC_0312.JPG","tile_score":0.0083},
+  {"filename":"20210529_150851.jpg","tile_score":0.008},
+  {"filename":"DSC_1045.JPG","tile_score":0.0075},
+  {"filename":"20200529_185329.jpg","tile_score":0.0072},
+  {"filename":"DSC_1209.JPG","tile_score":0.0067},
+  {"filename":"DSC_4163.JPG","tile_score":0.0065},
+  {"filename":"DSC_4107.JPG","tile_score":0.006},
+  {"filename":"DSC_3937.JPG","tile_score":0.0059},
+  {"filename":"20130317_020501_Android.jpg","tile_score":0.0},
+  {"filename":"20200525_170722.jpg","tile_score":0.0},
+  {"filename":"20201003_173051.jpg","tile_score":0.0},
+  {"filename":"20210213_154948.jpg","tile_score":0.0},
+  {"filename":"20210529_153247.jpg","tile_score":0.0},
+  {"filename":"20210910_203723.jpg","tile_score":0.0},
+  {"filename":"20210910_204401.jpg","tile_score":0.0},
+  {"filename":"20220109_160326.jpg","tile_score":0.0},
+  {"filename":"20220325_115329.jpg","tile_score":0.0},
+  {"filename":"20220605_141224.jpg","tile_score":0.0},
+  {"filename":"DSC_0001_BURST20241121142123881.JPG","tile_score":0.0},
+  {"filename":"DSC_0153.JPG","tile_score":0.0},
+  {"filename":"DSC_0154.JPG","tile_score":0.0},
+  {"filename":"DSC_0155.JPG","tile_score":0.0},
+  {"filename":"DSC_0402.JPG","tile_score":0.0},
+  {"filename":"DSC_0771.JPG","tile_score":0.0},
+  {"filename":"DSC_1488.JPG","tile_score":0.0},
+  {"filename":"DSC_1734.JPG","tile_score":0.0},
+  {"filename":"DSC_2149.JPG","tile_score":0.0},
+  {"filename":"DSC_2523.JPG","tile_score":0.0},
+  {"filename":"DSC_2744.JPG","tile_score":0.0},
+  {"filename":"DSC_2816.JPG","tile_score":0.0},
+  {"filename":"DSC_2902.JPG","tile_score":0.0},
+  {"filename":"DSC_3148.JPG","tile_score":0.0},
+  {"filename":"DSC_3152.JPG","tile_score":0.0},
+  {"filename":"DSC_3157.JPG","tile_score":0.0},
+  {"filename":"DSC_3201.JPG","tile_score":0.0},
+  {"filename":"DSC_3367.JPG","tile_score":0.0},
+  {"filename":"DSC_3667.JPG","tile_score":0.0},
+  {"filename":"DSC_3672.JPG","tile_score":0.0},
+  {"filename":"DSC_3892.JPG","tile_score":0.0},
+  {"filename":"DSC_3894.JPG","tile_score":0.0},
+  {"filename":"DSC_3935.JPG","tile_score":0.0},
+  {"filename":"DSC_4020.JPG","tile_score":0.0},
+  {"filename":"DSC_4042.JPG","tile_score":0.0},
+  {"filename":"DSC_4059.JPG","tile_score":0.0},
+  {"filename":"DSC_4063.JPG","tile_score":0.0},
+  {"filename":"DSC_4074.JPG","tile_score":0.0},
+  {"filename":"DSC_4103_0.JPG","tile_score":0.0},
+  {"filename":"DSC_4115.JPG","tile_score":0.0},
+  {"filename":"DSC_4162.JPG","tile_score":0.0},
+  {"filename":"DSC_4166.JPG","tile_score":0.0},
+  {"filename":"DSC_4168.JPG","tile_score":0.0},
+  {"filename":"DSC_4198.JPG","tile_score":0.0},
+  {"filename":"DSC_4201.JPG","tile_score":0.0},
+  {"filename":"DSC_4205.JPG","tile_score":0.0},
+  {"filename":"DSC_4304.JPG","tile_score":0.0},
+  {"filename":"DSC_4305.JPG","tile_score":0.0},
+  {"filename":"DSC_4306.JPG","tile_score":0.0},
+  {"filename":"DSC_4328.JPG","tile_score":0.0},
+  {"filename":"DSC_4332.JPG","tile_score":0.0},
+  {"filename":"DSC_4385.JPG","tile_score":0.0},
+  {"filename":"DSC_4399.JPG","tile_score":0.0},
+  {"filename":"IMG-20230110-WA0001.jpg","tile_score":0.0},
+  {"filename":"WP_20140222_15_38_04_Pro.jpg","tile_score":0.0},
+  {"filename":"WP_20140222_17_39_20_Pro.jpg","tile_score":0.0},
+  {"filename":"WP_20170624_15_17_38_Pro.jpg","tile_score":0.0}
+];
+
+const STORAGE_KEY = 'mosaic_annotator_v1';
+
+// ─────────────────────────────────────────────
+// STATE
+// ─────────────────────────────────────────────
+let currentIdx = 0;
+// annotations[filename] = { has_mosaic: bool|null, boxes: [], notes: "" }
+let annotations = {};
+
+// drawing state
+let isDrawing = false;
+let dragStart = null; // {x, y} in canvas coords
+let currentDragRect = null; // {x, y, w, h} in canvas coords (live preview)
+
+// display geometry (set when image loads)
+let displayW = 0, displayH = 0;
+let naturalW = 0, naturalH = 0;
+let imgOffsetX = 0, imgOffsetY = 0; // offset of img within img-container (0 since container matches img)
+
+const img = document.getElementById('display-img');
+const canvas = document.getElementById('draw-canvas');
+const ctx = canvas.getContext('2d');
+const imgContainer = document.getElementById('img-container');
+
+// ─────────────────────────────────────────────
+// INIT
+// ─────────────────────────────────────────────
+function init() {
+  loadFromStorage();
+  buildSidebar();
+  goToImage(currentIdx);
+  setupDrawing();
+  setupKeys();
+  window.addEventListener('resize', onResize);
+}
+
+// ─────────────────────────────────────────────
+// STORAGE
+// ─────────────────────────────────────────────
+function loadFromStorage() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (raw) {
+      const saved = JSON.parse(raw);
+      annotations = saved.annotations || {};
+      currentIdx  = saved.currentIdx  || 0;
+    }
+  } catch(e) { console.warn('Storage load failed', e); }
+}
+
+function saveToStorage() {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ annotations, currentIdx }));
+  } catch(e) { console.warn('Storage save failed', e); }
+}
+
+function getAnnotation(filename) {
+  if (!annotations[filename]) {
+    annotations[filename] = { has_mosaic: null, boxes: [], notes: '' };
+  }
+  return annotations[filename];
+}
+
+// ─────────────────────────────────────────────
+// SIDEBAR
+// ─────────────────────────────────────────────
+function buildSidebar() {
+  const list = document.getElementById('sidebar-list');
+  list.innerHTML = '';
+  IMAGES.forEach((img_data, idx) => {
+    const item = document.createElement('div');
+    item.className = 'sidebar-item';
+    item.id = 'sidebar-item-' + idx;
+    item.onclick = () => goToImage(idx);
+
+    const scoreCls = scoreClass(img_data.tile_score);
+    const scoreLabel = img_data.tile_score.toFixed(4);
+
+    item.innerHTML = `
+      <span class="fname" title="${img_data.filename}">${img_data.filename}</span>
+      <span class="sidebar-badge ${scoreCls}">${scoreLabel}</span>
+      <span class="sidebar-badge" id="status-badge-${idx}"></span>
+    `;
+    list.appendChild(item);
+  });
+  updateAllSidebarStatuses();
+}
+
+function updateAllSidebarStatuses() {
+  IMAGES.forEach((img_data, idx) => {
+    updateSidebarStatus(idx);
+  });
+  updateProgress();
+}
+
+function updateSidebarStatus(idx) {
+  const badge = document.getElementById('status-badge-' + idx);
+  if (!badge) return;
+  const ann = annotations[IMAGES[idx].filename];
+  if (!ann || ann.has_mosaic === null) {
+    badge.className = 'sidebar-badge';
+    badge.textContent = '';
+    return;
+  }
+  if (ann.has_mosaic === false) {
+    badge.className = 'sidebar-badge status-nomosaic';
+    badge.textContent = '✗';
+  } else if (ann.has_mosaic === true) {
+    const n = ann.boxes.length;
+    badge.className = 'sidebar-badge status-annotated';
+    badge.textContent = '✓' + (n > 0 ? ` ${n}` : '');
+  }
+}
+
+function highlightSidebarItem(idx) {
+  document.querySelectorAll('.sidebar-item').forEach(el => el.classList.remove('active'));
+  const el = document.getElementById('sidebar-item-' + idx);
+  if (el) {
+    el.classList.add('active');
+    el.scrollIntoView({ block: 'nearest' });
+  }
+}
+
+function updateProgress() {
+  let count = 0;
+  IMAGES.forEach(img_data => {
+    const ann = annotations[img_data.filename];
+    if (ann && ann.has_mosaic !== null) count++;
+  });
+  document.getElementById('progress-text').textContent = `${count}/${IMAGES.length} annotated`;
+}
+
+function scoreClass(score) {
+  if (score < 0.015) return 'score-green';
+  if (score <= 0.05) return 'score-yellow';
+  return 'score-red';
+}
+
+// ─────────────────────────────────────────────
+// NAVIGATION
+// ─────────────────────────────────────────────
+function goToImage(idx) {
+  if (idx < 0) idx = 0;
+  if (idx >= IMAGES.length) idx = IMAGES.length - 1;
+  currentIdx = idx;
+  saveToStorage();
+
+  const img_data = IMAGES[idx];
+  highlightSidebarItem(idx);
+
+  // Update toolbar
+  document.getElementById('filename-display').textContent =
+    `[${idx + 1}/${IMAGES.length}]  ${img_data.filename}`;
+
+  const sb = document.getElementById('score-badge');
+  sb.textContent = 'tile score: ' + img_data.tile_score.toFixed(4);
+  sb.className = 'sidebar-badge ' + scoreClass(img_data.tile_score);
+  // Give score-badge a bit more padding for toolbar context
+  sb.style.padding = '3px 10px';
+  sb.style.fontSize = '0.8rem';
+  sb.style.fontWeight = 'bold';
+  sb.style.borderRadius = '4px';
+
+  // Notes
+  const ann = getAnnotation(img_data.filename);
+  document.getElementById('notes-input').value = ann.notes || '';
+
+  // Load image
+  img.onload = () => {
+    naturalW = img.naturalWidth;
+    naturalH = img.naturalHeight;
+    layoutCanvas();
+    redraw();
+  };
+  img.onerror = () => {
+    console.warn('Failed to load image:', img_data.filename);
+  };
+  img.src = '../test_real_images/input/' + encodeURIComponent(img_data.filename);
+}
+
+function navigate(delta) {
+  goToImage(currentIdx + delta);
+}
+
+function jumpToNext() {
+  for (let i = currentIdx + 1; i < IMAGES.length; i++) {
+    const ann = annotations[IMAGES[i].filename];
+    if (!ann || ann.has_mosaic === null) { goToImage(i); return; }
+  }
+  // wrap from start
+  for (let i = 0; i < currentIdx; i++) {
+    const ann = annotations[IMAGES[i].filename];
+    if (!ann || ann.has_mosaic === null) { goToImage(i); return; }
+  }
+  alert('All images annotated!');
+}
+
+// ─────────────────────────────────────────────
+// LAYOUT / CANVAS
+// ─────────────────────────────────────────────
+function layoutCanvas() {
+  // Compute display size directly from wrapper dimensions + natural image size.
+  // Do NOT read img.offsetWidth — it's constrained by imgContainer's old explicit
+  // size and will shrink on every navigation if used as the source of truth.
+  const wrapper = document.getElementById('canvas-wrapper');
+  const maxW = wrapper.clientWidth - 16;
+  const maxH = wrapper.clientHeight - 16;
+  const scaleW = maxW / naturalW;
+  const scaleH = maxH / naturalH;
+  const scale = Math.min(scaleW, scaleH);  // fit inside wrapper; allow upscale for small imgs
+  displayW = Math.round(naturalW * scale);
+  displayH = Math.round(naturalH * scale);
+
+  // Size the container and canvas to match
+  imgContainer.style.width  = displayW + 'px';
+  imgContainer.style.height = displayH + 'px';
+  canvas.width  = displayW;
+  canvas.height = displayH;
+  canvas.style.width  = displayW + 'px';
+  canvas.style.height = displayH + 'px';
+
+  updateBoxCount();
+}
+
+function onResize() {
+  if (!naturalW || !naturalH) return;
+  requestAnimationFrame(() => {
+    layoutCanvas();
+    redraw();
+  });
+}
+
+// ─────────────────────────────────────────────
+// DRAWING
+// ─────────────────────────────────────────────
+function setupDrawing() {
+  canvas.addEventListener('mousedown', onMouseDown);
+  canvas.addEventListener('mousemove', onMouseMove);
+  canvas.addEventListener('mouseup',   onMouseUp);
+  canvas.addEventListener('mouseleave', onMouseLeave);
+}
+
+function canvasPos(e) {
+  const rect = canvas.getBoundingClientRect();
+  return {
+    x: e.clientX - rect.left,
+    y: e.clientY - rect.top
+  };
+}
+
+function onMouseDown(e) {
+  if (e.button !== 0) return;
+  e.preventDefault();
+  isDrawing = true;
+  dragStart = canvasPos(e);
+  currentDragRect = null;
+}
+
+function onMouseMove(e) {
+  if (!isDrawing) return;
+  const pos = canvasPos(e);
+  currentDragRect = normalizeRect(dragStart.x, dragStart.y, pos.x, pos.y);
+  redraw();
+}
+
+function onMouseUp(e) {
+  if (!isDrawing) return;
+  isDrawing = false;
+  const pos = canvasPos(e);
+  const rect = normalizeRect(dragStart.x, dragStart.y, pos.x, pos.y);
+  currentDragRect = null;
+
+  // Only add if it's a meaningful box (>5px each side)
+  if (rect.w > 5 && rect.h > 5) {
+    const normBox = canvasRectToNorm(rect);
+    const ann = getAnnotation(IMAGES[currentIdx].filename);
+    ann.has_mosaic = true;
+    ann.boxes.push(normBox);
+    saveToStorage();
+    updateSidebarStatus(currentIdx);
+    updateProgress();
+  }
+  redraw();
+  updateBoxCount();
+}
+
+function onMouseLeave(e) {
+  if (isDrawing) {
+    isDrawing = false;
+    currentDragRect = null;
+    redraw();
+  }
+}
+
+function normalizeRect(x1, y1, x2, y2) {
+  return {
+    x: Math.min(x1, x2),
+    y: Math.min(y1, y2),
+    w: Math.abs(x2 - x1),
+    h: Math.abs(y2 - y1)
+  };
+}
+
+function canvasRectToNorm(rect) {
+  return {
+    x1_norm: Math.max(0, Math.min(1, rect.x / displayW)),
+    y1_norm: Math.max(0, Math.min(1, rect.y / displayH)),
+    x2_norm: Math.max(0, Math.min(1, (rect.x + rect.w) / displayW)),
+    y2_norm: Math.max(0, Math.min(1, (rect.y + rect.h) / displayH))
+  };
+}
+
+function normToCanvasRect(box) {
+  return {
+    x: box.x1_norm * displayW,
+    y: box.y1_norm * displayH,
+    w: (box.x2_norm - box.x1_norm) * displayW,
+    h: (box.y2_norm - box.y1_norm) * displayH
+  };
+}
+
+// ─────────────────────────────────────────────
+// REDRAW
+// ─────────────────────────────────────────────
+function redraw() {
+  if (!canvas.width) return;
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  const ann = getAnnotation(IMAGES[currentIdx].filename);
+
+  // Draw committed boxes
+  ann.boxes.forEach((box, i) => {
+    const r = normToCanvasRect(box);
+    drawBox(r, `rgba(76,175,80,0.25)`, '#4CAF50', i + 1);
+  });
+
+  // Draw in-progress box
+  if (currentDragRect) {
+    drawBox(currentDragRect, `rgba(33,150,243,0.2)`, '#2196F3', null);
+  }
+
+  // Draw floating labels for boxes
+  renderBoxLabels(ann.boxes);
+}
+
+function drawBox(r, fill, stroke, label) {
+  ctx.fillStyle = fill;
+  ctx.fillRect(r.x, r.y, r.w, r.h);
+  ctx.strokeStyle = stroke;
+  ctx.lineWidth = 2;
+  ctx.strokeRect(r.x, r.y, r.w, r.h);
+
+  if (label !== null) {
+    ctx.fillStyle = stroke;
+    ctx.font = 'bold 12px monospace';
+    ctx.fillText('#' + label, r.x + 4, r.y + 14);
+  }
+}
+
+function renderBoxLabels(boxes) {
+  // Remove old labels
+  document.querySelectorAll('.box-label').forEach(el => el.remove());
+
+  if (!displayW || !displayH) return;
+
+  const wrapper = document.getElementById('canvas-wrapper');
+  const wrapRect = wrapper.getBoundingClientRect();
+  const canvRect = canvas.getBoundingClientRect();
+
+  boxes.forEach((box, i) => {
+    const r = normToCanvasRect(box);
+    // Position label at top of box, in canvas-relative coords
+    // We'll place it absolute within canvas-wrapper using offsets
+    const canvLeft = canvRect.left - wrapRect.left;
+    const canvTop  = canvRect.top  - wrapRect.top;
+
+    const labelEl = document.createElement('div');
+    labelEl.className = 'box-label';
+    labelEl.style.left = (canvLeft + r.x) + 'px';
+    // Place above the box, or inside if too close to top
+    const labelTop = Math.max(canvTop, canvTop + r.y - 20);
+    labelEl.style.top = labelTop + 'px';
+    labelEl.style.zIndex = 10;
+
+    const textSpan = document.createElement('span');
+    textSpan.textContent = `#${i + 1}`;
+    labelEl.appendChild(textSpan);
+
+    const delBtn = document.createElement('button');
+    delBtn.className = 'box-delete-btn';
+    delBtn.textContent = '✕';
+    delBtn.title = 'Delete box ' + (i + 1);
+    delBtn.onclick = () => deleteBox(i);
+    labelEl.appendChild(delBtn);
+
+    wrapper.appendChild(labelEl);
+  });
+}
+
+// ─────────────────────────────────────────────
+// BOX MANAGEMENT
+// ─────────────────────────────────────────────
+function deleteBox(idx) {
+  const ann = getAnnotation(IMAGES[currentIdx].filename);
+  ann.boxes.splice(idx, 1);
+  if (ann.boxes.length === 0 && ann.has_mosaic === true) {
+    // Don't auto-reset has_mosaic — user explicitly added boxes,
+    // they might want to keep has_mosaic=true with 0 boxes.
+    // Only reset if they had mosaic=true (drawn boxes path).
+    ann.has_mosaic = null;
+  }
+  saveToStorage();
+  updateSidebarStatus(currentIdx);
+  updateProgress();
+  redraw();
+  updateBoxCount();
+}
+
+function clearBoxes() {
+  const ann = getAnnotation(IMAGES[currentIdx].filename);
+  ann.boxes = [];
+  if (ann.has_mosaic === true) ann.has_mosaic = null;
+  saveToStorage();
+  updateSidebarStatus(currentIdx);
+  updateProgress();
+  redraw();
+  updateBoxCount();
+}
+
+function markNoMosaic() {
+  const ann = getAnnotation(IMAGES[currentIdx].filename);
+  // Disallow if the image already has drawn regions
+  if (ann.boxes && ann.boxes.length > 0) return;
+  // Toggle: if already no-mosaic, unset (stay on current image)
+  if (ann.has_mosaic === false) {
+    ann.has_mosaic = null;
+    saveToStorage();
+    updateSidebarStatus(currentIdx);
+    updateProgress();
+    redraw();
+    updateBoxCount();
+    updateNoMosaicButtonState();
+  } else {
+    ann.has_mosaic = false;
+    ann.boxes = [];
+    saveToStorage();
+    updateSidebarStatus(currentIdx);
+    updateProgress();
+    // Auto-advance to next unannotated image
+    navigate(1);
+  }
+}
+
+function updateNoMosaicButtonState() {
+  const ann = annotations[IMAGES[currentIdx].filename];
+  const btn = document.getElementById('btn-no-mosaic');
+  if (ann && ann.has_mosaic === false) {
+    btn.style.outline = '3px solid #90a4ae';
+    btn.style.background = '#546E7A';
+  } else {
+    btn.style.outline = '';
+    btn.style.background = '';
+  }
+}
+
+function addWholeImage() {
+  const ann = getAnnotation(IMAGES[currentIdx].filename);
+  ann.has_mosaic = true;
+  ann.boxes = [{ x1_norm: 0, y1_norm: 0, x2_norm: 1, y2_norm: 1 }];
+  saveToStorage();
+  updateSidebarStatus(currentIdx);
+  updateProgress();
+  redraw();
+  updateBoxCount();
+}
+
+function updateBoxCount() {
+  const ann = annotations[IMAGES[currentIdx].filename];
+  const n = (ann && ann.boxes) ? ann.boxes.length : 0;
+  const hasMosaic = ann ? ann.has_mosaic : null;
+  let status = '';
+  if (hasMosaic === false) status = ' | status: no-mosaic';
+  else if (hasMosaic === true) status = ' | status: mosaic';
+  document.getElementById('box-count-label').textContent = `${n} box${n !== 1 ? 'es' : ''}${status}`;
+  updateNoMosaicButtonState();
+}
+
+function saveNotes() {
+  const ann = getAnnotation(IMAGES[currentIdx].filename);
+  ann.notes = document.getElementById('notes-input').value;
+  saveToStorage();
+}
+
+// ─────────────────────────────────────────────
+// KEYBOARD
+// ─────────────────────────────────────────────
+function setupKeys() {
+  document.addEventListener('keydown', e => {
+    // Don't interfere with notes input
+    if (document.activeElement === document.getElementById('notes-input')) return;
+
+    switch(e.key) {
+      case 'ArrowLeft':
+        e.preventDefault();
+        navigate(-1);
+        break;
+      case 'ArrowRight':
+      case ' ':
+        e.preventDefault();
+        navigate(1);
+        break;
+      case 'n': case 'N':
+        markNoMosaic();
+        break;
+      case 'w': case 'W':
+        addWholeImage();
+        break;
+      case 'Delete': case 'Backspace': {
+        const ann = annotations[IMAGES[currentIdx].filename];
+        if (ann && ann.boxes && ann.boxes.length > 0) {
+          e.preventDefault();
+          deleteBox(ann.boxes.length - 1);
+        }
+        break;
+      }
+    }
+  });
+}
+
+// ─────────────────────────────────────────────
+// EXPORT
+// ─────────────────────────────────────────────
+function exportJSON() {
+  const output = {};
+  IMAGES.forEach(img_data => {
+    const ann = annotations[img_data.filename];
+    if (!ann) return; // skip unannotated entirely, or include with nulls?
+    output[img_data.filename] = {
+      has_mosaic: ann.has_mosaic === true,
+      boxes: ann.boxes || [],
+      notes: ann.notes || ''
+    };
+  });
+
+  const json = JSON.stringify(output, null, 2);
+  const blob = new Blob([json], { type: 'application/json' });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href     = url;
+  a.download = 'mosaic_ground_truth.json';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+// ─────────────────────────────────────────────
+// BOOT
+// ─────────────────────────────────────────────
+init();
+</script>
+</body>
+</html>
