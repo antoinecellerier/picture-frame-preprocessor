@@ -201,9 +201,28 @@ plus 2 more mosaics and others across mural/sculpture/street_art classes.**
 1. **Scoring fix for DSC_4371/DSC_4385** — still pure scoring failures. Size floor variants all net ≤ 0 so far.
 2. **Accept the hard cases** — DSC_4162 (0.1% area pig face), DSC_4042 (<1% area in cluttered scenes) are likely below any current detector's reliable threshold.
 
-### 3a. "Street name sign" / "road sign" to avoid-list
+### 3a. Street sign mislabeling — HIGH VALUE false positive reduction
 
-Adding `'street name sign'`, `'road sign'`, `'name plate'` to `_avoid_classes` (0.05x) would suppress sign false positives more specifically than the old broad `'sign'` entry (which was removed to preserve street art cases). Low-risk — only affects images where these specific classes appear.
+**Done (2026-02-26):** Added `'street name sign'`, `'road sign'`, `'name plate'`, `'street sign'`,
+`'exit sign'`, `'speed limit'`, `'stop sign'` to `_avoid_classes` (0.05x). No effect on test set
+because models never fire these class names on the actual signs.
+
+**Root problem:** City street signs (Paris blue plaques, road signs, etc.) are mislabeled by both
+YOLO-World and Grounding DINO as `'painting'`, `'artwork'`, `'decorative art'` — flat rectangular
+coloured patches on walls look like art to the models. The avoid-list only fires when the model
+emits a sign class name, which it currently doesn't.
+
+**Affected images (from report):** 20200525, 20210911, DSC_3614, DSC_4042, DSC_4168, DSC_4305,
+DSC_4382, DSC_4399 — all involve Parisian street name signs or traffic signs misclassified as art.
+
+**Potential fixes (high value, worth pursuing):**
+- **VLM region query**: ask Florence-2 / Moondream2 "is this a street sign or a piece of artwork?"
+  on bbox crops where the primary is `painting` / `artwork` at low confidence (< 0.35). Only query
+  ambiguous cases to limit latency.
+- **Shape/colour heuristic**: Paris street signs are consistently narrow-aspect-ratio, blue/green
+  rectangles with high text density. A lightweight classifier on the bbox crop could flag them.
+- **CLIP disambiguation**: add "street sign with text", "informational sign", "directional sign"
+  as negative prompts in a targeted CLIP check on painting/artwork detections below a conf threshold.
 
 ### 4. Person-as-art filtering (2 bad_crop)
 
