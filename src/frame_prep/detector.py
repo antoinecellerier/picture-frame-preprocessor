@@ -423,6 +423,13 @@ class ArtFeatureDetector:
         if class_lower == 'painting':
             return 2.5
 
+        # Bare 'figure' fires on human silhouettes/visitors in the scene.
+        # Compound names like "painted figure", "figure figurine",
+        # "sculpture statue painted figure" still match 'figure' (or
+        # 'painted figure' etc.) in _specific_art_classes and get 5.0x.
+        if class_lower == 'figure':
+            return 3.5
+
         # Tier 1: Specific art subjects (highest priority)
         for art_class in ArtFeatureDetector._specific_art_classes:
             if art_class in class_lower:
