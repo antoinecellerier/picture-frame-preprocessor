@@ -1,5 +1,29 @@
 # Backlog
 
+## Session Summary (2026-02-26)
+
+**Accuracy: 103/122 (84%) IoU hit rate** (after EXIF rotation fix in eval script).
+Previous measured baseline was 94/122 (77%) — gap was purely due to eval script feeding rotated images.
+
+### Completed this session
+- Per-class accuracy evaluator: `scripts/evaluate_art_class_accuracy.py` (mural/mosaic/street_art/sculpture/painting/installation/non_art)
+- Art class ground truth fully annotated: 122/122 images in `test_real_images/art_class_ground_truth.json`
+- SigLIP2 class verifier implemented & evaluated — net -1, kept as `--siglip-verify` opt-in
+- OWLv2 mosaic detection evaluated — ruled out (best F1=0.293 vs baseline 0.529)
+- Mosaic failure root cause analysis (Space Invader pixel art vs trained-on-traditional-mosaics)
+- EXIF rotation fix in `scripts/evaluate_art_class_accuracy.py`: **+9 IoU hits** (94→103)
+
+### Attempted, net 0 or negative
+- Size floor for mosaic/tile scoring: net -1 in both broad and targeted variants
+- "pixel art" DINO prompt: net -4 (fires on murals, patterns, anything tile-like)
+- Size bonus table tightening: net -1
+
+### Remaining scoring failures (hard to fix without regressions)
+- DSC_4371: mosaic (IoU=0.69, 5.0x) loses to art_installation (2.0x, large) — scoring gap
+- DSC_4385: correct mosaic (IoU=0.84) loses to larger "figure" bbox — scoring gap
+
+---
+
 ## Session Summary (2026-02-21)
 
 **Current accuracy: TBD** (focal detection added, report regenerated). Feedback: 94 good, 25 bad (119 reviewed / 122 total — `detection_feedback_2026-02-21T19-06-31-369Z.json`).
@@ -118,25 +142,64 @@ When primary bbox is wider than crop and no quality inner detections exist, use 
 
 Bumped to 3.5x (between specific-art 5.0x and scene-art 2.0x). Removed from `_scene_art_classes`, added explicit substring check in `_get_class_multiplier`.
 
-### 3. Mosaic detection (4+ bad_detection) — OpenCV approach FAILED
+### 3. Mosaic detection — root cause analysis (2026-02-26)
 
-Several small mosaic/tile art pieces go undetected by both YOLO-World and DINO.
+**The mosaics that fail are almost exclusively "Space Invader" pixel art** — small tile/pixel artworks
+affixed to Parisian building walls by the artist Invader (and imitators). They look like video
+game sprites made of colored tiles, NOT like traditional stone/ceramic mosaics.
 
-**OpenCV Hough Lines approach built and evaluated (2026-02-25) — DISABLED:**
-- `src/frame_prep/pattern_detector.py`: `TilePatternDetector` with Hough Lines + pairwise spacing voting
-- Evaluated against `test_real_images/mosaic_ground_truth.json` (28 mosaics / 94 non-mosaics)
-- Best result: precision=50%, recall=14% at threshold=0.040 (4 TP, 4 FP)
-- **Root problem**: Hough Lines fire on text rows, shelves, building facades — can't distinguish mosaic grout lines. 10/28 mosaics score 0.0 (completely undetectable by edge approach).
-- Threshold set to 1.0 (effectively disabled) — the class is kept for future experiments.
+**Updated failure breakdown after EXIF fix (10 IoU misses, 40% miss rate):**
 
-**Prompt engineering is high-risk** (lessons from 2026-02-22):
-- YOLO-World's 28-class list is zero-sum — adding classes steals attention from existing ones
-- DINO mosaic synonyms (tile/ceramic/stone mosaic) also caused regressions
+Category A — Too small / not detected at all (3 images):
+- DSC_3412 (smiley+sunflowers, ~1% area on stone building) — still miss
+- DSC_4042 (ghost on white building, ~0.9% area) — still miss
+- DSC_4388 (tiny figure at building corner, < 0.5% area) — still miss (borderline, iou≈0.15)
 
-**Next approach to try: CLIP zero-shot classifier**
-- `openai/clip-vit-base-patch32` (~150MB) for binary mosaic/not-mosaic classification
-- Semantic understanding should handle text/architecture confusion that defeats edge detection
-- Ground truth available: `test_real_images/mosaic_ground_truth.json` to evaluate precision/recall
+Category B — Detected but wrong location (6 images):
+- DSC_4311, DSC_4312 (rocket, busy street scene)
+- DSC_4020 (Sonic pixel art + stencil, multiple art pieces)
+- 20210911_152658 (Minion, small, next to street signs)
+- DSC_4385 (CORRECT mosaic at IoU=0.84 but loses to larger "figure" — SCORING)
+- DSC_3401 (sculpture at IoU=0.87 but loses to competing bbox — SCORING)
+
+Category C — Scoring problems only (2 images):
+- DSC_4371: mosaic detected (IoU=0.69) but "art installation" wins
+- DSC_4385: see Category B above
+
+**FIXED by EXIF rotation (2026-02-26): DSC_4163 (Santa, was rotated 90°), DSC_4115 (crab alien),
+plus 2 more mosaics and others across mural/sculpture/street_art classes.**
+
+**Why passing mosaics work (15/25 after EXIF fix):**
+- Figural mosaics (DSC_4303-4305): depicted figure large enough to detect as "sculpture/figure"
+- Isolated colorful square on plain white wall (DSC_4302): high contrast → YOLO fires "mosaic"
+- Key: contrast + isolation > size. DSC_4302 passes at 0.3% area on a plain wall;
+  DSC_4388 fails at similar size in a cluttered urban scene.
+
+**Root causes:**
+1. Visual mismatch: YOLO/DINO "mosaic" class was trained on traditional stone/ceramic mosaics,
+   not pixel art. The Space Invader pieces look like video game sprites, not ancient tile work.
+2. Small size (1–5% of image) in complex urban scenes with competing architecture/signs
+3. Image rotation: **FIXED** — eval script now applies exif_transpose; actual pipeline already did
+4. Wrong-location detections: detector finds "mosaic" in the wrong tile/texture
+
+**What's been tried:**
+- OpenCV Hough Lines: FAILED (2026-02-25). Fires on text rows, shelves, facades.
+- CLIP full-image: FAILED (2026-02-25). F1=0.403. Museum context swamps signal.
+- CLIP region scoring: best result F1=0.529 (conf=0.10 candidates). Not good enough.
+- OWLv2: FAILED (2026-02-26). Best F1=0.293. Fires on colorful murals equally.
+- DINO prompt engineering: high-risk, multiple synonyms caused regressions (2026-02-22)
+- Size bonus table tightening: net -1 (2026-02-26). Fixes 1-2, breaks 1.
+- "pixel art" DINO prompt: FAILED (2026-02-26). Net -4. Fires on murals, patterns, anything tile-like.
+- Size floor for mosaic/tile classes (targeted, 0.60): net -1 (2026-02-26). Fixes DSC_4371 but causes 2 new regressions where rogue small mosaic detections override correct primaries.
+- **EXIF rotation fix in eval script: +9 (2026-02-26)!** The eval was testing rotated images. Pipeline already applied exif_transpose correctly. DSC_4163 and others now correctly detected.
+
+**Prompt engineering lessons:**
+- YOLO-World: zero-sum 28-class list, new prompts steal from existing
+- DINO: safer but still risky; multiple mosaic synonyms caused regressions; "pixel art" also too broad
+
+**Next candidates:**
+1. **Scoring fix for DSC_4371/DSC_4385** — still pure scoring failures. Size floor variants all net ≤ 0 so far.
+2. **Accept the hard cases** — DSC_4162 (0.1% area pig face), DSC_4042 (<1% area in cluttered scenes) are likely below any current detector's reliable threshold.
 
 ### 3a. "Street name sign" / "road sign" to avoid-list
 
