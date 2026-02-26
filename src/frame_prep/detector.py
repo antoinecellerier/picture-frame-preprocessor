@@ -528,6 +528,13 @@ class ArtFeatureDetector:
             else:
                 size_bonus = 1.0  # Very large (>50%) - neutral, likely scene-level
 
+            # Scene-level classes (≤2.0x) should not get a size boost — they
+            # are contextual labels, not specific subjects. A large "art
+            # installation" or "wall art" detection is a scene descriptor; it
+            # shouldn't beat a specific 5.0x subject just because it's bigger.
+            if class_multiplier <= 2.0:
+                size_bonus = min(size_bonus, 1.0)
+
             score *= size_bonus
 
             # Edge penalty: detections touching the image boundary are likely
