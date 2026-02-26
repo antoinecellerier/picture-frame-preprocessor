@@ -327,7 +327,7 @@ class ArtFeatureDetector:
         # Painted elements
         'painted figure', 'painted mural', 'painted art',
         # Descriptive art terms
-        'art piece', 'artistic object', 'artistic piece',
+        'art piece', 'artistic piece',
         'decorative art', 'decorative piece',
         'graffiti',
     }
@@ -415,6 +415,13 @@ class ArtFeatureDetector:
         - Default (1.5x): unknown classes
         """
         class_lower = class_name.lower()
+
+        # Bare 'painting' fires on Paris blue street signs and other flat
+        # rectangular wall-mounted objects — never a correct primary in our
+        # test set. Compounds like "oil painting" or "wall painting" still
+        # match 'painting' in _specific_art_classes below and get 5.0x.
+        if class_lower == 'painting':
+            return 2.5
 
         # Tier 1: Specific art subjects (highest priority)
         for art_class in ArtFeatureDetector._specific_art_classes:
