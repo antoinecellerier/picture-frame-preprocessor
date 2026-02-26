@@ -234,9 +234,11 @@ When "painted figure" detection overlaps significantly with a person-shaped bbox
 - Protection list (`_CLEARLY_ART_KEYWORDS`) helps when detection class name is explicit (e.g., "mosaic figure") but fails for generic classes like "painted figure", "figure", "figure figne".
 - `--siglip-verify` flag kept as an opt-in experiment; it's disabled by default and hurts accuracy when enabled.
 
-**What would actually work:**
-- Context-aware VLM query with the **full image + bounding box** — ask "is the person in [region] a real visitor or depicted in artwork?". Florence-2 or PaliGemma would be candidates for this.
-- Or: confidence + position heuristics — real people tend to be at image edges, have lower detection confidence (< 0.30), and appear in multi-person groups.
+**Florence-2 REGION_TO_DESCRIPTION assessed (2026-02-26) — NOT PURSUED:**
+- Explored loading Florence-2-base on transformers 5.0.0; requires 3 HF cache patches and CPU inference at 5–15s/detection.
+- Only 2 target images in category C; maximum gain +2 = 109/122 (89.3%).
+- Decision: cost/complexity not justified. Same fundamental limitation as SigLIP: distinguishing a painted figure from a real person is hard even with region conditioning when the crop content is visually ambiguous.
+- Revisit if: GPU available, or a fast API-based VLM endpoint emerges (DINO-X native region QA, GPT-4V, etc.).
 
 ### 5. Misclassification cleanup (3 bad_detection)
 
