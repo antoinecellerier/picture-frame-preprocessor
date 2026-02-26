@@ -375,7 +375,8 @@ class ArtFeatureDetector:
         return any(term in cn for term in ArtFeatureDetector._3d_art_terms)
 
     # Classes to strongly avoid (not art, distractions)
-    # Note: 'sign' removed - street art often uses signs as medium
+    # Note: broad 'sign' removed - street art often uses signs as medium.
+    # Specific sign subtypes (road/street name signs) are listed here instead.
     _avoid_classes = {
         # Trash/utility
         'trash', 'trash can', 'trash bin', 'garbage', 'garbage can',
@@ -387,6 +388,10 @@ class ArtFeatureDetector:
         'street lamp', 'lamp post', 'light pole', 'street light',
         # Generic scene elements from open-vocab models
         'street',
+        # Specific sign types that are never art subjects
+        # (broad 'sign' is excluded to preserve street art on signs)
+        'street name sign', 'road sign', 'name plate', 'street sign',
+        'exit sign', 'speed limit', 'stop sign',
         # Small incidental elements
         'signature', 'text', 'label',
         'light', 'lamp', 'outlet', 'switch',
