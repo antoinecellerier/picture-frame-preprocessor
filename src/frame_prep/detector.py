@@ -315,7 +315,10 @@ class ArtFeatureDetector:
         'mosaic', 'tile art', 'fresco', 'mural',
         'collage', 'mixed media',
         # Sculptures and 3D art
-        'sculpture', 'statue', 'figurine', 'bust', 'figure',
+        # Note: 'figurine' omitted — it fires too broadly on depicted figures
+        # within murals/mosaics. Compound names like "sculpture statue figurine"
+        # still match via 'sculpture'/'statue'; "figure figurine" matches 'figure'.
+        'sculpture', 'statue', 'bust', 'figure',
         'decorative sculpture', 'sculpture on pedestal', 'statue on display',
         'sculpture statue', 'sculpture statue figurine',
         # Specific art forms
