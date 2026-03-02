@@ -724,7 +724,8 @@ class OptimizedEnsembleDetector:
         self,
         confidence_threshold: float = 0.25,
         merge_threshold: float = 0.2,
-        two_pass: bool = True
+        two_pass: bool = True,
+        dino_model_id: str = "IDEA-Research/grounding-dino-tiny",
     ):
         """
         Initialize optimized ensemble detector.
@@ -734,10 +735,18 @@ class OptimizedEnsembleDetector:
             merge_threshold: IoU threshold for merging (default: 0.2, optimized)
             two_pass: Enable two-pass center-crop detection (default: False).
                       Improves accuracy (~93% vs ~85%) but ~3-4x slower.
+            dino_model_id: HuggingFace model ID for Grounding DINO (default: tiny).
+                           Use "IDEA-Research/grounding-dino-base" for the larger variant.
         """
         self.confidence_threshold = confidence_threshold
         self.merge_threshold = merge_threshold
         self.two_pass = two_pass
+        self._dino_model_id = dino_model_id
+        # Derive cache subdirectory names from model ID so tiny/base caches stay separate.
+        # "IDEA-Research/grounding-dino-tiny" → "grounding_dino_tiny"
+        _variant = dino_model_id.split("/")[-1].replace("-", "_")
+        self._dino_cache_name = _variant            # e.g. "grounding_dino_tiny"
+        self._focal_cache_name = "focal_" + _variant  # e.g. "focal_grounding_dino_tiny"
         self._last_image_size = None
         self._yolo_world = None
         self._grounding_dino = None
@@ -797,7 +806,7 @@ class OptimizedEnsembleDetector:
             from transformers import AutoProcessor, AutoModelForZeroShotObjectDetection
             import torch
 
-            model_id = "IDEA-Research/grounding-dino-tiny"
+            model_id = self._dino_model_id
             try:
                 self._dino_processor = AutoProcessor.from_pretrained(model_id, local_files_only=True, use_fast=True)
                 self._grounding_dino = AutoModelForZeroShotObjectDetection.from_pretrained(model_id, local_files_only=True)
@@ -876,14 +885,14 @@ class OptimizedEnsembleDetector:
         # Try path-based cache first (faster), then fall back to content hash
         cache_path = None
         if path_hash:
-            cache_path = _get_cache_path("grounding_dino", path_hash, params_hash)
+            cache_path = _get_cache_path(self._dino_cache_name, path_hash, params_hash)
             cached = _load_cached_detections(cache_path)
             if cached is not None:
                 if verbose:
                     print(f"  Grounding DINO: {len(cached)} detections (cached)")
                 return cached
 
-        cache_path = _get_cache_path("grounding_dino", image_hash, params_hash)
+        cache_path = _get_cache_path(self._dino_cache_name, image_hash, params_hash)
 
         cached = _load_cached_detections(cache_path)
         if cached is not None:
@@ -935,7 +944,7 @@ class OptimizedEnsembleDetector:
         # Save to content-based cache (and path-based if available)
         _save_cached_detections(cache_path, detections)
         if path_hash:
-            path_cache = _get_cache_path("grounding_dino", path_hash, params_hash)
+            path_cache = _get_cache_path(self._dino_cache_name, path_hash, params_hash)
             if path_cache != cache_path:
                 _save_cached_detections(path_cache, detections)
         return detections
@@ -1185,7 +1194,7 @@ class OptimizedEnsembleDetector:
             self.confidence_threshold, self._focal_prompts,
             list(primary_bbox), inflate_fraction
         )
-        cache_path = _get_cache_path("focal_dino", region_hash, params_hash)
+        cache_path = _get_cache_path(self._focal_cache_name, region_hash, params_hash)
 
         cached = _load_cached_detections(cache_path)
         if cached is not None:

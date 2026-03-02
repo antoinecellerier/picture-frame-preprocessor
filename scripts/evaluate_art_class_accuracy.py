@@ -138,6 +138,10 @@ def parse_args() -> argparse.Namespace:
         "--iou-threshold", type=float, default=0.15,
         help="IoU threshold to count a detection as hitting the GT region (default: 0.15)",
     )
+    p.add_argument(
+        "--dino-model", default="IDEA-Research/grounding-dino-tiny",
+        help="Grounding DINO HuggingFace model ID (default: grounding-dino-tiny)",
+    )
     return p.parse_args()
 
 
@@ -147,7 +151,7 @@ def main() -> None:
     with open(GT_PATH) as f:
         gt = json.load(f)
 
-    detector = OptimizedEnsembleDetector(confidence_threshold=0.25)
+    detector = OptimizedEnsembleDetector(confidence_threshold=0.25, dino_model_id=args.dino_model)
 
     # ── per-class accumulators ─────────────────────────────────────────────────
     # Results: list of dicts per image
