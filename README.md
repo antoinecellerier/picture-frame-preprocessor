@@ -61,6 +61,8 @@ frame-prep report
 # Rate results, export feedback as JSON
 ```
 
+![Interactive detection report](samples/report_screenshot.png)
+
 Current accuracy: ~77% on 116-image ground truth test set.
 
 ## Related Projects

@@ -435,6 +435,7 @@ def generate_report(input_dir=None, ground_truth_path=None, output_file=None,
         'yolo_world_prompts': detector._art_classes,
         'grounding_dino_prompts': detector._dino_prompts,
         'focal_prompts': getattr(detector, '_focal_prompts', []),
+        'generated_at': datetime.now().strftime('%Y-%m-%d %H:%M'),
     }
 
     print(f"\nProcessing {len(ground_truth)} test images...")
@@ -550,885 +551,597 @@ def generate_report(input_dir=None, ground_truth_path=None, output_file=None,
     print(f"  Primary selection changed: {selection_changed_count}/{len(results)} images")
     print(f"\nGenerating HTML report...")
 
-    # Generate HTML
-    html = f"""<!DOCTYPE html>
-<html>
-<head>
-    <meta charset="UTF-8">
-    <title>Interactive Detection Report - Updated Zoom Logic</title>
-    <style>
-        * {{
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }}
-
-        body {{
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: #f5f7fa;
-            padding: 20px;
-        }}
-
-        .header {{
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            padding: 40px;
-            border-radius: 12px;
-            margin-bottom: 30px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
-        }}
-
-        .header h1 {{
-            font-size: 32px;
-            margin-bottom: 10px;
-        }}
-
-        .header p {{
-            opacity: 0.9;
-            font-size: 16px;
-        }}
-
-        .config-summary {{
-            background: white;
-            padding: 25px;
-            border-radius: 10px;
-            margin-bottom: 30px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.08);
-        }}
-
-        .config-summary h2 {{
-            font-size: 20px;
-            color: #1f2937;
-            margin-bottom: 20px;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }}
-
-        .config-grid {{
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-            gap: 20px;
-        }}
-
-        .config-section {{
-            background: #f9fafb;
-            padding: 20px;
-            border-radius: 8px;
-            border-left: 4px solid #667eea;
-        }}
-
-        .config-section h3 {{
-            font-size: 14px;
-            color: #667eea;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            margin-bottom: 12px;
-        }}
-
-        .config-item {{
-            display: flex;
-            justify-content: space-between;
-            padding: 8px 0;
-            border-bottom: 1px solid #e5e7eb;
-        }}
-
-        .config-item:last-child {{
-            border-bottom: none;
-        }}
-
-        .config-label {{
-            color: #6b7280;
-            font-size: 13px;
-        }}
-
-        .config-value {{
-            color: #1f2937;
-            font-weight: 600;
-            font-size: 13px;
-        }}
-
-        .stats {{
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 20px;
-            margin-bottom: 30px;
-        }}
-
-        .stat-card {{
-            background: white;
-            padding: 25px;
-            border-radius: 10px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.08);
-            text-align: center;
-        }}
-
-        .stat-value {{
-            font-size: 48px;
-            font-weight: bold;
-            color: #667eea;
-            line-height: 1;
-        }}
-
-        .stat-label {{
-            font-size: 14px;
-            color: #6b7280;
-            margin-top: 8px;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }}
-
-        .filters {{
-            background: white;
-            padding: 20px;
-            border-radius: 10px;
-            margin-bottom: 20px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.08);
-        }}
-
-        .filter-group {{
-            display: flex;
-            gap: 15px;
-            flex-wrap: wrap;
-            align-items: center;
-        }}
-
-        .filter-btn {{
-            padding: 10px 20px;
-            border: 2px solid #e5e7eb;
-            background: white;
-            border-radius: 8px;
-            cursor: pointer;
-            transition: all 0.2s;
-            font-size: 14px;
-            font-weight: 500;
-        }}
-
-        .filter-btn:hover {{
-            border-color: #667eea;
-            color: #667eea;
-        }}
-
-        .filter-btn.active {{
-            background: #667eea;
-            color: white;
-            border-color: #667eea;
-        }}
-
-        .results-grid {{
-            display: grid;
-            gap: 25px;
-        }}
-
-        .result-card {{
-            background: white;
-            border-radius: 10px;
-            overflow: hidden;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.08);
-            transition: transform 0.2s, box-shadow 0.2s;
-        }}
-
-        .result-card:hover {{
-            transform: translateY(-2px);
-            box-shadow: 0 4px 20px rgba(0,0,0,0.12);
-        }}
-
-        .result-card.correct {{
-            border-left: 5px solid #10b981;
-        }}
-
-        .result-card.incorrect {{
-            border-left: 5px solid #ef4444;
-        }}
-
-        .result-card.no-gt {{
-            border-left: 5px solid #6b7280;
-        }}
-
-        .result-card.not-art {{
-            border-left: 5px solid #f59e0b;
-        }}
-
-        .result-header {{
-            padding: 20px;
-            background: #f9fafb;
-            border-bottom: 1px solid #e5e7eb;
-        }}
-
-        .result-title {{
-            font-size: 16px;
-            font-weight: 600;
-            color: #1f2937;
-            margin-bottom: 10px;
-        }}
-
-        .result-meta {{
-            display: flex;
-            gap: 15px;
-            flex-wrap: wrap;
-            font-size: 13px;
-            color: #6b7280;
-        }}
-
-        .badge {{
-            display: inline-flex;
-            align-items: center;
-            padding: 4px 10px;
-            border-radius: 12px;
-            font-size: 12px;
-            font-weight: 600;
-        }}
-
-        .badge.correct {{
-            background: #d1fae5;
-            color: #065f46;
-        }}
-
-        .badge.incorrect {{
-            background: #fee2e2;
-            color: #991b1b;
-        }}
-
-        .badge.no-gt {{
-            background: #e5e7eb;
-            color: #374151;
-        }}
-
-        .badge.not-art {{
-            background: #fef3c7;
-            color: #92400e;
-        }}
-
-        .images-container {{
-            display: flex;
-            gap: 10px;
-            background: #1f2937;
-            padding: 10px;
-        }}
-
-        .image-wrapper {{
-            flex: 1;
-            position: relative;
-        }}
-
-        .image-wrapper.detection {{
-            flex: 2;
-        }}
-
-        .image-wrapper.result {{
-            flex: 1;
-            max-width: 300px;
-        }}
-
-        .image-label {{
-            position: absolute;
-            top: 8px;
-            left: 8px;
-            background: rgba(0,0,0,0.7);
-            color: white;
-            padding: 4px 10px;
-            border-radius: 4px;
-            font-size: 11px;
-            font-weight: 600;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }}
-
-        .result-image {{
-            width: 100%;
-            display: block;
-            border-radius: 4px;
-        }}
-
-        .detection-image {{
-            width: 100%;
-            display: block;
-            border-radius: 4px;
-        }}
-
-        .result-details {{
-            padding: 20px;
-        }}
-
-        .detection-info {{
-            background: #f9fafb;
-            padding: 15px;
-            border-radius: 8px;
-            margin-bottom: 15px;
-        }}
-
-        .detection-label {{
-            font-size: 12px;
-            color: #6b7280;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            margin-bottom: 8px;
-        }}
-
-        .detection-value {{
-            font-size: 14px;
-            color: #1f2937;
-            line-height: 1.5;
-        }}
-
-        .feedback-section {{
-            padding-top: 15px;
-            border-top: 1px solid #e5e7eb;
-        }}
-
-        .feedback-label {{
-            font-size: 13px;
-            font-weight: 600;
-            color: #374151;
-            margin-bottom: 10px;
-        }}
-
-        .feedback-buttons {{
-            display: flex;
-            gap: 6px;
-            margin-bottom: 10px;
-        }}
-
-        .feedback-btn {{
-            flex: 1;
-            padding: 8px 4px;
-            border: 2px solid #e5e7eb;
-            background: white;
-            border-radius: 8px;
-            cursor: pointer;
-            transition: all 0.2s;
-            font-size: 13px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 5px;
-        }}
-
-        .feedback-btn:hover {{
-            border-color: #667eea;
-        }}
-
-        .feedback-btn.selected {{
-            background: #667eea;
-            color: white;
-            border-color: #667eea;
-        }}
-
-        .feedback-textarea {{
-            width: 100%;
-            padding: 10px;
-            border: 2px solid #e5e7eb;
-            border-radius: 8px;
-            font-family: inherit;
-            font-size: 14px;
-            resize: vertical;
-            min-height: 60px;
-        }}
-
-        .feedback-textarea:focus {{
-            outline: none;
-            border-color: #667eea;
-        }}
-
-        .legend {{
-            background: white;
-            padding: 20px;
-            border-radius: 10px;
-            margin-bottom: 20px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.08);
-        }}
-
-        .legend h3 {{
-            font-size: 16px;
-            margin-bottom: 15px;
-            color: #1f2937;
-        }}
-
-        .legend-items {{
-            display: flex;
-            gap: 20px;
-            flex-wrap: wrap;
-        }}
-
-        .legend-item {{
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }}
-
-        .legend-color {{
-            width: 30px;
-            height: 4px;
-            border-radius: 2px;
-        }}
-
-        .export-btn {{
-            background: #667eea;
-            color: white;
-            padding: 12px 24px;
-            border: none;
-            border-radius: 8px;
-            font-size: 14px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.2s;
-        }}
-
-        .export-btn:hover {{
-            background: #5568d3;
-            transform: translateY(-1px);
-            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
-        }}
-    </style>
-</head>
-<body>
-    <div class="header">
-        <h1>Interactive Detection Report</h1>
-        <p>Updated Adaptive Zoom Logic - {datetime.now().strftime('%Y-%m-%d %H:%M')}</p>
-    </div>
-
-    <div class="config-summary">
-        <h2>Configuration Summary</h2>
-        <div class="config-grid">
-            <div class="config-section">
-                <h3>Detection Strategy</h3>
-                <div class="config-item">
-                    <span class="config-label">Ensemble</span>
-                    <span class="config-value">OptimizedEnsembleDetector</span>
-                </div>
-                <div class="config-item">
-                    <span class="config-label">Models</span>
-                    <span class="config-value">YOLO-World + Grounding DINO</span>
-                </div>
-                <div class="config-item">
-                    <span class="config-label">YOLO-World Model</span>
-                    <span class="config-value">yolov8m-worldv2</span>
-                </div>
-                <div class="config-item">
-                    <span class="config-label">Grounding DINO</span>
-                    <span class="config-value">grounding-dino-tiny</span>
-                </div>
-            </div>
-            <div class="config-section">
-                <h3>Detection Parameters</h3>
-                <div class="config-item">
-                    <span class="config-label">Confidence Threshold</span>
-                    <span class="config-value">{config['confidence_threshold']}</span>
-                </div>
-                <div class="config-item">
-                    <span class="config-label">Merge Threshold (IoU)</span>
-                    <span class="config-value">{config['merge_threshold']}</span>
-                </div>
-                <div class="config-item">
-                    <span class="config-label">Two-Pass Detection</span>
-                    <span class="config-value">{'Enabled' if config['two_pass'] else 'Disabled'}</span>
-                </div>
-                <div class="config-item">
-                    <span class="config-label">Primary Selection</span>
-                    <span class="config-value">{config['primary_selection']}</span>
-                </div>
-            </div>
-            <div class="config-section">
-                <h3>Cropping Strategy</h3>
-                <div class="config-item">
-                    <span class="config-label">Strategy</span>
-                    <span class="config-value">Smart (detection-anchored)</span>
-                </div>
-                <div class="config-item">
-                    <span class="config-label">Target Dimensions</span>
-                    <span class="config-value">{config['target_width']}x{config['target_height']}</span>
-                </div>
-                <div class="config-item">
-                    <span class="config-label">Max Zoom Factor</span>
-                    <span class="config-value">{config['zoom_factor']}x</span>
-                </div>
-                <div class="config-item">
-                    <span class="config-label">Saliency Fallback</span>
-                    <span class="config-value">{'Enabled' if config['use_saliency_fallback'] else 'Disabled'}</span>
-                </div>
-            </div>
-            <div class="config-section">
-                <h3>Focal Point Detection</h3>
-                <div class="config-item">
-                    <span class="config-label">Model</span>
-                    <span class="config-value">Grounding DINO (targeted pass)</span>
-                </div>
-                <div class="config-item">
-                    <span class="config-label">Trigger</span>
-                    <span class="config-value">Primary fills frame (zoom ≤ 1.0)</span>
-                </div>
-                <div class="config-item">
-                    <span class="config-label">Prompts</span>
-                    <span class="config-value">{', '.join(config.get('focal_prompts', []))}</span>
-                </div>
-                <div class="config-item">
-                    <span class="config-label">Skip 3D Art</span>
-                    <span class="config-value">Enabled (sculpture, statue, etc.)</span>
-                </div>
-                <div class="config-item">
-                    <span class="config-label">Scoring</span>
-                    <span class="config-value">conf × parabolic area (peaks at 50%)</span>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <div class="stats">
-        <div class="stat-card">
-            <div class="stat-value">{accuracy:.1f}%</div>
-            <div class="stat-label">Accuracy (excl. not-art)</div>
-        </div>
-        <div class="stat-card">
-            <div class="stat-value">{correct_count}/{total_with_gt}</div>
-            <div class="stat-label">Correct Detections</div>
-        </div>
-        <div class="stat-card">
-            <div class="stat-value">{len(results)}</div>
-            <div class="stat-label">Total Images</div>
-        </div>
-        <div class="stat-card">
-            <div class="stat-value">{not_art_count}</div>
-            <div class="stat-label">Not Art</div>
-        </div>
-        <div class="stat-card">
-            <div class="stat-value">{selection_changed_count}</div>
-            <div class="stat-label">Selection Changed</div>
-        </div>
-    </div>
-
-    <div class="legend">
-        <h3>Legend</h3>
-        <div class="legend-items">
-            <div class="legend-item">
-                <div class="legend-color" style="background: #10b981; width: 40px; height: 4px;"></div>
-                <span>Primary Detection (GREEN - thick border)</span>
-            </div>
-            <div class="legend-item">
-                <div class="legend-color" style="background: #0ea5e9; width: 40px; height: 4px;"></div>
-                <span>Ground Truth (BLUE)</span>
-            </div>
-            <div class="legend-item">
-                <div class="legend-color" style="background: #ffd700; width: 40px; height: 4px;"></div>
-                <span>Selected Anchor (GOLD - chosen focal point for crop centering)</span>
-            </div>
-            <div class="legend-item">
-                <div class="legend-color" style="background: #ffa500; width: 40px; height: 4px;"></div>
-                <span>Crop Target (ORANGE)</span>
-            </div>
-            <div class="legend-item">
-                <div class="legend-color" style="background: #dc00dc; width: 40px; height: 4px;"></div>
-                <span>Focal Detection (MAGENTA - face/figure pass)</span>
-            </div>
-            <div class="legend-item">
-                <div class="legend-color" style="background: #6ee7b7; width: 40px; height: 4px;"></div>
-                <span>Other Detections (light green)</span>
-            </div>
-        </div>
-    </div>
-
-    <div class="filters">
-        <div class="filter-group">
-            <button class="filter-btn active" onclick="filterResults('all')">All ({len(results)})</button>
-            <button class="filter-btn" onclick="filterResults('correct')">Correct ({sum(1 for r in results if r['is_correct'])})</button>
-            <button class="filter-btn" onclick="filterResults('incorrect')">Incorrect ({sum(1 for r in results if r['has_ground_truth'] and not r['is_correct'] and not r.get('is_not_art'))})</button>
-            <button class="filter-btn" onclick="filterResults('not-art')">Not Art ({sum(1 for r in results if r.get('is_not_art'))})</button>
-            <button class="filter-btn" onclick="filterResults('no-gt')">No Ground Truth ({sum(1 for r in results if not r['has_ground_truth'] and not r.get('is_not_art'))})</button>
-            <button class="filter-btn" onclick="filterResults('big-primary')">Big Primary ({sum(1 for r in results if r.get('primary_fills_frame'))})</button>
-            <button class="filter-btn" onclick="filterResults('clip')">CLIP Fired ({sum(1 for r in results if r.get('clip_count', 0) > 0)})</button>
-            <button class="filter-btn" onclick="filterResults('siglip')">SigLIP Corrected ({sum(1 for r in results if r.get('siglip_corrected_count', 0) > 0)})</button>
-            <button class="export-btn" onclick="exportFeedback()">Export Feedback</button>
-        </div>
-    </div>
-
-    <div class="results-grid" id="results-grid">
-"""
-
-    # Add each result
-    for idx, result in enumerate(results):
+    # Build JS data array (one entry per result, used for rendering + export)
+    results_js_data = []
+    for result in results:
         is_not_art = result.get('is_not_art', False)
         if is_not_art:
-            status_class = 'not-art'
-            status_label = 'NOT ART'
+            status = 'not-art'
         elif not result['has_ground_truth']:
-            status_class = 'no-gt'
-            status_label = 'No Ground Truth'
+            status = 'no-gt'
         elif result['is_correct']:
-            status_class = 'correct'
-            status_label = 'Correct'
+            status = 'correct'
         else:
-            status_class = 'incorrect'
-            status_label = 'Incorrect'
+            status = 'incorrect'
 
-        primary_info = "No detections"
+        primary_text = 'No detections'
+        primary_changed_text = None
+        primary_siglip_text = None
         if result['primary']:
-            primary_info = f"{result['primary'].class_name} (conf: {result['primary'].confidence:.3f})"
-            # Show if selection algorithm chose differently than confidence-based
+            primary_text = f"{result['primary'].class_name} (conf: {result['primary'].confidence:.3f})"
             if result['selection_changed'] and result['primary_by_confidence']:
-                primary_info += f"<br><span style='color: #059669; font-size: 12px;'>Changed from: {result['primary_by_confidence'].class_name} (conf: {result['primary_by_confidence'].confidence:.3f})</span>"
-            # Show if SigLIP reclassified this detection
+                primary_changed_text = (
+                    f"Changed from: {result['primary_by_confidence'].class_name} "
+                    f"({result['primary_by_confidence'].confidence:.3f})"
+                )
             if result['primary'].original_class:
-                primary_info += f"<br><span style='color: #f97316; font-size: 12px;'>SigLIP reclassified from: {result['primary'].original_class}</span>"
+                primary_siglip_text = f"SigLIP: was {result['primary'].original_class}"
 
-        # Show art score
-        art_score = result.get('art_score', 0.0)
-        art_score_info = f"<span>Art score: {art_score:.3f}</span>"
-        if art_score < MIN_ART_SCORE:
-            art_score_info = f"<span style='color: #ef4444;'>Art score: {art_score:.3f} (below {MIN_ART_SCORE})</span>"
+        crops = []
+        for mc_uri, mc_zoom, mc_class in result.get('multi_crop_images', []):
+            crops.append({'uri': mc_uri, 'zoom': round(float(mc_zoom), 2), 'cls': mc_class})
 
-        iou_info = ""
-        if result['has_ground_truth'] and result['detection_count'] > 0:
-            iou_info = f"<span>IoU: {result['best_iou']:.3f}</span>"
-
-        selection_badge = ""
-        if result['selection_changed']:
-            selection_badge = "<span class='badge' style='background: #d1fae5; color: #065f46;'>Selection Changed</span>"
-
-        not_art_badge = ""
-        if result.get('auto_filtered'):
-            not_art_badge = "<span class='badge not-art'>FILTERED (non-art)</span>"
-        elif is_not_art:
-            not_art_badge = "<span class='badge not-art'>NOT ART (GT label)</span>"
-
-        multi_crop_badge = ""
-        if multi_crop_images:
-            multi_crop_badge = f"<span class='badge' style='background: #dbeafe; color: #1e40af;'>Multi-crop: {len(multi_crop_images)}</span>"
-
-        clip_badge = ""
-        clip_count = result.get('clip_count', 0)
-        if clip_count > 0:
-            clip_max = result.get('clip_max_score', 0.0) or 0.0
-            clip_primary = result.get('clip_primary_selected', False)
-            noun = "mosaic" if clip_count == 1 else "mosaics"
-            if clip_primary:
-                clip_badge = f"<span class='badge' style='background: #7c3aed; color: white;'>CLIP primary: mosaic ({clip_max:.3f})</span>"
-            else:
-                clip_badge = f"<span class='badge' style='background: #ede9fe; color: #6d28d9;'>CLIP: {clip_count} {noun} ({clip_max:.3f})</span>"
-
-        siglip_badge = ""
-        siglip_corrected = result.get('siglip_corrected_count', 0)
-        if siglip_corrected > 0:
-            noun = "correction" if siglip_corrected == 1 else "corrections"
-            siglip_badge = f"<span class='badge' style='background: #fed7aa; color: #9a3412;'>SigLIP: {siglip_corrected} {noun}</span>"
-
-        # Generate result image HTML if available
-        result_img_html = ""
-        multi_crop_images = result.get('multi_crop_images', [])
-        if multi_crop_images:
-            # Show multi-crop results side by side
-            for ci, (mc_uri, mc_zoom, mc_class) in enumerate(multi_crop_images, 1):
-                result_img_html += f"""
-                <div class="image-wrapper result">
-                    <span class="image-label">Crop {ci}: {mc_class} ({mc_zoom:.1f}x)</span>
-                    <img src="{mc_uri}" class="result-image" alt="Crop {ci}">
-                </div>"""
-        elif result['result_image']:
-            result_img_html = f"""
-                <div class="image-wrapper result">
-                    <span class="image-label">Result ({result['zoom_applied']:.2f}x)</span>
-                    <img src="{result['result_image']}" class="result-image" alt="Result">
-                </div>"""
-
-        html += f"""
-        <div class="result-card {status_class}" data-status="{status_class}" data-index="{idx}" data-big-primary="{'true' if result.get('primary_fills_frame') else 'false'}" data-clip="{'true' if result.get('clip_count', 0) > 0 else 'false'}" data-siglip="{'true' if result.get('siglip_corrected_count', 0) > 0 else 'false'}">
-            <div class="result-header">
-                <div class="result-title">{result['filename']}</div>
-                <div class="result-meta">
-                    <span class="badge {status_class}">{status_label}</span>
-                    {not_art_badge}
-                    {selection_badge}
-                    {multi_crop_badge}
-                    {clip_badge}
-                    {siglip_badge}
-                    <span>Detections: {result['detection_count']}</span>
-                    {art_score_info}
-                    <span>Zoom: {result['zoom_applied']:.2f}x</span>
-                    {iou_info}
-                </div>
-            </div>
-
-            <div class="images-container">
-                <div class="image-wrapper detection">
-                    <span class="image-label">Detection</span>
-                    <img src="{result['image_with_boxes']}" class="detection-image" alt="{result['filename']}">
-                </div>
-                {result_img_html}
-            </div>
-
-            <div class="result-details">
-                <div class="detection-info">
-                    <div class="detection-label">Primary Detection</div>
-                    <div class="detection-value">{primary_info}</div>
-                </div>
-
-                <div class="feedback-section">
-                    <div class="feedback-label">Your Feedback:</div>
-                    <div class="feedback-buttons">
-                        <button class="feedback-btn" onclick="setFeedback({idx}, 'good')">
-                            Good
-                        </button>
-                        <button class="feedback-btn" onclick="setFeedback({idx}, 'bad_detection')">
-                            Bad Detection
-                        </button>
-                        <button class="feedback-btn" onclick="setFeedback({idx}, 'bad_crop')">
-                            Bad Crop
-                        </button>
-                        <button class="feedback-btn" onclick="setFeedback({idx}, 'bad_both')">
-                            Both Bad
-                        </button>
-                        <button class="feedback-btn" onclick="setFeedback({idx}, 'other')">
-                            Other
-                        </button>
-                    </div>
-                    <textarea
-                        class="feedback-textarea"
-                        placeholder="Optional: Add comments about detection quality, zoom appropriateness, or subject identification..."
-                        onchange="updateComment({idx}, this.value)"
-                    ></textarea>
-                </div>
-            </div>
-        </div>
-"""
-
-    # Build per-image metadata for JS (detection context for feedback export)
-    image_metadata = []
-    for idx, result in enumerate(results):
-        det_list = []
+        det_export = []
         for det in (result['detections'] or []):
-            det_list.append({
+            det_export.append({
                 'class_name': det.class_name,
                 'confidence': round(float(det.confidence), 4),
                 'bbox': [int(c) for c in det.bbox],
             })
-        primary_data = None
+        primary_export = None
         if result['primary']:
-            primary_data = {
+            primary_export = {
                 'class_name': result['primary'].class_name,
                 'confidence': round(float(result['primary'].confidence), 4),
                 'bbox': [int(c) for c in result['primary'].bbox],
             }
-        image_metadata.append({
+
+        art_score = result.get('art_score', 0.0)
+        results_js_data.append({
             'filename': result['filename'],
-            'detection_count': result['detection_count'],
-            'detections': det_list,
-            'primary': primary_data,
-            'is_correct': result['is_correct'],
-            'best_iou': round(result['best_iou'], 4),
-            'ground_truth_boxes': result['ground_truth_boxes'],
-            'art_score': round(result.get('art_score', 0.0), 4),
-            'is_not_art': result.get('is_not_art', False),
-            'clip_count': result.get('clip_count', 0),
-            'clip_max_score': round(result['clip_max_score'], 4) if result.get('clip_max_score') is not None else None,
-            'clip_primary_selected': result.get('clip_primary_selected', False),
-            'siglip_corrected_count': result.get('siglip_corrected_count', 0),
+            'status': status,
+            'imgDetection': result['image_with_boxes'] or '',
+            'imgResult': result['result_image'] or '',
+            'imgCrops': crops,
+            'primaryText': primary_text,
+            'primaryChangedText': primary_changed_text,
+            'primarySiglipText': primary_siglip_text,
+            'artScore': round(float(art_score), 4),
+            'artScoreLow': art_score < MIN_ART_SCORE,
+            'iou': round(float(result['best_iou']), 4),
+            'hasGT': result['has_ground_truth'],
+            'detCount': result['detection_count'],
+            'zoom': round(float(result['zoom_applied']), 3),
+            'primaryFills': result.get('primary_fills_frame', False),
+            'clipCount': result.get('clip_count', 0),
+            'clipMax': round(float(result['clip_max_score']), 4) if result.get('clip_max_score') is not None else None,
+            'clipPrimary': result.get('clip_primary_selected', False),
+            'siglipCount': result.get('siglip_corrected_count', 0),
+            'isNotArt': is_not_art,
+            'autoFiltered': result.get('auto_filtered', False),
+            # export fields
+            'detections': det_export,
+            'primary': primary_export,
+            'isCorrect': result['is_correct'],
+            'bestIou': round(float(result['best_iou']), 4),
+            'gtBoxes': result['ground_truth_boxes'],
         })
 
-    html += """
+    n_correct = sum(1 for r in results if r['is_correct'])
+    n_incorrect = sum(1 for r in results if r['has_ground_truth'] and not r['is_correct'] and not r.get('is_not_art'))
+    n_not_art = sum(1 for r in results if r.get('is_not_art'))
+    n_no_gt = sum(1 for r in results if not r['has_ground_truth'] and not r.get('is_not_art'))
+    n_big_primary = sum(1 for r in results if r.get('primary_fills_frame'))
+    n_clip = sum(1 for r in results if r.get('clip_count', 0) > 0)
+
+    results_json = json.dumps(results_js_data)
+    config_json = json.dumps(config)
+    min_art_score_val = MIN_ART_SCORE
+
+    # Generate HTML
+    html = f"""<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Detection Report</title>
+<style>
+* {{ box-sizing: border-box; margin: 0; padding: 0; }}
+body {{
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  background: #1a1a1a; color: #e0e0e0;
+  height: 100vh; display: flex; flex-direction: column; overflow: hidden;
+}}
+
+/* ── Header ── */
+#header {{
+  background: #2a2a2a; border-bottom: 2px solid #4a90d9;
+  padding: 6px 16px 0; display: flex; flex-direction: column;
+  gap: 0; flex-shrink: 0;
+}}
+#header-top {{
+  display: flex; align-items: center; gap: 8px;
+  padding-bottom: 6px; flex-wrap: nowrap; overflow: hidden;
+}}
+#header-filters {{
+  display: flex; align-items: center; gap: 6px;
+  padding-bottom: 6px; flex-wrap: nowrap; overflow-x: auto;
+}}
+#header-filters::-webkit-scrollbar {{ height: 3px; }}
+#header-filters::-webkit-scrollbar-thumb {{ background: #444; border-radius: 2px; }}
+#header h1 {{ color: #4a90d9; font-size: 1.1rem; flex-shrink: 0; }}
+#progress-text {{ color: #FFD700; font-size: 0.9rem; font-weight: bold; white-space: nowrap; flex-shrink: 0; }}
+#stats-line {{ font-size: 0.8rem; color: #aaa; white-space: nowrap; flex-shrink: 0; }}
+#params-line {{ font-size: 0.75rem; color: #666; white-space: nowrap; flex-grow: 1; overflow: hidden; text-overflow: ellipsis; }}
+#config-panel {{
+  background: #232323; border-bottom: 1px solid #3a3a3a;
+  padding: 12px 16px; display: none; flex-shrink: 0;
+  overflow-y: auto; max-height: 40vh;
+}}
+#config-panel.visible {{ display: flex; gap: 16px; flex-wrap: wrap; }}
+.cfg-section {{
+  min-width: 200px; flex: 1;
+}}
+.cfg-section h3 {{
+  color: #4a90d9; font-size: 0.72rem; text-transform: uppercase;
+  letter-spacing: 0.5px; margin-bottom: 6px; border-bottom: 1px solid #333; padding-bottom: 3px;
+}}
+.cfg-row {{
+  display: flex; justify-content: space-between; gap: 8px;
+  padding: 2px 0; font-size: 0.72rem; border-bottom: 1px solid #2a2a2a;
+}}
+.cfg-row:last-child {{ border-bottom: none; }}
+.cfg-key {{ color: #888; }}
+.cfg-val {{ color: #ddd; font-family: monospace; text-align: right; word-break: break-all; }}
+.cfg-prompts {{ font-size: 0.68rem; color: #999; line-height: 1.5; font-family: monospace; }}
+.btn {{
+  padding: 5px 11px; border: none; border-radius: 4px; cursor: pointer;
+  font-size: 0.8rem; font-weight: bold; background: #3a3a3a; color: #e0e0e0;
+}}
+.btn:hover {{ background: #555; }}
+.filter-btn {{
+  background: #333; color: #aaa; border: 1px solid #444;
+  padding: 4px 10px; border-radius: 12px; cursor: pointer;
+  font-size: 0.75rem; font-weight: bold;
+}}
+.filter-btn:hover {{ background: #444; color: #e0e0e0; }}
+.filter-btn.active {{ background: #4a90d9; color: white; border-color: #4a90d9; }}
+
+/* ── 3-panel layout ── */
+#main {{ display: flex; flex: 1; overflow: hidden; }}
+
+/* ── Sidebar ── */
+#sidebar {{
+  width: 175px; flex-shrink: 0; background: #252525;
+  border-right: 1px solid #333; overflow-y: auto; padding: 4px 0;
+}}
+.sidebar-item {{
+  padding: 3px 8px; cursor: pointer; font-size: 0.7rem;
+  border-left: 3px solid transparent;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}}
+.sidebar-item:hover {{ background: #333; }}
+.sidebar-item.active {{ background: #333; }}
+.sidebar-item.correct  {{ border-left-color: #10b981; }}
+.sidebar-item.incorrect {{ border-left-color: #ef4444; }}
+.sidebar-item.no-gt    {{ border-left-color: #6b7280; }}
+.sidebar-item.not-art  {{ border-left-color: #f59e0b; }}
+.sidebar-item.hidden   {{ display: none; }}
+
+/* ── Content area ── */
+#content-area {{
+  flex: 1; overflow: hidden; background: #111;
+  padding: 10px; display: flex; flex-direction: column; gap: 6px; min-width: 0;
+}}
+#images-row {{
+  flex: 1; min-height: 0;
+  display: flex; gap: 8px; flex-wrap: nowrap; align-items: stretch; overflow: hidden;
+}}
+.img-panel {{
+  flex: 2; min-width: 0; position: relative;
+  display: flex; align-items: center; justify-content: center; overflow: hidden;
+}}
+.img-panel.result {{ flex: 1; max-width: 320px; }}
+.img-panel img {{
+  max-width: 100%; max-height: 100%; width: auto; height: auto;
+  object-fit: contain; display: block; border-radius: 4px;
+}}
+.img-label {{
+  position: absolute; top: 6px; left: 6px;
+  background: rgba(0,0,0,0.75); color: white;
+  padding: 2px 8px; border-radius: 3px;
+  font-size: 0.68rem; font-weight: bold; text-transform: uppercase;
+}}
+#legend {{
+  display: flex; gap: 16px; flex-wrap: wrap;
+  font-size: 0.72rem; color: #888; padding: 2px 0;
+}}
+.ldot {{ display: inline-block; width: 22px; height: 3px; border-radius: 2px; margin-right: 4px; vertical-align: middle; }}
+
+/* ── Right panel ── */
+#right-panel {{
+  width: 225px; flex-shrink: 0; background: #252525;
+  border-left: 1px solid #333; display: flex; flex-direction: column; overflow: hidden;
+}}
+#filename-label {{
+  padding: 8px 10px 5px; font-size: 0.68rem; color: #777;
+  word-break: break-all; border-bottom: 1px solid #333; flex-shrink: 0;
+}}
+#badges-section {{
+  padding: 6px 10px; display: flex; flex-wrap: wrap; gap: 4px;
+  border-bottom: 1px solid #333; flex-shrink: 0;
+}}
+.badge {{
+  font-size: 0.7rem; font-weight: bold; padding: 2px 7px; border-radius: 10px;
+}}
+.badge.correct    {{ background: #064e3b; color: #6ee7b7; }}
+.badge.incorrect  {{ background: #7f1d1d; color: #fca5a5; }}
+.badge.no-gt      {{ background: #374151; color: #d1d5db; }}
+.badge.not-art    {{ background: #78350f; color: #fde68a; }}
+.badge.filtered   {{ background: #78350f; color: #fde68a; }}
+.badge.selection  {{ background: #1e3a5f; color: #93c5fd; }}
+.badge.multicrop  {{ background: #1e3a8a; color: #93c5fd; }}
+.badge.clip       {{ background: #4c1d95; color: #c4b5fd; }}
+.badge.clip-primary {{ background: #6d28d9; color: white; }}
+.badge.siglip     {{ background: #7c2d12; color: #fdba74; }}
+#info-section {{
+  padding: 8px 10px; flex-shrink: 0; border-bottom: 1px solid #333; font-size: 0.75rem;
+}}
+.info-label {{ color: #777; font-size: 0.67rem; text-transform: uppercase; }}
+.info-val {{ color: #e0e0e0; }}
+.info-val.changed {{ color: #6ee7b7; font-size: 0.68rem; }}
+.info-val.siglip-note {{ color: #fbbf24; font-size: 0.68rem; }}
+.info-val.low-score {{ color: #ef4444; }}
+#feedback-section {{ flex: 1; overflow-y: auto; padding: 8px 10px; }}
+#feedback-section h3 {{
+  color: #888; font-size: 0.72rem; text-transform: uppercase; margin-bottom: 6px;
+}}
+.fb-btn {{
+  width: 100%; padding: 6px 8px; border: 2px solid transparent;
+  border-radius: 5px; cursor: pointer; font-size: 0.78rem; font-weight: bold;
+  text-align: left; background: #333; color: #e0e0e0; margin-bottom: 3px;
+}}
+.fb-btn:hover {{ background: #444; }}
+.fb-btn.selected {{ border-color: #4a90d9; background: #1e3a5f; color: #93c5fd; }}
+.key-badge {{
+  background: rgba(0,0,0,0.4); border-radius: 3px; padding: 0 4px;
+  font-size: 0.7rem; color: #ccc; font-family: monospace; margin-right: 4px;
+}}
+#comment-box {{
+  width: 100%; background: #333; border: 1px solid #555; color: #ddd;
+  border-radius: 4px; padding: 5px; font-size: 0.75rem;
+  resize: vertical; min-height: 55px; margin-top: 6px;
+}}
+</style>
+</head>
+<body>
+<div id="header">
+  <div id="header-top">
+    <h1>Detection Report</h1>
+    <span id="progress-text">—</span>
+    <button class="btn" style="font-size:1rem;padding:3px 10px" onclick="navigate(-1)" title="Previous (←)">&#8592;</button>
+    <button class="btn" style="font-size:1rem;padding:3px 10px" onclick="navigate(1)" title="Next (→ or Space)">&#8594; <span style="font-size:0.65rem;opacity:0.6">Space</span></button>
+    <span id="stats-line">{accuracy:.1f}% ({correct_count}/{total_with_gt}) &nbsp;|&nbsp; {auto_filtered_count} filtered</span>
+    <span id="params-line">{config['models']['yolo_world']} + dino-tiny &nbsp;· conf {config['confidence_threshold']} · {config['target_width']}×{config['target_height']} · {config['generated_at']}</span>
+    <button class="btn" onclick="toggleConfig()" id="config-btn" title="Toggle config panel">Config ▾</button>
+  </div>
+  <div id="header-filters">
+    <button class="filter-btn active" onclick="setFilter(this,'all')">All ({len(results)})</button>
+    <button class="filter-btn" onclick="setFilter(this,'correct')">Correct ({n_correct})</button>
+    <button class="filter-btn" onclick="setFilter(this,'incorrect')">Incorrect ({n_incorrect})</button>
+    <button class="filter-btn" onclick="setFilter(this,'not-art')">Not Art ({n_not_art})</button>
+    <button class="filter-btn" onclick="setFilter(this,'no-gt')">No GT ({n_no_gt})</button>
+    <button class="filter-btn" onclick="setFilter(this,'big-primary')">Big Primary ({n_big_primary})</button>
+    <button class="filter-btn" onclick="setFilter(this,'clip')">CLIP ({n_clip})</button>
+    <button class="btn" onclick="exportFeedback()" style="background:#2d6a4f;margin-left:8px">Export Feedback (Ctrl+E)</button>
+  </div>
+</div>
+<div id="config-panel"></div>
+<div id="main">
+  <div id="sidebar"></div>
+  <div id="content-area">
+    <div id="images-row"></div>
+    <div id="legend">
+      <span><span class="ldot" style="background:#00ff00"></span>Primary</span>
+      <span><span class="ldot" style="background:#0000ff"></span>Ground Truth</span>
+      <span><span class="ldot" style="background:#ffd700"></span>Selected Anchor</span>
+      <span><span class="ldot" style="background:#ffa500"></span>Crop Target</span>
+      <span><span class="ldot" style="background:#dc00dc"></span>Focal Detection</span>
+      <span><span class="ldot" style="background:#00c800"></span>Other Detection</span>
     </div>
+  </div>
+  <div id="right-panel">
+    <div id="filename-label">—</div>
+    <div id="badges-section"></div>
+    <div id="info-section"></div>
+    <div id="feedback-section">
+      <h3>Feedback</h3>
+      <button class="fb-btn" data-rating="good"><span class="key-badge">G</span>Good</button>
+      <button class="fb-btn" data-rating="bad_detection"><span class="key-badge">D</span>Bad Detection</button>
+      <button class="fb-btn" data-rating="bad_crop"><span class="key-badge">C</span>Bad Crop</button>
+      <button class="fb-btn" data-rating="bad_both"><span class="key-badge">B</span>Both Bad</button>
+      <button class="fb-btn" data-rating="other"><span class="key-badge">O</span>Other</button>
+      <textarea id="comment-box" placeholder="N to focus · Shift+Enter → next" oninput="updateComment(this.value)"></textarea>
+    </div>
+  </div>
+</div>
+<script>
+const RESULTS = {results_json};
 
-    <script>
-        const imageMetadata = """ + json.dumps(image_metadata) + """;
-        const reportConfig = """ + json.dumps(config) + """;
-        const feedbackData = {};
+function buildConfigPanel() {{
+  const c = CONFIG;
+  const rows = (pairs) => pairs.map(([k,v]) =>
+    `<div class="cfg-row"><span class="cfg-key">${{k}}</span><span class="cfg-val">${{v}}</span></div>`
+  ).join('');
+  document.getElementById('config-panel').innerHTML = `
+    <div class="cfg-section">
+      <h3>Detection</h3>
+      ${{rows([
+        ['Ensemble', c.detector],
+        ['YOLO-World', c.models.yolo_world],
+        ['Grounding DINO', c.models.grounding_dino.split('/').pop()],
+        ['Confidence', c.confidence_threshold],
+        ['Merge IoU', c.merge_threshold],
+        ['Two-pass', c.two_pass ? 'enabled' : 'disabled'],
+        ['Primary selection', c.primary_selection],
+      ])}}
+    </div>
+    <div class="cfg-section">
+      <h3>Cropping</h3>
+      ${{rows([
+        ['Target size', c.target_width + '×' + c.target_height],
+        ['Max zoom', c.zoom_factor + 'x'],
+        ['Saliency fallback', c.use_saliency_fallback ? 'enabled' : 'disabled'],
+      ])}}
+      <h3 style="margin-top:10px">Focal Detection</h3>
+      ${{rows([['Prompts', c.focal_prompts.join(', ')]])}}
+    </div>
+    <div class="cfg-section">
+      <h3>YOLO-World Prompts <span style="color:#666;font-weight:normal">(${{c.yolo_world_prompts.length}})</span></h3>
+      <div class="cfg-prompts">${{c.yolo_world_prompts.join(' · ')}}</div>
+    </div>
+    <div class="cfg-section">
+      <h3>Grounding DINO Prompts <span style="color:#666;font-weight:normal">(${{c.grounding_dino_prompts.length}})</span></h3>
+      <div class="cfg-prompts">${{c.grounding_dino_prompts.join(' · ')}}</div>
+    </div>`;
+}}
 
-        function filterResults(filter) {
-            const cards = document.querySelectorAll('.result-card');
-            const buttons = document.querySelectorAll('.filter-btn');
+function toggleConfig() {{
+  const panel = document.getElementById('config-panel');
+  const btn = document.getElementById('config-btn');
+  const visible = panel.classList.toggle('visible');
+  btn.textContent = visible ? 'Config ▴' : 'Config ▾';
+}}
+const CONFIG = {config_json};
+const MIN_ART_SCORE = {min_art_score_val};
+const feedbackData = {{}};
 
-            buttons.forEach(btn => btn.classList.remove('active'));
-            event.target.classList.add('active');
+let currentIdx = 0;
+let currentFilter = 'all';
+let visibleIndices = [];
 
-            cards.forEach(card => {
-                if (filter === 'all') {
-                    card.style.display = 'block';
-                } else if (filter === 'big-primary') {
-                    card.style.display = card.dataset.bigPrimary === 'true' ? 'block' : 'none';
-                } else if (filter === 'clip') {
-                    card.style.display = card.dataset.clip === 'true' ? 'block' : 'none';
-                } else if (filter === 'siglip') {
-                    card.style.display = card.dataset.siglip === 'true' ? 'block' : 'none';
-                } else {
-                    card.style.display = card.dataset.status === filter ? 'block' : 'none';
-                }
-            });
-        }
+// Pre-mark correct detections as "good"
+RESULTS.forEach((r, i) => {{
+  if (r.status === 'correct') feedbackData[i] = {{rating: 'good'}};
+}});
 
-        function setFeedback(index, rating) {
-            const fname = imageMetadata[index].filename;
-            if (!feedbackData[fname]) {
-                feedbackData[fname] = {};
-            }
-            feedbackData[fname].rating = rating;
+function buildSidebar() {{
+  const sb = document.getElementById('sidebar');
+  RESULTS.forEach((r, i) => {{
+    const el = document.createElement('div');
+    el.className = 'sidebar-item ' + r.status;
+    el.dataset.idx = i;
+    el.textContent = (i + 1) + '. ' + r.filename.replace(/[.][^.]+$/, '');
+    el.title = r.filename;
+    el.onclick = () => setIndex(i);
+    sb.appendChild(el);
+  }});
+  updateFilter();
+}}
 
-            // Update button states
-            const card = document.querySelector(`[data-index="${index}"]`);
-            const buttons = card.querySelectorAll('.feedback-btn');
-            buttons.forEach(btn => btn.classList.remove('selected'));
+function updateFilter() {{
+  visibleIndices = [];
+  document.querySelectorAll('.sidebar-item').forEach(el => {{
+    const i = parseInt(el.dataset.idx);
+    const r = RESULTS[i];
+    let show = false;
+    switch (currentFilter) {{
+      case 'all':         show = true; break;
+      case 'correct':     show = r.status === 'correct'; break;
+      case 'incorrect':   show = r.status === 'incorrect'; break;
+      case 'not-art':     show = r.status === 'not-art'; break;
+      case 'no-gt':       show = r.status === 'no-gt'; break;
+      case 'big-primary': show = r.primaryFills; break;
+      case 'clip':        show = r.clipCount > 0; break;
+    }}
+    el.classList.toggle('hidden', !show);
+    if (show) visibleIndices.push(i);
+  }});
+}}
 
-            const ratingMap = {
-                'good': 0,
-                'bad_detection': 1,
-                'bad_crop': 2,
-                'bad_both': 3,
-                'other': 4
-            };
-            buttons[ratingMap[rating]].classList.add('selected');
-        }
+function setFilter(btn, filter) {{
+  currentFilter = filter;
+  document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  updateFilter();
+  if (!visibleIndices.includes(currentIdx) && visibleIndices.length > 0) {{
+    setIndex(visibleIndices[0]);
+  }} else {{
+    updateProgress();
+    highlightSidebar();
+  }}
+}}
 
-        function updateComment(index, comment) {
-            const fname = imageMetadata[index].filename;
-            if (!feedbackData[fname]) {
-                feedbackData[fname] = {};
-            }
-            feedbackData[fname].comment = comment;
-        }
+function navigate(delta) {{
+  const pos = visibleIndices.indexOf(currentIdx);
+  const npos = pos + delta;
+  if (npos >= 0 && npos < visibleIndices.length) setIndex(visibleIndices[npos]);
+}}
 
-        function exportFeedback() {
-            const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-            const outFilename = `detection_feedback_${timestamp}.json`;
+function setIndex(idx) {{
+  currentIdx = idx;
+  location.hash = encodeURIComponent(RESULTS[idx].filename);
+  renderContent();
+  highlightSidebar();
+  updateProgress();
+}}
 
-            // Build full export with per-image detection context
-            const feedbackWithContext = {};
-            for (const [fname, fb] of Object.entries(feedbackData)) {
-                const meta = imageMetadata.find(m => m.filename === fname);
-                feedbackWithContext[fname] = {
-                    ...fb,
-                    detections: meta ? meta.detections : [],
-                    primary: meta ? meta.primary : null,
-                    is_correct: meta ? meta.is_correct : null,
-                    best_iou: meta ? meta.best_iou : null,
-                    ground_truth_boxes: meta ? meta.ground_truth_boxes : [],
-                };
-            }
+function updateProgress() {{
+  const pos = visibleIndices.indexOf(currentIdx);
+  const total = visibleIndices.length;
+  const suffix = total < RESULTS.length ? ` (of ${{RESULTS.length}})` : '';
+  document.getElementById('progress-text').textContent = `${{pos + 1}}/${{total}}${{suffix}}`;
+}}
 
-            const exportData = {
-                generated_at: new Date().toISOString(),
-                config: reportConfig,
-                total_images: imageMetadata.length,
-                feedback_count: Object.keys(feedbackData).length,
-                feedback: feedbackWithContext
-            };
+function highlightSidebar() {{
+  document.querySelectorAll('.sidebar-item').forEach(el => {{
+    el.classList.toggle('active', parseInt(el.dataset.idx) === currentIdx);
+  }});
+  const active = document.querySelector('.sidebar-item.active');
+  if (active) active.scrollIntoView({{block: 'nearest'}});
+}}
 
-            const blob = new Blob([JSON.stringify(exportData, null, 2)], {type: 'application/json'});
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = outFilename;
-            a.click();
-            URL.revokeObjectURL(url);
+function statusLabel(s) {{
+  return {{correct:'Correct', incorrect:'Incorrect', 'no-gt':'No GT', 'not-art':'Not Art'}}[s] || s;
+}}
 
-            alert(`Exported feedback for ${Object.keys(feedbackData).length} images`);
-        }
+function renderContent() {{
+  const r = RESULTS[currentIdx];
 
-        // Pre-mark correct detections as "good"
-        document.querySelectorAll('.result-card[data-status="correct"]').forEach(card => {
-            setFeedback(parseInt(card.dataset.index), 'good');
-        });
+  document.getElementById('filename-label').textContent = r.filename;
 
-    </script>
+  // Badges
+  let bh = `<span class="badge ${{r.status}}">${{statusLabel(r.status)}}</span>`;
+  if (r.autoFiltered)       bh += `<span class="badge filtered">FILTERED</span>`;
+  else if (r.isNotArt)      bh += `<span class="badge not-art">NOT ART (GT)</span>`;
+  if (r.primaryChangedText) bh += `<span class="badge selection">Sel. Changed</span>`;
+  if (r.imgCrops.length)    bh += `<span class="badge multicrop">Multi-crop: ${{r.imgCrops.length}}</span>`;
+  if (r.clipCount > 0) {{
+    const cs = (r.clipMax || 0).toFixed(3);
+    bh += r.clipPrimary
+      ? `<span class="badge clip-primary">CLIP primary (${{cs}})</span>`
+      : `<span class="badge clip">CLIP: ${{r.clipCount}} (${{cs}})</span>`;
+  }}
+  if (r.siglipCount > 0) bh += `<span class="badge siglip">SigLIP: ${{r.siglipCount}}</span>`;
+  document.getElementById('badges-section').innerHTML = bh;
+
+  // Info
+  let ih = `<div style="margin-bottom:6px">
+    <div class="info-label">Primary Detection</div>
+    <div class="info-val">${{r.primaryText}}</div>`;
+  if (r.primaryChangedText) ih += `<div class="info-val changed">${{r.primaryChangedText}}</div>`;
+  if (r.primarySiglipText)  ih += `<div class="info-val siglip-note">${{r.primarySiglipText}}</div>`;
+  ih += `</div><div style="display:flex;gap:10px;flex-wrap:wrap">`;
+  ih += `<div><div class="info-label">Art score</div><div class="info-val${{r.artScoreLow ? ' low-score' : ''}}">${{r.artScore.toFixed(3)}}</div></div>`;
+  if (r.hasGT) ih += `<div><div class="info-label">IoU</div><div class="info-val">${{r.iou.toFixed(3)}}</div></div>`;
+  ih += `<div><div class="info-label">Dets</div><div class="info-val">${{r.detCount}}</div></div>`;
+  ih += `<div><div class="info-label">Zoom</div><div class="info-val">${{r.zoom.toFixed(2)}}x</div></div>`;
+  ih += `</div>`;
+  document.getElementById('info-section').innerHTML = ih;
+
+  // Images
+  let imgh = '';
+  if (r.imgDetection) {{
+    imgh += `<div class="img-panel"><span class="img-label">Detection</span><img src="${{r.imgDetection}}" alt="detection"></div>`;
+  }}
+  if (r.imgCrops.length > 0) {{
+    r.imgCrops.forEach((c, ci) => {{
+      imgh += `<div class="img-panel result"><span class="img-label">Crop ${{ci + 1}}: ${{c.cls}} (${{c.zoom.toFixed(1)}}x)</span><img src="${{c.uri}}" alt="crop ${{ci + 1}}"></div>`;
+    }});
+  }} else if (r.imgResult) {{
+    imgh += `<div class="img-panel result"><span class="img-label">Result (${{r.zoom.toFixed(2)}}x)</span><img src="${{r.imgResult}}" alt="result"></div>`;
+  }}
+  document.getElementById('images-row').innerHTML = imgh;
+
+  // Feedback state
+  const rating = (feedbackData[currentIdx] || {{}}).rating;
+  document.querySelectorAll('.fb-btn').forEach(btn => {{
+    btn.classList.toggle('selected', btn.dataset.rating === rating);
+  }});
+  document.getElementById('comment-box').value = (feedbackData[currentIdx] || {{}}).comment || '';
+}}
+
+// Feedback buttons
+document.querySelectorAll('.fb-btn').forEach(btn => {{
+  btn.onclick = () => setFeedbackRating(btn.dataset.rating);
+}});
+
+function updateComment(val) {{
+  if (!feedbackData[currentIdx]) feedbackData[currentIdx] = {{}};
+  feedbackData[currentIdx].comment = val;
+}}
+
+function exportFeedback() {{
+  const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+  const outFilename = `detection_feedback_${{timestamp}}.json`;
+  const feedbackWithContext = {{}};
+  for (const [idxStr, fb] of Object.entries(feedbackData)) {{
+    const i = parseInt(idxStr);
+    const r = RESULTS[i];
+    feedbackWithContext[r.filename] = {{
+      ...fb,
+      detections: r.detections,
+      primary: r.primary,
+      is_correct: r.isCorrect,
+      best_iou: r.bestIou,
+      ground_truth_boxes: r.gtBoxes,
+    }};
+  }}
+  const exportData = {{
+    generated_at: new Date().toISOString(),
+    config: CONFIG,
+    total_images: RESULTS.length,
+    feedback_count: Object.keys(feedbackData).length,
+    feedback: feedbackWithContext,
+  }};
+  const blob = new Blob([JSON.stringify(exportData, null, 2)], {{type: 'application/json'}});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = outFilename; a.click();
+  URL.revokeObjectURL(url);
+  alert(`Exported feedback for ${{Object.keys(feedbackData).length}} images`);
+}}
+
+const FB_KEYS = {{g:'good', d:'bad_detection', c:'bad_crop', b:'bad_both', o:'other'}};
+const commentBox = document.getElementById('comment-box');
+
+function setFeedbackRating(rating) {{
+  if (!feedbackData[currentIdx]) feedbackData[currentIdx] = {{}};
+  feedbackData[currentIdx].rating = rating;
+  document.querySelectorAll('.fb-btn').forEach(btn => {{
+    btn.classList.toggle('selected', btn.dataset.rating === rating);
+  }});
+}}
+
+document.addEventListener('keydown', e => {{
+  if (e.target.tagName === 'TEXTAREA' || e.target.tagName === 'INPUT') {{
+    if ((e.shiftKey || e.ctrlKey) && e.key === 'Enter') {{
+      e.preventDefault();
+      e.target.blur();
+      navigate(1);
+    }}
+    return;
+  }}
+  if (e.key === 'ArrowLeft') navigate(-1);
+  else if (e.key === 'ArrowRight' || e.key === ' ') {{ e.preventDefault(); navigate(1); }}
+  else if (e.key === 'e' && (e.ctrlKey || e.metaKey)) {{ e.preventDefault(); exportFeedback(); }}
+  else if (e.key.toLowerCase() === 'n') {{ e.preventDefault(); commentBox.focus(); commentBox.select(); }}
+  else {{
+    const rating = FB_KEYS[e.key.toLowerCase()];
+    if (rating) setFeedbackRating(rating);
+  }}
+}});
+
+buildConfigPanel();
+buildSidebar();
+if (RESULTS.length > 0) {{
+  const savedName = decodeURIComponent(location.hash.slice(1));
+  const savedIdx = RESULTS.findIndex(r => r.filename === savedName);
+  setIndex(savedIdx >= 0 ? savedIdx : 0);
+}}
+</script>
 </body>
 </html>
 """
-
     # Save report
     output_path = Path(output_file)
     output_path.parent.mkdir(exist_ok=True)
