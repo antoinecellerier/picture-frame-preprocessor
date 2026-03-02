@@ -274,6 +274,7 @@ Hard problems requiring model-level improvements:
 
 **For full detection upgrade:**
 - **grounding-dino-base** (IDEA-Research): EVALUATED (2026-03-02) — **does not beat tiny**. IoU hit rate 95/122 (78%) vs tiny 107/122 (88%) — net **-12**. Class accuracy identical (66/122). Base produces more generic labels ("painting artwork", "framed artwork") that win primary selection but cover wrong regions. Mural -4, mosaic -3, non_art -3. Root cause: larger backbone doesn't help when the bottleneck is open-vocab label calibration, not backbone capacity. Stick with tiny.
+- **YOLOE-26m** (Ultralytics, 2025): EVALUATED (2026-03-02) — **does not beat YOLO-World**. IoU 100/122 (82%) vs baseline 107/122 (88%) — net **-7**. Class accuracy 50/122 (41%) vs 66/122 (54%). Root cause: smears murals into "street art" (23/38 murals classified as street_art), causing primary-selection losses. Bboxes are fine but class calibration between mural/street_art worse than YOLO-World. Stick with yolov8m-worldv2.
 - **DINO-X**: Wait for open-source release. Currently API-only via IDEA Research SDK. Would be a direct drop-in upgrade to Grounding DINO 1.5 with native region QA.
 
 ---

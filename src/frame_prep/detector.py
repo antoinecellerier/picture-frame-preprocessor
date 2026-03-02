@@ -726,6 +726,7 @@ class OptimizedEnsembleDetector:
         merge_threshold: float = 0.2,
         two_pass: bool = True,
         dino_model_id: str = "IDEA-Research/grounding-dino-tiny",
+        yolo_model: str = "yolov8m-worldv2",
     ):
         """
         Initialize optimized ensemble detector.
@@ -737,11 +738,21 @@ class OptimizedEnsembleDetector:
                       Improves accuracy (~93% vs ~85%) but ~3-4x slower.
             dino_model_id: HuggingFace model ID for Grounding DINO (default: tiny).
                            Use "IDEA-Research/grounding-dino-base" for the larger variant.
+            yolo_model: YOLO model filename stem in models/ dir (default: yolov8m-worldv2).
+                        Use "yoloe-26m-seg" for YOLOE (open-vocab seg model, same API).
         """
         self.confidence_threshold = confidence_threshold
         self.merge_threshold = merge_threshold
         self.two_pass = two_pass
         self._dino_model_id = dino_model_id
+        self._yolo_model = yolo_model
+        # Cache name derived from model stem: "yolov8m-worldv2" → "yolo_world"
+        # kept as "yolo_world" for the default to preserve existing cache;
+        # other variants get their own subdirs.
+        if yolo_model == "yolov8m-worldv2":
+            self._yolo_cache_name = "yolo_world"
+        else:
+            self._yolo_cache_name = yolo_model.replace("-", "_")
         # Derive cache subdirectory names from model ID so tiny/base caches stay separate.
         # "IDEA-Research/grounding-dino-tiny" → "grounding_dino_tiny"
         _variant = dino_model_id.split("/")[-1].replace("-", "_")
@@ -791,13 +802,16 @@ class OptimizedEnsembleDetector:
         ]
 
     def _load_yolo_world(self):
-        """Lazy-load YOLO-World model on first use."""
+        """Lazy-load YOLO-World (or YOLOE) model on first use."""
         if self._yolo_world is None:
-            from ultralytics import YOLOWorld
-
             MODELS_DIR.mkdir(parents=True, exist_ok=True)
-            yolo_world_path = MODELS_DIR / 'yolov8m-worldv2.pt'
-            self._yolo_world = YOLOWorld(str(yolo_world_path))
+            model_path = MODELS_DIR / f'{self._yolo_model}.pt'
+            if "yoloe" in self._yolo_model:
+                from ultralytics import YOLOE
+                self._yolo_world = YOLOE(str(model_path))
+            else:
+                from ultralytics import YOLOWorld
+                self._yolo_world = YOLOWorld(str(model_path))
             self._yolo_world.set_classes(self._art_classes)
 
     def _load_grounding_dino(self):
@@ -824,14 +838,14 @@ class OptimizedEnsembleDetector:
         # Try path-based cache first (faster), then fall back to content hash
         cache_path = None
         if path_hash:
-            cache_path = _get_cache_path("yolo_world", path_hash, params_hash)
+            cache_path = _get_cache_path(self._yolo_cache_name, path_hash, params_hash)
             cached = _load_cached_detections(cache_path)
             if cached is not None:
                 if verbose:
                     print(f"  YOLO-World: {len(cached)} detections (cached)")
                 return cached
 
-        cache_path = _get_cache_path("yolo_world", image_hash, params_hash)
+        cache_path = _get_cache_path(self._yolo_cache_name, image_hash, params_hash)
 
         cached = _load_cached_detections(cache_path)
         if cached is not None:
@@ -872,7 +886,7 @@ class OptimizedEnsembleDetector:
         # Save to content-based cache (and path-based if available)
         _save_cached_detections(cache_path, detections)
         if path_hash:
-            path_cache = _get_cache_path("yolo_world", path_hash, params_hash)
+            path_cache = _get_cache_path(self._yolo_cache_name, path_hash, params_hash)
             if path_cache != cache_path:
                 _save_cached_detections(path_cache, detections)
         return detections
