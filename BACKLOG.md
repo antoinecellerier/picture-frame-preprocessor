@@ -1,5 +1,31 @@
 # Backlog
 
+## Session Summary (2026-03-04) — continued
+
+**Current accuracy: 112/122 (92%) IoU hit rate** with `--vlm` (llama-server GGUF, ~20s/image, cached after first run). Baseline without VLM: 107/122 (88%).
+
+### VLM integration milestones this session
+| Version | IoU | Change |
+|---------|-----|--------|
+| Baseline (YOLO/DINO only) | 107/122 (88%) | — |
+| VLM v1 (heuristics A+C, generic prompt) | 93/122 (76%) | −14 regression |
+| VLM v2 (heuristic-C only, specific prompt) | 110/122 (90%) | +3 |
+| VLM v3 (+ heuristic-D conf<0.35, size_bonus floor) | 112/122 (92%) | +2 |
+| VLM v4 (+ merge source preservation) | 112/122 (92%) | swap: DSC_4312↑, DSC_4166↓ |
+
+### Remaining 10 IoU misses
+- **Borderline (3)**: 20200525 (0.115), 20220219 (0.136), DSC_4414 (0.14) — box slightly off
+- **Installation/person-as-art (2)**: 20210910, DSC_0001_BURST — "painted figure" wins; SigLIP tried and failed; VLM VQA 2/4
+- **Hard mosaics — VLM also fails (4)**: DSC_3401, DSC_4162, DSC_4302, DSC_4385 — Space Invader pixel art, VLM finds wrong region
+- **Wrong-region sculpture (1)**: DSC_4166 — correct class, bbox in wrong part of image
+
+### Infrastructure improvements
+- `--vlm` alone now sufficient: GGUF paths default to `models/qwen3vl/`; `--vlm-gguf`/`--vlm-mmproj` only needed to override
+- `scripts/download_models.py --vlm` downloads both GGUFs from HuggingFace (~2.6 GB) with llama-server build instructions
+- README/USAGE docs updated: VLM feature, setup, 92% accuracy figure
+
+---
+
 ## Session Summary (2026-03-04)
 
 **Accuracy: 107/122 (88%) IoU hit rate** (YOLO/DINO ensemble baseline).
