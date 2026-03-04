@@ -557,6 +557,11 @@ class ArtFeatureDetector:
             if class_multiplier <= 2.0:
                 size_bonus = min(size_bonus, 1.0)
 
+            # VLM boxes are inherently tight — don't let the tiny-area penalty
+            # discard a VLM detection that is otherwise well-placed and high-confidence.
+            if getattr(det, 'source', None) == 'vlm':
+                size_bonus = max(size_bonus, 0.5)
+
             score *= size_bonus
 
             # Edge penalty: detections touching the image boundary are likely
@@ -1378,6 +1383,9 @@ class OptimizedEnsembleDetector:
                     _art_score = _primary.confidence * _mult
                     if False:  # heuristic-A disabled: fires too broadly, causes regressions
                         _vlm_reason = f"heuristic-A (art_score={_art_score:.2f}<2.0)"
+                    elif _primary.confidence < 0.35:
+                        # heuristic-D: primary confidence is low — uncertain detection
+                        _vlm_reason = f"heuristic-D (conf={_primary.confidence:.3f}<0.35)"
                     elif len(merged_detections) >= 2:
                         # Sort by simplified score (conf × multiplier, ignoring center/size)
                         _scores = sorted(
