@@ -3,7 +3,12 @@
 import os
 import sys
 import functools
+from pathlib import Path
 import click
+
+_PROJECT_ROOT = Path(__file__).parent.parent.parent
+_DEFAULT_VLM_GGUF   = str(_PROJECT_ROOT / "models/qwen3vl/Qwen3VL-2B-Instruct-Q8_0.gguf")
+_DEFAULT_VLM_MMPROJ = str(_PROJECT_ROOT / "models/qwen3vl/mmproj-Qwen3VL-2B-Instruct-F16.gguf")
 
 from .preprocessor import ImagePreprocessor
 from .detector import ArtFeatureDetector, EnsembleDetector, OptimizedEnsembleDetector
@@ -50,10 +55,12 @@ def common_options(f):
                        'primary selection (implies --vlm; first run ~13h CPU or 4min GPU)')
     @click.option('--vlm-max-image-size', default=512, type=int, show_default=True,
                   help='Max image dimension for VLM inference')
-    @click.option('--vlm-gguf', default=None, type=click.Path(),
-                  help='Path to Qwen3-VL GGUF model file (enables llama-cpp-python fast path)')
-    @click.option('--vlm-mmproj', default=None, type=click.Path(),
-                  help='Path to mmproj GGUF file for VLM vision encoder (required with --vlm-gguf)')
+    @click.option('--vlm-gguf', default=_DEFAULT_VLM_GGUF, type=click.Path(), show_default=False,
+                  help=f'Path to Qwen3-VL GGUF model file '
+                       f'(default: models/qwen3vl/Qwen3VL-2B-Instruct-Q8_0.gguf)')
+    @click.option('--vlm-mmproj', default=_DEFAULT_VLM_MMPROJ, type=click.Path(), show_default=False,
+                  help=f'Path to mmproj GGUF file for VLM vision encoder '
+                       f'(default: models/qwen3vl/mmproj-Qwen3VL-2B-Instruct-F16.gguf)')
     @click.option('--verbose', '-v', is_flag=True, help='Verbose output')
     @functools.wraps(f)
     def wrapper(*args, **kwargs):

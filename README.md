@@ -7,6 +7,7 @@ Smart image preprocessor for e-ink picture frames. Uses local ML to detect art s
 ## Features
 
 - **ML-powered smart cropping** -- YOLO-World + Grounding DINO ensemble detects art, sculptures, murals, and more
+- **VLM fallback** -- optional Qwen3-VL-2B grounding pass via llama.cpp (~20s/image) activates when YOLO/DINO are uncertain; results cached after first run
 - **Focal point detection** -- for large murals that fill the frame, a second Grounding DINO pass finds faces/figures inside the primary to use as the crop anchor
 - **Contextual zoom** -- zooms in on small or distant subjects, leaves large ones untouched
 - **Multi-crop** -- detects multiple art pieces and produces separate crops for each
@@ -23,6 +24,9 @@ python scripts/download_models.py
 
 # Process a single image
 frame-prep process -i photo.jpg -o output/ -v
+
+# With VLM fallback for difficult images (requires models/qwen3vl/ — see docs)
+frame-prep process -i photo.jpg -o output/ --vlm -v
 
 # Batch process a directory
 frame-prep batch -i ~/photos/art/ -o ~/photos/processed/ --skip-existing
@@ -63,7 +67,7 @@ frame-prep report
 
 ![Interactive detection report](samples/report_screenshot.png)
 
-Current accuracy: ~77% on 116-image ground truth test set.
+Current accuracy: **92% IoU hit rate** on 122-image ground truth test set (with `--vlm`; 88% without).
 
 ## Related Projects
 
