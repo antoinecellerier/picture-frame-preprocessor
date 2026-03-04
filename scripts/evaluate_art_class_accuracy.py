@@ -28,6 +28,10 @@ from frame_prep.detector import OptimizedEnsembleDetector
 
 GT_PATH = Path("test_real_images/art_class_ground_truth.json")
 IMAGE_DIR = Path("test_real_images/input")
+
+_PROJECT_ROOT = Path(__file__).parent.parent
+_DEFAULT_VLM_GGUF   = str(_PROJECT_ROOT / "models/qwen3vl/Qwen3VL-2B-Instruct-Q8_0.gguf")
+_DEFAULT_VLM_MMPROJ = str(_PROJECT_ROOT / "models/qwen3vl/mmproj-Qwen3VL-2B-Instruct-F16.gguf")
 CANONICAL_CLASSES = ["mural", "mosaic", "street_art", "sculpture", "painting", "installation", "non_art"]
 
 # ── Class name → canonical art class mapping ──────────────────────────────────
@@ -147,8 +151,8 @@ def parse_args() -> argparse.Namespace:
         help="YOLO model stem in models/ dir (default: yolov8m-worldv2). Use 'yoloe-26m-seg' for YOLOE.",
     )
     p.add_argument("--vlm", action="store_true", help="Enable VLM fallback (Qwen3-VL)")
-    p.add_argument("--vlm-gguf", default=None, help="Path to Qwen3-VL GGUF model file")
-    p.add_argument("--vlm-mmproj", default=None, help="Path to mmproj GGUF file")
+    p.add_argument("--vlm-gguf", default=_DEFAULT_VLM_GGUF, help="Path to Qwen3-VL GGUF model file")
+    p.add_argument("--vlm-mmproj", default=_DEFAULT_VLM_MMPROJ, help="Path to mmproj GGUF file")
     p.add_argument("--vlm-max-image-size", type=int, default=512)
     return p.parse_args()
 

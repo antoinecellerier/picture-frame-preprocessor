@@ -1,5 +1,26 @@
 # Backlog
 
+## Session Summary (2026-03-04) — resolution experiment
+
+### 1024px VLM resolution experiment — net zero
+Tested `--vlm-max-image-size 1024` (vs default 512px) across all 122 images.
+
+| Class | 512px IoU | 1024px IoU | Δ |
+|-------|-----------|------------|---|
+| mural | 38/38 (100%) | 37/38 (97%) | -1 |
+| mosaic | 21/25 (84%) | 22/25 (88%) | +1 |
+| street_art | 20/22 (91%) | 19/22 (86%) | -1 |
+| sculpture | 18/20 (90%) | 19/20 (95%) | +1 |
+| **TOTAL** | **112/122 (92%)** | **112/122 (92%)** | **0** |
+
+**Conclusion**: net zero overall. 1024px finds more mosaics but loses a mural and street art image. At ~4x slower inference per triggered image, 512px remains the better default.
+Root cause for DSC_4302 (mosaic): VLM at 1024px finds art fragments visible through a store window rather than the central mosaic — detection problem, not a resolution problem.
+
+### Infrastructure fix
+- `scripts/evaluate_art_class_accuracy.py`: `--vlm-gguf` and `--vlm-mmproj` now default to `models/qwen3vl/` paths (same as CLI), so `--vlm` alone uses llama-server correctly without passing explicit paths.
+
+---
+
 ## Session Summary (2026-03-04) — continued
 
 **Current accuracy: 112/122 (92%) IoU hit rate** with `--vlm` (llama-server GGUF, ~20s/image, cached after first run). Baseline without VLM: 107/122 (88%).
