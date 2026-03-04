@@ -1,8 +1,54 @@
 # Backlog
 
+## Session Summary (2026-03-04)
+
+**Accuracy: 107/122 (88%) IoU hit rate** (YOLO/DINO ensemble baseline).
+Qwen3-VL-2B standalone eval: 14/17 previously-failing images now found → **theoretical ceiling 121/122 (99%)** if integrated as fallback.
+
+### Completed this session
+- Evaluated grounding-dino-base: net **-12** vs tiny (78% vs 88%). Larger backbone doesn't help; generic labels hurt primary selection. Keep tiny.
+- Evaluated YOLOE-26m: net **-7** vs YOLO-World (82% vs 88%). Class calibration worse (smears murals → street_art). Keep YOLO-World.
+- Implemented `scripts/evaluate_qwen3vl.py`: grounding + VQA eval on 17 miss images. Supports Qwen3-VL-2B and Qwen3.5-2B.
+- Evaluated **Qwen3-VL-2B** (`Qwen/Qwen3-VL-2B-Instruct`): **14/17 hits** on previously failing images. Finds Space Invader mosaics, sculptures, installations that YOLO/DINO miss entirely. VQA 2/4 category C correct.
+- Evaluated **Qwen3.5-2B** (`Qwen/Qwen3.5-2B`): **13/17 hits**. Slightly worse. Architecture mismatch warnings (loaded via `Qwen3_5ForConditionalGeneration` fallback). transformers upgraded to 5.3.0.dev0.
+- **Winner: Qwen3-VL-2B** — purpose-built for grounding, no arch mismatch, 1 more hit.
+- Persistent misses for both VLMs: DSC_4311, DSC_4388 (tiny pixel-art Space Invader mosaics, sub-1% image area).
+- Cache: `cache/qwen3vl/`, keyed by model_id + prompt_mode + max_image_size.
+- CPU inference at 512px: ~5-10 min/image. GPU strongly recommended for pipeline use.
+- **Integrated Qwen3-VL into pipeline** (`--vlm` / `--vlm-confirm` / `--vlm-max-image-size` CLI flags):
+  - Pass 3 added to `OptimizedEnsembleDetector.detect()` — fires after pass 1+2 and merge
+  - Cache key identical to `evaluate_qwen3vl.py` → all 17-miss eval results reused instantly
+  - `--vlm`: fallback mode (fires when no viable central candidate found)
+  - `--vlm-confirm`: confirmation mode (runs on every image)
+  - Baseline `--vlm` run: VLM triggered on **24/122** images; 98 skipped with viable candidate
+- **Report enhancements for VLM visibility**:
+  - VLM boxes rendered in cyan; primary color indicates source (green=YOLO, chartreuse=DINO, yellow=MIXED, cyan=VLM)
+  - VLM badge + count in image info panel; VLM filter button
+  - Config summary panel shows VLM mode, model, and max image size
+  - `Detection.source` field tracks `"yolo"` / `"dino"` / `"vlm"` through merge pipeline
+  - `_last_vlm_detections` on detector stores raw pre-merge VLM boxes for accurate count (source tags lost during merge for YOLO/DINO overlap)
+- **Expanded VLM heuristics A+C** added to pass-3 trigger (beyond no-candidate fallback):
+  - **A** (weak art score): fires when `primary.confidence × class_multiplier < 2.0` — targets `art_installation` / low-conf generic detections winning primary
+  - **C** (close competition): fires when top-2 simplified scores within 20% ratio — targets coin-flip tie scenarios (DSC_4385 etc.)
+  - Option B (non-specific-art primary) kept as future option if A+C insufficient
+  - Verbose output shows trigger reason: e.g. `VLM/heuristic-A (art_score=0.70<2.0)`
+
+### What Qwen3-VL fixes vs YOLO/DINO
+| Category | Images | YOLO/DINO | Qwen3-VL |
+|----------|--------|-----------|----------|
+| B: wrong detection wins | DSC_4020, DSC_4371, DSC_4385, DSC_3401 | miss | HIT |
+| D: not detected at all | 20210911, DSC_4168, DSC_4291, DSC_4312 | miss | HIT |
+| A: borderline box | DSC_4101_0, DSC_4388 | miss | HIT / miss |
+| C: person-as-art (VQA) | 20210910_191256, _204401 | n/a | correct |
+
+### VLM integration results (--vlm with heuristics A+C)
+_(pending — run in progress)_
+
+---
+
 ## Session Summary (2026-02-26)
 
-**Accuracy: 103/122 (84%) IoU hit rate** (after EXIF rotation fix in eval script).
+**Accuracy: 103/122 (84%) → 107/122 (88%)** (class audit + scoring improvements).
 Previous measured baseline was 94/122 (77%) — gap was purely due to eval script feeding rotated images.
 
 ### Completed this session
@@ -265,12 +311,19 @@ Hard problems requiring model-level improvements:
 ### Most promising next experiments
 
 **For "painted figure vs real person" (items 4 + bad_crop):**
-- **Florence-2 `<REGION_TO_DESCRIPTION>`**: Takes full image + bbox coordinates, returns region description preserving context. Parse output for "painting", "sculpture", "artwork" vs "visitor", "person". Only need to query the primary detection.
-- **Moondream2 VQA (0.5B)**: Ask "Is the person in this image a real person or depicted in artwork?" on the bbox crop. Fast at 0.5B, fine-tuned for fine-grained distinctions.
+- **Qwen3-VL VQA** (EVALUATED 2026-03-04): 2/4 correct on category C. Correctly identifies sculpted/depicted figures; the 2 "real person" answers may be correct (GT labels are "installation", not person-in-art). This is the best approach tried so far.
 
 **For small mosaic detection (items 3 + bad_detection):**
-- **OWLv2**: EVALUATED (2026-02-26) — does not beat baseline. Best F1=0.293 (art_only prompts) vs baseline F1=0.529. Root cause: assigns high scores to colorful murals/frescoes — no clean threshold exists. Not worth integrating.
-- **Next direction**: Expand scope to all art classes using the new `art_class_ground_truth.json`. Build a multi-class evaluator and test models on the full taxonomy (painting/mural/mosaic/sculpture/ceramic/street_art/installation). Accept fuzzy boundaries (mural vs street_art vs painting is sometimes ambiguous).
+- **OWLv2**: EVALUATED (2026-02-26) — does not beat baseline. Best F1=0.293 (art_only prompts) vs baseline F1=0.529. Not worth integrating.
+- **Qwen3-VL grounding** (EVALUATED 2026-03-04): 14/17 hits on previously-failing images. **Most promising path** — integrate as fallback pass in pipeline when YOLO/DINO has no viable candidate.
+
+**Pipeline integration of Qwen3-VL (next step):**
+- Add `_run_qwen_vlm(image, ...)` method to `OptimizedEnsembleDetector`
+- Add `use_vlm: bool = False` constructor param + `--vlm` CLI flag
+- Trigger VLM pass when pass 1+2 have no viable central candidate
+- Convert 0-1000 normalized bbox → pixel `Detection` with conf=0.8, class_name from label
+- Cache in `cache/qwen3vl/` using same hash scheme as `evaluate_qwen3vl.py`
+- Note: CPU inference 5-10 min/image → GPU strongly recommended; cached results reused instantly
 
 **For full detection upgrade:**
 - **grounding-dino-base** (IDEA-Research): EVALUATED (2026-03-02) — **does not beat tiny**. IoU hit rate 95/122 (78%) vs tiny 107/122 (88%) — net **-12**. Class accuracy identical (66/122). Base produces more generic labels ("painting artwork", "framed artwork") that win primary selection but cover wrong regions. Mural -4, mosaic -3, non_art -3. Root cause: larger backbone doesn't help when the bottleneck is open-vocab label calibration, not backbone capacity. Stick with tiny.

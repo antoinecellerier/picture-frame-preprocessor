@@ -42,6 +42,14 @@ def common_options(f):
                   help='Enable CLIP-based mosaic detection (experimental, slower)')
     @click.option('--siglip-verify', is_flag=True,
                   help='Enable SigLIP2 class verification/correction (experimental, slower)')
+    @click.option('--vlm', is_flag=True,
+                  help='VLM fallback: run Qwen3-VL when YOLO/DINO finds nothing '
+                       '(first run: ~5-10min/image on CPU; instant from cache after)')
+    @click.option('--vlm-confirm', is_flag=True,
+                  help='VLM confirmation: run Qwen3-VL on every image to validate/override '
+                       'primary selection (implies --vlm; first run ~13h CPU or 4min GPU)')
+    @click.option('--vlm-max-image-size', default=512, type=int, show_default=True,
+                  help='Max image dimension for VLM inference')
     @click.option('--verbose', '-v', is_flag=True, help='Verbose output')
     @functools.wraps(f)
     def wrapper(*args, **kwargs):
@@ -50,7 +58,8 @@ def common_options(f):
 
 
 def create_detector(single_model, ensemble, model, confidence, no_two_pass, verbose,
-                    use_openvino=False):
+                    use_openvino=False, use_vlm=False, vlm_confirm=False,
+                    vlm_max_image_size=512):
     """Create a detector instance from CLI flags."""
     if single_model:
         detector = ArtFeatureDetector(
@@ -74,7 +83,10 @@ def create_detector(single_model, ensemble, model, confidence, no_two_pass, verb
         detector = OptimizedEnsembleDetector(
             confidence_threshold=defaults.CONFIDENCE_THRESHOLD,
             merge_threshold=defaults.MERGE_THRESHOLD,
-            two_pass=defaults.TWO_PASS and not no_two_pass
+            two_pass=defaults.TWO_PASS and not no_two_pass,
+            use_vlm=use_vlm,
+            vlm_confirm=vlm_confirm,
+            vlm_max_image_size=vlm_max_image_size,
         )
         if verbose:
             click.echo("Using optimized ensemble: YOLO-World + Grounding DINO")
@@ -106,12 +118,14 @@ def cli():
 @common_options
 def process(input, output, width, height, strategy, model, confidence, single_model,
             ensemble, zoom, quality, no_two_pass, no_filter, multi_crop, clip_mosaic,
-            siglip_verify, verbose):
+            siglip_verify, vlm, vlm_confirm, vlm_max_image_size, verbose):
     """Process a single image for e-ink display."""
 
     try:
         detector = create_detector(single_model, ensemble, model, confidence,
-                                   no_two_pass, verbose)
+                                   no_two_pass, verbose,
+                                   use_vlm=vlm, vlm_confirm=vlm_confirm,
+                                   vlm_max_image_size=vlm_max_image_size)
         cropper = create_cropper(width, height, zoom)
         preprocessor = ImagePreprocessor(
             target_width=width,
@@ -200,7 +214,8 @@ def process(input, output, width, height, strategy, model, confidence, single_mo
 def batch(input, output, workers, skip_existing, recursive, no_openvino,
           threads_per_worker, width, height, strategy, model, confidence,
           single_model, ensemble, zoom, quality, no_two_pass, no_filter,
-          multi_crop, clip_mosaic, siglip_verify, verbose):
+          multi_crop, clip_mosaic, siglip_verify, vlm, vlm_confirm,
+          vlm_max_image_size, verbose):
     """Batch process a directory of images for e-ink display."""
     from .batch import run_batch
 
@@ -223,6 +238,9 @@ def batch(input, output, workers, skip_existing, recursive, no_openvino,
         'multi_crop': multi_crop,
         'clip_mosaic': clip_mosaic,
         'siglip_verify': siglip_verify,
+        'use_vlm': vlm,
+        'vlm_confirm': vlm_confirm,
+        'vlm_max_image_size': vlm_max_image_size,
     }
 
     sys.exit(run_batch(input, output, config, workers=workers))
@@ -241,12 +259,15 @@ def batch(input, output, workers, skip_existing, recursive, no_openvino,
 @common_options
 def report(input_dir, ground_truth, output_file, width, height, strategy, model,
            confidence, single_model, ensemble, zoom, quality, no_two_pass,
-           no_filter, multi_crop, clip_mosaic, siglip_verify, verbose):
+           no_filter, multi_crop, clip_mosaic, siglip_verify, vlm, vlm_confirm,
+           vlm_max_image_size, verbose):
     """Generate an interactive HTML detection report."""
     from .report import generate_report as _generate_report
 
     detector = create_detector(single_model, ensemble, model, confidence,
-                               no_two_pass, verbose)
+                               no_two_pass, verbose,
+                               use_vlm=vlm, vlm_confirm=vlm_confirm,
+                               vlm_max_image_size=vlm_max_image_size)
     cropper = create_cropper(width, height, zoom)
 
     _generate_report(

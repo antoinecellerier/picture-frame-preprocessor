@@ -65,7 +65,8 @@ def _load_cached_detections(cache_path: Path) -> Optional[List['Detection']]:
             bbox=tuple(d['bbox']),
             confidence=d['confidence'],
             class_name=d['class_name'],
-            area=d['area']
+            area=d['area'],
+            source=d.get('source'),
         ) for d in data]
     except (json.JSONDecodeError, KeyError, OSError):
         return None
@@ -90,6 +91,7 @@ class Detection:
     class_name: str
     area: int
     original_class: Optional[str] = None  # Set by SigLIPClassVerifier if reclassified
+    source: Optional[str] = None          # e.g. "vlm" for Qwen3-VL detections
 
     @property
     def center(self) -> Tuple[int, int]:
@@ -145,11 +147,14 @@ def weighted_merge(detections: List[Detection]) -> Detection:
     # Calculate merged area
     area = (bbox[2] - bbox[0]) * (bbox[3] - bbox[1])
 
+    sources = {d.source for d in detections}
+    merged_source = sources.pop() if len(sources) == 1 else None
     return Detection(
         bbox=bbox,
         confidence=best_det.confidence,
         class_name=best_det.class_name,
-        area=area
+        area=area,
+        source=merged_source,
     )
 
 
@@ -727,6 +732,10 @@ class OptimizedEnsembleDetector:
         two_pass: bool = True,
         dino_model_id: str = "IDEA-Research/grounding-dino-tiny",
         yolo_model: str = "yolov8m-worldv2",
+        use_vlm: bool = False,
+        vlm_confirm: bool = False,
+        vlm_model: str = "Qwen/Qwen3-VL-2B-Instruct",
+        vlm_max_image_size: int = 512,
     ):
         """
         Initialize optimized ensemble detector.
@@ -740,6 +749,11 @@ class OptimizedEnsembleDetector:
                            Use "IDEA-Research/grounding-dino-base" for the larger variant.
             yolo_model: YOLO model filename stem in models/ dir (default: yolov8m-worldv2).
                         Use "yoloe-26m-seg" for YOLOE (open-vocab seg model, same API).
+            use_vlm: Enable VLM fallback (Qwen3-VL) when YOLO/DINO finds nothing useful.
+            vlm_confirm: Run VLM on every image to validate/override primary selection
+                         (implies use_vlm; first run ~13h CPU or 4min GPU).
+            vlm_model: HuggingFace model ID for VLM (default: Qwen/Qwen3-VL-2B-Instruct).
+            vlm_max_image_size: Max image dimension for VLM inference (default: 512).
         """
         self.confidence_threshold = confidence_threshold
         self.merge_threshold = merge_threshold
@@ -762,6 +776,14 @@ class OptimizedEnsembleDetector:
         self._yolo_world = None
         self._grounding_dino = None
         self._dino_processor = None
+        self.use_vlm = use_vlm or vlm_confirm  # confirm implies fallback
+        self.vlm_confirm = vlm_confirm
+        self.vlm_model = vlm_model
+        self.vlm_max_image_size = vlm_max_image_size
+        self._vlm_processor = None
+        self._vlm_model_instance = None
+        # Set by detect() each call — raw VLM detections before merging
+        self._last_vlm_detections: List['Detection'] = []
 
         # YOLO-World class prompts (included in cache key)
         # Note: removed graffiti/stencil/bird statue - caused false positives
@@ -843,6 +865,9 @@ class OptimizedEnsembleDetector:
             if cached is not None:
                 if verbose:
                     print(f"  YOLO-World: {len(cached)} detections (cached)")
+                for d in cached:
+                    if d.source is None:
+                        d.source = "yolo"
                 return cached
 
         cache_path = _get_cache_path(self._yolo_cache_name, image_hash, params_hash)
@@ -851,6 +876,9 @@ class OptimizedEnsembleDetector:
         if cached is not None:
             if verbose:
                 print(f"  YOLO-World: {len(cached)} detections (cached)")
+            for d in cached:
+                if d.source is None:
+                    d.source = "yolo"
             return cached
 
         if verbose:
@@ -877,7 +905,8 @@ class OptimizedEnsembleDetector:
                     bbox=bbox,
                     confidence=conf,
                     class_name=class_name,
-                    area=area
+                    area=area,
+                    source="yolo",
                 ))
 
         if verbose:
@@ -904,6 +933,9 @@ class OptimizedEnsembleDetector:
             if cached is not None:
                 if verbose:
                     print(f"  Grounding DINO: {len(cached)} detections (cached)")
+                for d in cached:
+                    if d.source is None:
+                        d.source = "dino"
                 return cached
 
         cache_path = _get_cache_path(self._dino_cache_name, image_hash, params_hash)
@@ -912,6 +944,9 @@ class OptimizedEnsembleDetector:
         if cached is not None:
             if verbose:
                 print(f"  Grounding DINO: {len(cached)} detections (cached)")
+            for d in cached:
+                if d.source is None:
+                    d.source = "dino"
             return cached
 
         if verbose:
@@ -949,7 +984,8 @@ class OptimizedEnsembleDetector:
                 bbox=bbox,
                 confidence=float(score),
                 class_name=label,
-                area=area
+                area=area,
+                source="dino",
             ))
 
         if verbose:
@@ -962,6 +998,215 @@ class OptimizedEnsembleDetector:
             if path_cache != cache_path:
                 _save_cached_detections(path_cache, detections)
         return detections
+
+    def _load_vlm(self):
+        """Lazy-load Qwen3-VL (or compatible VLM) on first use."""
+        if self._vlm_model_instance is None:
+            import transformers
+            from transformers import AutoProcessor
+
+            model_id = self.vlm_model
+
+            def _try_load(model_cls_name: str):
+                model_cls = getattr(transformers, model_cls_name, None)
+                if model_cls is None:
+                    raise ImportError(f"{model_cls_name} not found in installed transformers")
+                try:
+                    processor = AutoProcessor.from_pretrained(model_id, local_files_only=True)
+                    model = model_cls.from_pretrained(
+                        model_id, torch_dtype="auto", device_map="auto",
+                        local_files_only=True,
+                    )
+                except (OSError, EnvironmentError):
+                    processor = AutoProcessor.from_pretrained(model_id)
+                    model = model_cls.from_pretrained(
+                        model_id, torch_dtype="auto", device_map="auto",
+                    )
+                return processor, model
+
+            for cls_name in ("Qwen3VLForConditionalGeneration",
+                             "Qwen3_5ForConditionalGeneration",
+                             "Qwen2_5_VLForConditionalGeneration"):
+                try:
+                    self._vlm_processor, self._vlm_model_instance = _try_load(cls_name)
+                    self._vlm_model_instance.eval()
+                    return
+                except Exception:
+                    continue
+
+            raise RuntimeError(f"Could not load VLM model {model_id} with any known class")
+
+    def _vlm_boxes_to_detections(
+        self,
+        boxes: list,
+        image_size: tuple,
+    ) -> List[Detection]:
+        """Convert VLM 0-1000 normalized boxes to Detection objects."""
+        width, height = image_size
+        detections = []
+        seen = set()
+        for b in boxes:
+            coords = b.get("bbox_2d", [])
+            if len(coords) != 4:
+                continue
+            x1 = int(coords[0] * width / 1000)
+            y1 = int(coords[1] * height / 1000)
+            x2 = int(coords[2] * width / 1000)
+            y2 = int(coords[3] * height / 1000)
+            # Clip to image bounds
+            x1 = max(0, min(x1, width))
+            y1 = max(0, min(y1, height))
+            x2 = max(0, min(x2, width))
+            y2 = max(0, min(y2, height))
+            if x2 <= x1 or y2 <= y1:
+                continue
+            key = (x1, y1, x2, y2)
+            if key in seen:
+                continue
+            seen.add(key)
+            area = (x2 - x1) * (y2 - y1)
+            label = b.get("label", "artwork")
+            detections.append(Detection(
+                bbox=(x1, y1, x2, y2),
+                confidence=0.80,
+                class_name=label,
+                area=area,
+                source="vlm",
+            ))
+        return detections
+
+    def _run_qwen_vlm(
+        self,
+        image: Image.Image,
+        image_path: Union[str, Path, None],
+        verbose: bool,
+    ) -> List[Detection]:
+        """Run Qwen3-VL grounding with file-based caching (same key as evaluate_qwen3vl.py)."""
+        import re as _re
+
+        vlm_cache_dir = PROJECT_ROOT / "cache" / "qwen3vl"
+        vlm_cache_dir.mkdir(parents=True, exist_ok=True)
+
+        # Cache key identical to evaluate_qwen3vl.py:_cache_key() so eval results are reused
+        cache_data = None
+        cache_file = None
+        if image_path:
+            path = Path(image_path)
+            if path.exists():
+                stat = path.stat()
+                key_str = (f"{path.absolute()}:{stat.st_size}:{stat.st_mtime}"
+                           f":{self.vlm_model}:grounding:{self.vlm_max_image_size}")
+                cache_key = hashlib.sha256(key_str.encode()).hexdigest()[:24]
+                cache_file = vlm_cache_dir / f"{cache_key}.json"
+                if cache_file.exists():
+                    try:
+                        with open(cache_file) as f:
+                            cache_data = json.load(f)
+                    except (json.JSONDecodeError, OSError):
+                        cache_data = None
+
+        if cache_data is not None:
+            boxes = cache_data.get("grounding", cache_data.get("boxes", []))
+            if verbose:
+                print(f"  Pass 3 (VLM): {len(boxes)} boxes (cached)")
+            return self._vlm_boxes_to_detections(boxes, image.size)
+
+        # Resize for inference
+        w, h = image.size
+        max_sz = self.vlm_max_image_size
+        if max(w, h) > max_sz:
+            if w >= h:
+                img_infer = image.resize((max_sz, int(h * max_sz / w)), Image.LANCZOS)
+            else:
+                img_infer = image.resize((int(w * max_sz / h), max_sz), Image.LANCZOS)
+        else:
+            img_infer = image
+
+        art_classes = [
+            "artwork", "painting", "mural", "mosaic",
+            "sculpture", "street art", "art installation",
+        ]
+        prompt = (
+            "Locate every instance that belongs to the following categories: "
+            + ", ".join(art_classes)
+            + '.\nOutput a JSON list where each item has "bbox_2d": [x1, y1, x2, y2] '
+            'with coordinates in range 0-1000 and a "label" field.'
+        )
+
+        self._load_vlm()
+        import torch
+
+        messages = [{
+            "role": "user",
+            "content": [
+                {"type": "image", "image": img_infer},
+                {"type": "text", "text": prompt},
+            ],
+        }]
+        text = self._vlm_processor.apply_chat_template(
+            messages, tokenize=False, add_generation_prompt=True
+        )
+        try:
+            inputs = self._vlm_processor(text=text, images=[img_infer], return_tensors="pt")
+        except TypeError:
+            inputs = self._vlm_processor(images=[img_infer], text=text, return_tensors="pt")
+
+        device = next(self._vlm_model_instance.parameters()).device
+        inputs = {k: v.to(device) if hasattr(v, "to") else v for k, v in inputs.items()}
+        input_len = inputs.get("input_ids", next(iter(inputs.values()))).shape[1]
+
+        with torch.no_grad():
+            output_ids = self._vlm_model_instance.generate(
+                **inputs, max_new_tokens=1024, do_sample=False,
+                temperature=None, top_p=None, top_k=None,
+            )
+        raw = self._vlm_processor.decode(output_ids[0][input_len:], skip_special_tokens=True).strip()
+
+        # Parse bounding boxes
+        boxes = []
+        obj_pattern = _re.compile(r'\{[^{}]*"bbox_2d"\s*:\s*\[([^\]]+)\][^{}]*\}', _re.DOTALL)
+        label_pattern = _re.compile(r'"label"\s*:\s*"([^"]+)"')
+        for m in obj_pattern.finditer(raw):
+            obj_str = m.group(0)
+            coords_str = m.group(1)
+            try:
+                coords = [float(c.strip()) for c in coords_str.split(",")]
+                if len(coords) == 4:
+                    label_m = label_pattern.search(obj_str)
+                    label = label_m.group(1) if label_m else "artwork"
+                    boxes.append({"bbox_2d": [int(c) for c in coords], "label": label})
+            except ValueError:
+                continue
+
+        if not boxes:
+            json_match = _re.search(r'\[[\s\S]*\]', raw)
+            if json_match:
+                try:
+                    data = json.loads(json_match.group(0))
+                    if isinstance(data, list):
+                        for item in data:
+                            if isinstance(item, dict) and "bbox_2d" in item:
+                                coords = item["bbox_2d"]
+                                if isinstance(coords, list) and len(coords) == 4:
+                                    boxes.append({
+                                        "bbox_2d": [int(c) for c in coords],
+                                        "label": item.get("label", "artwork"),
+                                    })
+                except (json.JSONDecodeError, TypeError, ValueError):
+                    pass
+
+        if verbose:
+            print(f"  Pass 3 (VLM): {len(boxes)} boxes parsed from output")
+
+        # Save to cache
+        if cache_file is not None:
+            try:
+                with open(cache_file, "w") as f:
+                    json.dump({"grounding": boxes, "raw": raw}, f)
+            except OSError:
+                pass
+
+        return self._vlm_boxes_to_detections(boxes, image.size)
 
     def detect(self, image: Image.Image, verbose: bool = False, image_path: Union[str, Path, None] = None) -> List[Detection]:
         """
@@ -984,6 +1229,7 @@ class OptimizedEnsembleDetector:
             List of merged Detection objects sorted by confidence
         """
         self._last_image_size = (image.width, image.height)
+        self._last_vlm_detections = []
 
         # Compute hashes for caching
         path_hash = _compute_path_hash(image_path) if image_path else ""
@@ -1019,6 +1265,48 @@ class OptimizedEnsembleDetector:
 
         if verbose:
             print(f"  Total after merge: {len(merged_detections)}")
+
+        # === PASS 3 (optional): VLM ===
+        if self.use_vlm:
+            _vlm_reason = None
+            if self.vlm_confirm:
+                _vlm_reason = "confirm"
+            elif not self._has_viable_central_candidate(merged_detections, image.size):
+                _vlm_reason = "fallback (no viable candidate)"
+            else:
+                # Additional heuristics to catch Category B failures (wrong detection wins):
+                # A: primary has a weak art score (e.g. art_installation 2.0x × low conf)
+                # C: top-2 detections are closely scored (coin-flip scenario)
+                _primary = self.get_primary_subject(merged_detections)
+                if _primary is not None:
+                    _mult = ArtFeatureDetector._get_class_multiplier(_primary.class_name)
+                    _art_score = _primary.confidence * _mult
+                    if _art_score < 2.0:
+                        _vlm_reason = f"heuristic-A (art_score={_art_score:.2f}<2.0)"
+                    elif len(merged_detections) >= 2:
+                        # Sort by simplified score (conf × multiplier, ignoring center/size)
+                        _scores = sorted(
+                            [d.confidence * ArtFeatureDetector._get_class_multiplier(d.class_name)
+                             for d in merged_detections],
+                            reverse=True
+                        )
+                        if _scores[0] > 0 and _scores[1] / _scores[0] >= 0.80:
+                            _vlm_reason = (
+                                f"heuristic-C (top2 ratio={_scores[1]/_scores[0]:.2f})"
+                            )
+
+            if _vlm_reason:
+                if verbose:
+                    print(f"  Pass 3 (VLM/{_vlm_reason}): running Qwen3-VL...")
+                vlm_dets = self._run_qwen_vlm(image, image_path, verbose)
+                self._last_vlm_detections = vlm_dets
+                if vlm_dets:
+                    all_detections.extend(vlm_dets)
+                    merged_detections = merge_boxes(all_detections, self.merge_threshold)
+                    if verbose:
+                        print(f"  Pass 3: +{len(vlm_dets)} VLM dets → {len(merged_detections)} merged")
+            elif verbose:
+                print("  Pass 3 (VLM) skipped: viable candidate, no weak/tied score")
 
         return merged_detections
 

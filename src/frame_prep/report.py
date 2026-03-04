@@ -39,7 +39,7 @@ def calculate_iou(box1, box2):
 
 def draw_boxes_on_image(image_path, detections, ground_truth_boxes=None,
                         primary=None, crop_targets=None, focal_detections=None,
-                        selected_anchor=None, max_width=800):
+                        selected_anchor=None, vlm_detections=None, max_width=800):
     """Draw detected and ground truth bounding boxes on image.
 
     Args:
@@ -81,6 +81,10 @@ def draw_boxes_on_image(image_path, detections, ground_truth_boxes=None,
         if focal_detections:
             focal_bboxes = {tuple(d.bbox) for d in focal_detections}
 
+        vlm_bboxes = set()
+        if vlm_detections:
+            vlm_bboxes = {tuple(d.bbox) for d in vlm_detections}
+
         selected_anchor_bbox = tuple(selected_anchor.bbox) if selected_anchor else None
 
         # Draw ground truth boxes in blue
@@ -103,10 +107,21 @@ def draw_boxes_on_image(image_path, detections, ground_truth_boxes=None,
                 is_selected_anchor = det_bbox_t == selected_anchor_bbox
                 is_focal = det_bbox_t in focal_bboxes
 
-                # Color scheme: primary=green, selected anchor=gold (thick),
-                #               crop target=orange, focal=magenta, other=dim green
+                is_vlm = det_bbox_t in vlm_bboxes
+
+                # Color scheme for primary varies by detection source:
+                #   yolo → green, dino → chartreuse, vlm → cyan, mixed → yellow
+                # selected anchor=gold, crop target=orange, focal=magenta, other=dim green
                 if is_primary:
-                    color = (0, 255, 0)
+                    src = getattr(det, 'source', None)
+                    if src == 'dino':
+                        color = (160, 255, 0)   # chartreuse
+                    elif src == 'vlm':
+                        color = (0, 220, 220)   # cyan
+                    elif src is None:
+                        color = (255, 255, 0)   # yellow = merged/mixed
+                    else:
+                        color = (0, 255, 0)     # green = yolo (default)
                     line_w = 4
                 elif is_selected_anchor:
                     color = (255, 215, 0)   # gold
@@ -117,6 +132,9 @@ def draw_boxes_on_image(image_path, detections, ground_truth_boxes=None,
                 elif is_focal:
                     color = (220, 0, 220)   # magenta
                     line_w = 3
+                elif is_vlm:
+                    color = (0, 220, 220)   # cyan
+                    line_w = 2
                 else:
                     color = (0, 200, 0)
                     line_w = 2
@@ -125,13 +143,17 @@ def draw_boxes_on_image(image_path, detections, ground_truth_boxes=None,
 
                 label = f"{det.class_name} {det.confidence:.2f}"
                 if is_primary:
-                    label = "PRIMARY: " + label
+                    src = getattr(det, 'source', None)
+                    src_tag = f"[{src.upper()}]" if src else "[MIXED]"
+                    label = f"PRIMARY {src_tag}: " + label
                 elif is_selected_anchor:
                     label = "ANCHOR: " + label
                 elif is_crop_target:
                     label = "CROP: " + label
                 elif is_focal:
                     label = "FOCAL: " + label
+                elif is_vlm:
+                    label = "VLM: " + label
 
                 text_bbox = draw.textbbox((x1, y1-20), label, font=font)
                 draw.rectangle([text_bbox[0]-2, text_bbox[1]-2, text_bbox[2]+2, text_bbox[3]+2],
@@ -239,6 +261,11 @@ def run_detection(image_path, detector, verbose=False, cropper=None, clip_mosaic
         if primary and primary_by_confidence:
             selection_changed = primary.bbox != primary_by_confidence.bbox
 
+        vlm_raw = getattr(detector, '_last_vlm_detections', [])
+        vlm_count = len(vlm_raw)
+        vlm_primary = (primary is not None and vlm_raw
+                       and any(primary.bbox == d.bbox for d in vlm_raw))
+
         return {
             'all_detections': detections,
             'focal_detections': focal_detections,
@@ -251,6 +278,9 @@ def run_detection(image_path, detector, verbose=False, cropper=None, clip_mosaic
             'clip_max_score': clip_max_score,
             'clip_primary_selected': clip_primary_selected,
             'siglip_corrected_count': siglip_corrected_count,
+            'vlm_count': vlm_count,
+            'vlm_primary': vlm_primary,
+            'vlm_detections': vlm_raw,
         }
     except Exception as e:
         print(f"Error detecting in {image_path}: {e}")
@@ -435,6 +465,10 @@ def generate_report(input_dir=None, ground_truth_path=None, output_file=None,
         'yolo_world_prompts': detector._art_classes,
         'grounding_dino_prompts': detector._dino_prompts,
         'focal_prompts': getattr(detector, '_focal_prompts', []),
+        'use_vlm': getattr(detector, 'use_vlm', False),
+        'vlm_confirm': getattr(detector, 'vlm_confirm', False),
+        'vlm_model': getattr(detector, 'vlm_model', None),
+        'vlm_max_image_size': getattr(detector, 'vlm_max_image_size', None),
         'generated_at': datetime.now().strftime('%Y-%m-%d %H:%M'),
     }
 
@@ -514,6 +548,7 @@ def generate_report(input_dir=None, ground_truth_path=None, output_file=None,
             crop_targets=crop_targets if multi_crop_images else None,
             focal_detections=focal_dets,
             selected_anchor=selected_inner_det,
+            vlm_detections=detection_result.get('vlm_detections') or None,
         )
 
         results.append({
@@ -539,6 +574,9 @@ def generate_report(input_dir=None, ground_truth_path=None, output_file=None,
             'clip_max_score': detection_result.get('clip_max_score'),
             'clip_primary_selected': detection_result.get('clip_primary_selected', False),
             'siglip_corrected_count': detection_result.get('siglip_corrected_count', 0),
+            'vlm_count': detection_result.get('vlm_count', 0),
+            'vlm_primary': detection_result.get('vlm_primary', False),
+            'vlm_detections': detection_result.get('vlm_detections', []),
         })
 
     accuracy = (correct_count / total_with_gt * 100) if total_with_gt > 0 else 0
@@ -568,7 +606,9 @@ def generate_report(input_dir=None, ground_truth_path=None, output_file=None,
         primary_changed_text = None
         primary_siglip_text = None
         if result['primary']:
-            primary_text = f"{result['primary'].class_name} (conf: {result['primary'].confidence:.3f})"
+            src = getattr(result['primary'], 'source', None)
+            src_tag = f" [{src.upper()}]" if src else " [MIXED]"
+            primary_text = f"{result['primary'].class_name} (conf: {result['primary'].confidence:.3f}){src_tag}"
             if result['selection_changed'] and result['primary_by_confidence']:
                 primary_changed_text = (
                     f"Changed from: {result['primary_by_confidence'].class_name} "
@@ -617,6 +657,8 @@ def generate_report(input_dir=None, ground_truth_path=None, output_file=None,
             'clipMax': round(float(result['clip_max_score']), 4) if result.get('clip_max_score') is not None else None,
             'clipPrimary': result.get('clip_primary_selected', False),
             'siglipCount': result.get('siglip_corrected_count', 0),
+            'vlmCount': result.get('vlm_count', 0),
+            'vlmPrimary': result.get('vlm_primary', False),
             'isNotArt': is_not_art,
             'autoFiltered': result.get('auto_filtered', False),
             # export fields
@@ -633,6 +675,7 @@ def generate_report(input_dir=None, ground_truth_path=None, output_file=None,
     n_no_gt = sum(1 for r in results if not r['has_ground_truth'] and not r.get('is_not_art'))
     n_big_primary = sum(1 for r in results if r.get('primary_fills_frame'))
     n_clip = sum(1 for r in results if r.get('clip_count', 0) > 0)
+    n_vlm = sum(1 for r in results if r.get('vlm_count', 0) > 0)
 
     results_json = json.dumps(results_js_data)
     config_json = json.dumps(config)
@@ -783,6 +826,8 @@ body {{
 .badge.clip       {{ background: #4c1d95; color: #c4b5fd; }}
 .badge.clip-primary {{ background: #6d28d9; color: white; }}
 .badge.siglip     {{ background: #7c2d12; color: #fdba74; }}
+.badge.vlm        {{ background: #164e63; color: #67e8f9; }}
+.badge.vlm-primary {{ background: #0e7490; color: white; }}
 #info-section {{
   padding: 8px 10px; flex-shrink: 0; border-bottom: 1px solid #333; font-size: 0.75rem;
 }}
@@ -832,6 +877,7 @@ body {{
     <button class="filter-btn" onclick="setFilter(this,'no-gt')">No GT ({n_no_gt})</button>
     <button class="filter-btn" onclick="setFilter(this,'big-primary')">Big Primary ({n_big_primary})</button>
     <button class="filter-btn" onclick="setFilter(this,'clip')">CLIP ({n_clip})</button>
+    <button class="filter-btn" onclick="setFilter(this,'vlm')">VLM ({n_vlm})</button>
     <button class="btn" onclick="exportFeedback()" style="background:#2d6a4f;margin-left:8px">Export Feedback (Ctrl+E)</button>
   </div>
 </div>
@@ -841,7 +887,10 @@ body {{
   <div id="content-area">
     <div id="images-row"></div>
     <div id="legend">
-      <span><span class="ldot" style="background:#00ff00"></span>Primary</span>
+      <span><span class="ldot" style="background:#00ff00"></span>Primary [YOLO]</span>
+      <span><span class="ldot" style="background:#a0ff00"></span>Primary [DINO]</span>
+      <span><span class="ldot" style="background:#ffff00"></span>Primary [MIXED]</span>
+      <span><span class="ldot" style="background:#00dcdc"></span>Primary/Det [VLM]</span>
       <span><span class="ldot" style="background:#0000ff"></span>Ground Truth</span>
       <span><span class="ldot" style="background:#ffd700"></span>Selected Anchor</span>
       <span><span class="ldot" style="background:#ffa500"></span>Crop Target</span>
@@ -883,6 +932,9 @@ function buildConfigPanel() {{
         ['Merge IoU', c.merge_threshold],
         ['Two-pass', c.two_pass ? 'enabled' : 'disabled'],
         ['Primary selection', c.primary_selection],
+        ...(c.use_vlm ? [['VLM', c.vlm_confirm ? 'confirm (every image)' : 'fallback (no candidate)']] : []),
+        ...(c.use_vlm ? [['VLM model', c.vlm_model ? c.vlm_model.split('/').pop() : '—']] : []),
+        ...(c.use_vlm ? [['VLM max px', c.vlm_max_image_size]] : []),
       ])}}
     </div>
     <div class="cfg-section">
@@ -952,6 +1004,7 @@ function updateFilter() {{
       case 'no-gt':       show = r.status === 'no-gt'; break;
       case 'big-primary': show = r.primaryFills; break;
       case 'clip':        show = r.clipCount > 0; break;
+      case 'vlm':         show = r.vlmCount > 0; break;
     }}
     el.classList.toggle('hidden', !show);
     if (show) visibleIndices.push(i);
@@ -1022,6 +1075,9 @@ function renderContent() {{
       : `<span class="badge clip">CLIP: ${{r.clipCount}} (${{cs}})</span>`;
   }}
   if (r.siglipCount > 0) bh += `<span class="badge siglip">SigLIP: ${{r.siglipCount}}</span>`;
+  if (r.vlmCount > 0) bh += r.vlmPrimary
+    ? `<span class="badge vlm-primary">VLM primary (${{r.vlmCount}} det)</span>`
+    : `<span class="badge vlm">VLM: ${{r.vlmCount}} det</span>`;
   document.getElementById('badges-section').innerHTML = bh;
 
   // Info
@@ -1034,6 +1090,7 @@ function renderContent() {{
   ih += `<div><div class="info-label">Art score</div><div class="info-val${{r.artScoreLow ? ' low-score' : ''}}">${{r.artScore.toFixed(3)}}</div></div>`;
   if (r.hasGT) ih += `<div><div class="info-label">IoU</div><div class="info-val">${{r.iou.toFixed(3)}}</div></div>`;
   ih += `<div><div class="info-label">Dets</div><div class="info-val">${{r.detCount}}</div></div>`;
+  if (r.vlmCount > 0) ih += `<div><div class="info-label">VLM dets</div><div class="info-val" style="color:#67e8f9">${{r.vlmCount}}${{r.vlmPrimary ? ' ✓ primary' : ''}}</div></div>`;
   ih += `<div><div class="info-label">Zoom</div><div class="info-val">${{r.zoom.toFixed(2)}}x</div></div>`;
   ih += `</div>`;
   document.getElementById('info-section').innerHTML = ih;
