@@ -148,7 +148,12 @@ def weighted_merge(detections: List[Detection]) -> Detection:
     area = (bbox[2] - bbox[0]) * (bbox[3] - bbox[1])
 
     sources = {d.source for d in detections}
-    merged_source = sources.pop() if len(sources) == 1 else None
+    # Preserve VLM origin through merge: a box derived from a VLM detection
+    # is still VLM-origin for scoring (size_bonus floor, etc.).
+    if 'vlm' in sources:
+        merged_source = 'vlm'
+    else:
+        merged_source = sources.pop() if len(sources) == 1 else None
     return Detection(
         bbox=bbox,
         confidence=best_det.confidence,
