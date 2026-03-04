@@ -41,28 +41,23 @@ Qwen3-VL-2B standalone eval: 14/17 previously-failing images now found → **the
 | A: borderline box | DSC_4101_0, DSC_4388 | miss | HIT / miss |
 | C: person-as-art (VQA) | 20210910_191256, _204401 | n/a | correct |
 
-### VLM integration results (--vlm with heuristics A+C, llama-server GGUF)
+### VLM integration results — v2 (heuristic-C only + new prompt)
 
-**llama-server inference**: ~20s/image (vs 5-10min HF), server stays open for full batch.
-**VLM fires**: 86/122 images (24 fallback + 53 heuristic-A + 9 heuristic-C), 36 skipped.
-**47 live inferences** (rest were cache hits from prior eval run).
+**110/122 (90%) IoU hit rate** — up from 107/122 (88%) baseline. **+3 improvement.**
+Heuristic-A disabled. Heuristic-C (top-2 within 20% ratio) kept.
+New prompt: removed "artwork", added "fresco"/"statue"/"graffiti"; explicit exclusion of street signs/exhibit labels/shop signs/decorative typography.
+Prompt hash in cache key → auto-invalidates on prompt changes.
 
-| Metric | Baseline | VLM A+C |
-|--------|----------|---------|
-| IoU hit rate | 107/122 (88%) | 93/122 (76%) — **regression -14** |
-| User feedback | 107/122 (87.7%) | 108/121 (89.3%) — **+1 improvement** |
+| Metric | Baseline | VLM v1 (A+C) | VLM v2 (C-only) |
+|--------|----------|--------------|-----------------|
+| IoU hit rate | 107/122 (88%) | 93/122 (76%) | **110/122 (90%)** |
+| User feedback | 87.7% | 89.3% | TBD |
 
-IoU regression root cause: VLM labels detections as generic "artwork" (mapped to `art` ≠ per-class label) → misses class-accuracy IoU even when bbox is correct. User feedback improved because VLM regions are visually better even if labeled generically.
+Per-class IoU: mural 38/38 (100%), mosaic **19/25 (76%)** +3, street_art 20/22 (91%), sculpture 18/20 (90%), painting 9/9 (100%), installation 2/4 (50%), non_art 4/4 (100%).
 
-Heuristic-A (art_score < 2.0) fires too broadly — 53 images, causing regressions where VLM "artwork" box overrides a correct YOLO/DINO detection. DSC_4042 regressed (used to pick correct mosaic, now VLM overrides it). DSC_4168 regressed (VLM "artwork" beats correct sculpture).
+### VLM integration results — v1 (heuristics A+C, first run)
 
-**Next: tighten heuristic-A threshold or disable it; keep fallback-only mode as the safe default.**
-
-Bad images remaining (13 from feedback):
-- Hard misses (both YOLO/DINO and VLM fail): DSC_4162 (pig face mosaic), DSC_4291 (pigeon sculpture), DSC_4311 (rocket mosaic)
-- VLM regression: DSC_4042 (regressed), DSC_4168 (VLM "artwork" beats sculpture)
-- Exhibit labels (non-art): DSC_4063, DSC_4074 — need non-art filtering improvement
-- Close but wrong: DSC_3401, DSC_4305, DSC_4115, DSC_4059, 20210911
+93/122 (76%) IoU — regression from baseline. Heuristic-A fires on 53 images, VLM "artwork" overrides correct YOLO/DINO detections. DSC_4042, DSC_4168 regressed. User feedback improved to 89.3% because visual regions are better even when labeled generically.
 
 ---
 

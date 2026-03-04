@@ -1146,7 +1146,22 @@ class OptimizedEnsembleDetector:
         vlm_cache_dir = PROJECT_ROOT / "cache" / "qwen3vl"
         vlm_cache_dir.mkdir(parents=True, exist_ok=True)
 
-        # Cache key identical to evaluate_qwen3vl.py:_cache_key() so eval results are reused
+        art_classes = [
+            "painting", "mural", "fresco", "mosaic",
+            "sculpture", "statue", "street art", "graffiti", "art installation",
+        ]
+        prompt = (
+            "Locate every instance of visual artwork belonging to these specific categories: "
+            + ", ".join(art_classes)
+            + ".\nDo NOT include: street signs, road signs, traffic signs, building name "
+            "plaques, shop signs, informational signs, exhibit labels, text-only signs, "
+            "or decorative typography — even if they appear colourful or ornate.\n"
+            'Output a JSON list where each item has "bbox_2d": [x1, y1, x2, y2] '
+            'with coordinates in range 0-1000 and a "label" field.'
+        )
+        prompt_hash = hashlib.sha256(prompt.encode()).hexdigest()[:8]
+
+        # Cache key: path + model + size + prompt_hash (prompt_hash invalidates on prompt changes)
         cache_data = None
         cache_file = None
         if image_path:
@@ -1154,7 +1169,8 @@ class OptimizedEnsembleDetector:
             if path.exists():
                 stat = path.stat()
                 key_str = (f"{path.absolute()}:{stat.st_size}:{stat.st_mtime}"
-                           f":{self.vlm_model}:grounding:{self.vlm_max_image_size}")
+                           f":{self.vlm_model}:grounding:{self.vlm_max_image_size}"
+                           f":{prompt_hash}")
                 cache_key = hashlib.sha256(key_str.encode()).hexdigest()[:24]
                 cache_file = vlm_cache_dir / f"{cache_key}.json"
                 if cache_file.exists():
@@ -1180,17 +1196,6 @@ class OptimizedEnsembleDetector:
                 img_infer = image.resize((int(w * max_sz / h), max_sz), Image.LANCZOS)
         else:
             img_infer = image
-
-        art_classes = [
-            "artwork", "painting", "mural", "mosaic",
-            "sculpture", "street art", "art installation",
-        ]
-        prompt = (
-            "Locate every instance that belongs to the following categories: "
-            + ", ".join(art_classes)
-            + '.\nOutput a JSON list where each item has "bbox_2d": [x1, y1, x2, y2] '
-            'with coordinates in range 0-1000 and a "label" field.'
-        )
 
         self._load_vlm()
 
@@ -1371,7 +1376,7 @@ class OptimizedEnsembleDetector:
                 if _primary is not None:
                     _mult = ArtFeatureDetector._get_class_multiplier(_primary.class_name)
                     _art_score = _primary.confidence * _mult
-                    if _art_score < 2.0:
+                    if False:  # heuristic-A disabled: fires too broadly, causes regressions
                         _vlm_reason = f"heuristic-A (art_score={_art_score:.2f}<2.0)"
                     elif len(merged_detections) >= 2:
                         # Sort by simplified score (conf × multiplier, ignoring center/size)
