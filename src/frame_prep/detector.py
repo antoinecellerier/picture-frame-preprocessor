@@ -736,6 +736,8 @@ class OptimizedEnsembleDetector:
         vlm_confirm: bool = False,
         vlm_model: str = "Qwen/Qwen3-VL-2B-Instruct",
         vlm_max_image_size: int = 512,
+        vlm_gguf_path: Optional[str] = None,
+        vlm_mmproj_path: Optional[str] = None,
     ):
         """
         Initialize optimized ensemble detector.
@@ -780,6 +782,8 @@ class OptimizedEnsembleDetector:
         self.vlm_confirm = vlm_confirm
         self.vlm_model = vlm_model
         self.vlm_max_image_size = vlm_max_image_size
+        self.vlm_gguf_path = vlm_gguf_path
+        self.vlm_mmproj_path = vlm_mmproj_path
         self._vlm_processor = None
         self._vlm_model_instance = None
         # Set by detect() each call — raw VLM detections before merging
@@ -1000,8 +1004,63 @@ class OptimizedEnsembleDetector:
         return detections
 
     def _load_vlm(self):
-        """Lazy-load Qwen3-VL (or compatible VLM) on first use."""
-        if self._vlm_model_instance is None:
+        """Lazy-load Qwen3-VL on first use.
+
+        Uses llama-cpp-python (GGUF) when vlm_gguf_path is set, otherwise
+        falls back to HuggingFace transformers.
+        """
+        if self._vlm_model_instance is not None:
+            return
+
+        if self.vlm_gguf_path:
+            # llama-server subprocess path (supports qwen3vl architecture)
+            import subprocess, socket, time, urllib.request
+            # Find a free port
+            with socket.socket() as s:
+                s.bind(('', 0))
+                port = s.getsockname()[1]
+            cmd = [
+                self.vlm_gguf_path.replace('.gguf', '').replace(
+                    str(Path(self.vlm_gguf_path).stem), ''
+                ),  # placeholder — set properly below
+            ]
+            llama_server_bin = str(
+                Path(self.vlm_gguf_path).parent.parent.parent / "llama.cpp" / "build" / "bin" / "llama-server"
+            )
+            # Allow override via env var or sibling to gguf
+            import os as _os
+            llama_server_bin = _os.environ.get(
+                "LLAMA_SERVER_BIN",
+                str(Path.home() / "stuff" / "llama.cpp" / "build" / "bin" / "llama-server")
+            )
+            cmd = [
+                llama_server_bin,
+                "--model", self.vlm_gguf_path,
+                "--mmproj", self.vlm_mmproj_path,
+                "--port", str(port),
+                "--host", "127.0.0.1",
+                "--ctx-size", "4096",
+                "--threads", "8",
+                "--log-disable",
+            ]
+            proc = subprocess.Popen(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            # Poll until server is ready (up to 120s for model load)
+            url = f"http://127.0.0.1:{port}/health"
+            for _ in range(240):
+                time.sleep(0.5)
+                try:
+                    with urllib.request.urlopen(url, timeout=1) as r:
+                        if r.status == 200:
+                            break
+                except Exception:
+                    pass
+            else:
+                proc.terminate()
+                raise RuntimeError("llama-server failed to start within 120s")
+            self._vlm_model_instance = {"proc": proc, "port": port}
+            self._vlm_processor = None
+        else:
+            # HuggingFace transformers path (fallback)
             import transformers
             from transformers import AutoProcessor
 
@@ -1134,33 +1193,64 @@ class OptimizedEnsembleDetector:
         )
 
         self._load_vlm()
-        import torch
 
-        messages = [{
-            "role": "user",
-            "content": [
-                {"type": "image", "image": img_infer},
-                {"type": "text", "text": prompt},
-            ],
-        }]
-        text = self._vlm_processor.apply_chat_template(
-            messages, tokenize=False, add_generation_prompt=True
-        )
-        try:
-            inputs = self._vlm_processor(text=text, images=[img_infer], return_tensors="pt")
-        except TypeError:
-            inputs = self._vlm_processor(images=[img_infer], text=text, return_tensors="pt")
-
-        device = next(self._vlm_model_instance.parameters()).device
-        inputs = {k: v.to(device) if hasattr(v, "to") else v for k, v in inputs.items()}
-        input_len = inputs.get("input_ids", next(iter(inputs.values()))).shape[1]
-
-        with torch.no_grad():
-            output_ids = self._vlm_model_instance.generate(
-                **inputs, max_new_tokens=1024, do_sample=False,
-                temperature=None, top_p=None, top_k=None,
+        if self.vlm_gguf_path:
+            # llama-server HTTP path
+            import base64, io as _io, urllib.request as _req, json as _json
+            buf = _io.BytesIO()
+            img_infer.save(buf, format="JPEG", quality=90)
+            b64 = base64.b64encode(buf.getvalue()).decode()
+            data_uri = f"data:image/jpeg;base64,{b64}"
+            port = self._vlm_model_instance["port"]
+            payload = _json.dumps({
+                "messages": [{
+                    "role": "user",
+                    "content": [
+                        {"type": "image_url", "image_url": {"url": data_uri}},
+                        {"type": "text", "text": prompt},
+                    ],
+                }],
+                "max_tokens": 1024,
+                "temperature": 0.0,
+            }).encode()
+            req = _req.Request(
+                f"http://127.0.0.1:{port}/v1/chat/completions",
+                data=payload,
+                headers={"Content-Type": "application/json"},
             )
-        raw = self._vlm_processor.decode(output_ids[0][input_len:], skip_special_tokens=True).strip()
+            with _req.urlopen(req, timeout=600) as resp:
+                result = _json.loads(resp.read())
+            raw = result["choices"][0]["message"]["content"].strip()
+        else:
+            # HuggingFace transformers path
+            import torch
+            messages = [{
+                "role": "user",
+                "content": [
+                    {"type": "image", "image": img_infer},
+                    {"type": "text", "text": prompt},
+                ],
+            }]
+            text = self._vlm_processor.apply_chat_template(
+                messages, tokenize=False, add_generation_prompt=True
+            )
+            try:
+                inputs = self._vlm_processor(text=text, images=[img_infer], return_tensors="pt")
+            except TypeError:
+                inputs = self._vlm_processor(images=[img_infer], text=text, return_tensors="pt")
+
+            device = next(self._vlm_model_instance.parameters()).device
+            inputs = {k: v.to(device) if hasattr(v, "to") else v for k, v in inputs.items()}
+            input_len = inputs.get("input_ids", next(iter(inputs.values()))).shape[1]
+
+            with torch.no_grad():
+                output_ids = self._vlm_model_instance.generate(
+                    **inputs, max_new_tokens=1024, do_sample=False,
+                    temperature=None, top_p=None, top_k=None,
+                )
+            raw = self._vlm_processor.decode(
+                output_ids[0][input_len:], skip_special_tokens=True
+            ).strip()
 
         # Parse bounding boxes
         boxes = []
@@ -1562,3 +1652,13 @@ class OptimizedEnsembleDetector:
             class_name=d.class_name,
             area=(d.bbox[2] - d.bbox[0]) * (d.bbox[3] - d.bbox[1])
         ) for d in region_detections]
+
+    def __del__(self):
+        """Terminate llama-server subprocess if running."""
+        try:
+            if isinstance(self._vlm_model_instance, dict):
+                proc = self._vlm_model_instance.get("proc")
+                if proc is not None:
+                    proc.terminate()
+        except Exception:
+            pass

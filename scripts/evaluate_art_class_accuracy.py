@@ -146,6 +146,10 @@ def parse_args() -> argparse.Namespace:
         "--yolo-model", default="yolov8m-worldv2",
         help="YOLO model stem in models/ dir (default: yolov8m-worldv2). Use 'yoloe-26m-seg' for YOLOE.",
     )
+    p.add_argument("--vlm", action="store_true", help="Enable VLM fallback (Qwen3-VL)")
+    p.add_argument("--vlm-gguf", default=None, help="Path to Qwen3-VL GGUF model file")
+    p.add_argument("--vlm-mmproj", default=None, help="Path to mmproj GGUF file")
+    p.add_argument("--vlm-max-image-size", type=int, default=512)
     return p.parse_args()
 
 
@@ -155,7 +159,15 @@ def main() -> None:
     with open(GT_PATH) as f:
         gt = json.load(f)
 
-    detector = OptimizedEnsembleDetector(confidence_threshold=0.25, dino_model_id=args.dino_model, yolo_model=args.yolo_model)
+    detector = OptimizedEnsembleDetector(
+        confidence_threshold=0.25,
+        dino_model_id=args.dino_model,
+        yolo_model=args.yolo_model,
+        use_vlm=args.vlm,
+        vlm_gguf_path=args.vlm_gguf,
+        vlm_mmproj_path=args.vlm_mmproj,
+        vlm_max_image_size=args.vlm_max_image_size,
+    )
 
     # ── per-class accumulators ─────────────────────────────────────────────────
     # Results: list of dicts per image

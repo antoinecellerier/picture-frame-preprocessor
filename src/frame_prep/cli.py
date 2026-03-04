@@ -50,6 +50,10 @@ def common_options(f):
                        'primary selection (implies --vlm; first run ~13h CPU or 4min GPU)')
     @click.option('--vlm-max-image-size', default=512, type=int, show_default=True,
                   help='Max image dimension for VLM inference')
+    @click.option('--vlm-gguf', default=None, type=click.Path(),
+                  help='Path to Qwen3-VL GGUF model file (enables llama-cpp-python fast path)')
+    @click.option('--vlm-mmproj', default=None, type=click.Path(),
+                  help='Path to mmproj GGUF file for VLM vision encoder (required with --vlm-gguf)')
     @click.option('--verbose', '-v', is_flag=True, help='Verbose output')
     @functools.wraps(f)
     def wrapper(*args, **kwargs):
@@ -59,7 +63,7 @@ def common_options(f):
 
 def create_detector(single_model, ensemble, model, confidence, no_two_pass, verbose,
                     use_openvino=False, use_vlm=False, vlm_confirm=False,
-                    vlm_max_image_size=512):
+                    vlm_max_image_size=512, vlm_gguf=None, vlm_mmproj=None):
     """Create a detector instance from CLI flags."""
     if single_model:
         detector = ArtFeatureDetector(
@@ -87,6 +91,8 @@ def create_detector(single_model, ensemble, model, confidence, no_two_pass, verb
             use_vlm=use_vlm,
             vlm_confirm=vlm_confirm,
             vlm_max_image_size=vlm_max_image_size,
+            vlm_gguf_path=vlm_gguf,
+            vlm_mmproj_path=vlm_mmproj,
         )
         if verbose:
             click.echo("Using optimized ensemble: YOLO-World + Grounding DINO")
@@ -118,14 +124,16 @@ def cli():
 @common_options
 def process(input, output, width, height, strategy, model, confidence, single_model,
             ensemble, zoom, quality, no_two_pass, no_filter, multi_crop, clip_mosaic,
-            siglip_verify, vlm, vlm_confirm, vlm_max_image_size, verbose):
+            siglip_verify, vlm, vlm_confirm, vlm_max_image_size, vlm_gguf, vlm_mmproj,
+            verbose):
     """Process a single image for e-ink display."""
 
     try:
         detector = create_detector(single_model, ensemble, model, confidence,
                                    no_two_pass, verbose,
                                    use_vlm=vlm, vlm_confirm=vlm_confirm,
-                                   vlm_max_image_size=vlm_max_image_size)
+                                   vlm_max_image_size=vlm_max_image_size,
+                                   vlm_gguf=vlm_gguf, vlm_mmproj=vlm_mmproj)
         cropper = create_cropper(width, height, zoom)
         preprocessor = ImagePreprocessor(
             target_width=width,
@@ -215,7 +223,7 @@ def batch(input, output, workers, skip_existing, recursive, no_openvino,
           threads_per_worker, width, height, strategy, model, confidence,
           single_model, ensemble, zoom, quality, no_two_pass, no_filter,
           multi_crop, clip_mosaic, siglip_verify, vlm, vlm_confirm,
-          vlm_max_image_size, verbose):
+          vlm_max_image_size, vlm_gguf, vlm_mmproj, verbose):
     """Batch process a directory of images for e-ink display."""
     from .batch import run_batch
 
@@ -241,6 +249,8 @@ def batch(input, output, workers, skip_existing, recursive, no_openvino,
         'use_vlm': vlm,
         'vlm_confirm': vlm_confirm,
         'vlm_max_image_size': vlm_max_image_size,
+        'vlm_gguf_path': vlm_gguf,
+        'vlm_mmproj_path': vlm_mmproj,
     }
 
     sys.exit(run_batch(input, output, config, workers=workers))
@@ -260,14 +270,15 @@ def batch(input, output, workers, skip_existing, recursive, no_openvino,
 def report(input_dir, ground_truth, output_file, width, height, strategy, model,
            confidence, single_model, ensemble, zoom, quality, no_two_pass,
            no_filter, multi_crop, clip_mosaic, siglip_verify, vlm, vlm_confirm,
-           vlm_max_image_size, verbose):
+           vlm_max_image_size, vlm_gguf, vlm_mmproj, verbose):
     """Generate an interactive HTML detection report."""
     from .report import generate_report as _generate_report
 
     detector = create_detector(single_model, ensemble, model, confidence,
                                no_two_pass, verbose,
                                use_vlm=vlm, vlm_confirm=vlm_confirm,
-                               vlm_max_image_size=vlm_max_image_size)
+                               vlm_max_image_size=vlm_max_image_size,
+                               vlm_gguf=vlm_gguf, vlm_mmproj=vlm_mmproj)
     cropper = create_cropper(width, height, zoom)
 
     _generate_report(
