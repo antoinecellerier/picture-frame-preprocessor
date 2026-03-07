@@ -83,6 +83,44 @@ def _save_cached_detections(cache_path: Path, detections: List['Detection']) -> 
             fcntl.flock(f.fileno(), fcntl.LOCK_UN)
 
 
+def _start_llama_server(gguf_path: str, mmproj_path: str):
+    """Start a llama-server subprocess and wait until it is ready.
+
+    Returns:
+        (port, proc) tuple — port is the bound TCP port, proc is the Popen handle.
+    """
+    import subprocess, socket, time, urllib.request, os as _os
+    with socket.socket() as s:
+        s.bind(('', 0))
+        port = s.getsockname()[1]
+    llama_server_bin = _os.environ.get(
+        "LLAMA_SERVER_BIN",
+        str(Path.home() / "stuff" / "llama.cpp" / "build" / "bin" / "llama-server")
+    )
+    cmd = [
+        llama_server_bin,
+        "--model", gguf_path,
+        "--mmproj", mmproj_path,
+        "--port", str(port),
+        "--host", "127.0.0.1",
+        "--ctx-size", "4096",
+        "--threads", "8",
+        "--log-disable",
+    ]
+    proc = subprocess.Popen(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    url = f"http://127.0.0.1:{port}/health"
+    for _ in range(240):
+        time.sleep(0.5)
+        try:
+            with urllib.request.urlopen(url, timeout=1) as r:
+                if r.status == 200:
+                    return port, proc
+        except Exception:
+            pass
+    proc.terminate()
+    raise RuntimeError("llama-server failed to start within 120s")
+
+
 @dataclass
 class Detection:
     """Object detection result."""
@@ -748,6 +786,7 @@ class OptimizedEnsembleDetector:
         vlm_max_image_size: int = 512,
         vlm_gguf_path: Optional[str] = None,
         vlm_mmproj_path: Optional[str] = None,
+        vlm_server_port: Optional[int] = None,
     ):
         """
         Initialize optimized ensemble detector.
@@ -794,6 +833,7 @@ class OptimizedEnsembleDetector:
         self.vlm_max_image_size = vlm_max_image_size
         self.vlm_gguf_path = vlm_gguf_path
         self.vlm_mmproj_path = vlm_mmproj_path
+        self.vlm_server_port = vlm_server_port
         self._vlm_processor = None
         self._vlm_model_instance = None
         # Set by detect() each call — raw VLM detections before merging
@@ -1022,51 +1062,13 @@ class OptimizedEnsembleDetector:
         if self._vlm_model_instance is not None:
             return
 
-        if self.vlm_gguf_path:
+        if self.vlm_server_port is not None:
+            # Attach to an already-running llama-server (shared across workers)
+            self._vlm_model_instance = {"proc": None, "port": self.vlm_server_port}
+            self._vlm_processor = None
+        elif self.vlm_gguf_path:
             # llama-server subprocess path (supports qwen3vl architecture)
-            import subprocess, socket, time, urllib.request
-            # Find a free port
-            with socket.socket() as s:
-                s.bind(('', 0))
-                port = s.getsockname()[1]
-            cmd = [
-                self.vlm_gguf_path.replace('.gguf', '').replace(
-                    str(Path(self.vlm_gguf_path).stem), ''
-                ),  # placeholder — set properly below
-            ]
-            llama_server_bin = str(
-                Path(self.vlm_gguf_path).parent.parent.parent / "llama.cpp" / "build" / "bin" / "llama-server"
-            )
-            # Allow override via env var or sibling to gguf
-            import os as _os
-            llama_server_bin = _os.environ.get(
-                "LLAMA_SERVER_BIN",
-                str(Path.home() / "stuff" / "llama.cpp" / "build" / "bin" / "llama-server")
-            )
-            cmd = [
-                llama_server_bin,
-                "--model", self.vlm_gguf_path,
-                "--mmproj", self.vlm_mmproj_path,
-                "--port", str(port),
-                "--host", "127.0.0.1",
-                "--ctx-size", "4096",
-                "--threads", "8",
-                "--log-disable",
-            ]
-            proc = subprocess.Popen(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-            # Poll until server is ready (up to 120s for model load)
-            url = f"http://127.0.0.1:{port}/health"
-            for _ in range(240):
-                time.sleep(0.5)
-                try:
-                    with urllib.request.urlopen(url, timeout=1) as r:
-                        if r.status == 200:
-                            break
-                except Exception:
-                    pass
-            else:
-                proc.terminate()
-                raise RuntimeError("llama-server failed to start within 120s")
+            port, proc = _start_llama_server(self.vlm_gguf_path, self.vlm_mmproj_path)
             self._vlm_model_instance = {"proc": proc, "port": port}
             self._vlm_processor = None
         else:

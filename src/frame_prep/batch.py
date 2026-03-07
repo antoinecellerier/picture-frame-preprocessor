@@ -9,7 +9,7 @@ from typing import List
 from tqdm import tqdm
 
 from .preprocessor import ImagePreprocessor, ProcessingResult
-from .detector import ArtFeatureDetector, EnsembleDetector, OptimizedEnsembleDetector
+from .detector import ArtFeatureDetector, EnsembleDetector, OptimizedEnsembleDetector, _start_llama_server
 from .cropper import SmartCropper
 from .utils import is_image_file, get_output_path, ensure_directory
 from . import defaults
@@ -81,7 +81,12 @@ def init_worker(config):
         _detector = OptimizedEnsembleDetector(
             confidence_threshold=defaults.CONFIDENCE_THRESHOLD,
             merge_threshold=defaults.MERGE_THRESHOLD,
-            two_pass=config.get('two_pass', defaults.TWO_PASS)
+            two_pass=config.get('two_pass', defaults.TWO_PASS),
+            use_vlm=config.get('use_vlm', False),
+            vlm_gguf_path=config.get('vlm_gguf_path'),
+            vlm_mmproj_path=config.get('vlm_mmproj_path'),
+            vlm_max_image_size=config.get('vlm_max_image_size', 512),
+            vlm_server_port=config.get('vlm_server_port'),
         )
 
     _cropper = SmartCropper(
@@ -232,35 +237,47 @@ def run_batch(input_dir, output_dir, config, workers=8):
         print("Optimized ensemble: YOLO-World + Grounding DINO (models cached per worker)")
     print(f"Optimizations: {', '.join(optimizations)}\n")
 
-    with ProcessPoolExecutor(max_workers=workers, initializer=init_worker, initargs=(config,)) as executor:
-        futures = {executor.submit(process_single_image, task): task for task in tasks}
+    # Start a single shared llama-server in the main process so all workers reuse it.
+    _vlm_proc = None
+    if config.get('use_vlm') and config.get('vlm_gguf_path') and not config.get('single_model') and not config.get('ensemble'):
+        print("Starting shared llama-server for VLM...")
+        vlm_port, _vlm_proc = _start_llama_server(config['vlm_gguf_path'], config['vlm_mmproj_path'])
+        config = {**config, 'vlm_server_port': vlm_port}
+        print(f"llama-server ready on port {vlm_port}")
 
-        with tqdm(total=len(tasks), unit='img') as pbar:
-            for future in as_completed(futures):
-                task = futures[future]
-                input_path = task[0]
+    try:
+        with ProcessPoolExecutor(max_workers=workers, initializer=init_worker, initargs=(config,)) as executor:
+            futures = {executor.submit(process_single_image, task): task for task in tasks}
 
-                try:
-                    result = future.result()
-                    if result.filtered:
-                        stats.filtered += 1
-                    elif result.success:
-                        if result.strategy_used == 'skipped':
-                            stats.skipped += 1
-                        else:
-                            stats.success += 1
-                            if result.output_paths:
-                                stats.output_files += len(result.output_paths)
+            with tqdm(total=len(tasks), unit='img') as pbar:
+                for future in as_completed(futures):
+                    task = futures[future]
+                    input_path = task[0]
+
+                    try:
+                        result = future.result()
+                        if result.filtered:
+                            stats.filtered += 1
+                        elif result.success:
+                            if result.strategy_used == 'skipped':
+                                stats.skipped += 1
                             else:
-                                stats.output_files += 1
-                    else:
+                                stats.success += 1
+                                if result.output_paths:
+                                    stats.output_files += len(result.output_paths)
+                                else:
+                                    stats.output_files += 1
+                        else:
+                            stats.failed += 1
+                            stats.errors.append(f"{input_path}: {result.error_message}")
+                    except Exception as e:
                         stats.failed += 1
-                        stats.errors.append(f"{input_path}: {result.error_message}")
-                except Exception as e:
-                    stats.failed += 1
-                    stats.errors.append(f"{input_path}: {str(e)}")
+                        stats.errors.append(f"{input_path}: {str(e)}")
 
-                pbar.update(1)
+                    pbar.update(1)
+    finally:
+        if _vlm_proc is not None:
+            _vlm_proc.terminate()
 
     # Print summary
     print("\n" + "=" * 60)
