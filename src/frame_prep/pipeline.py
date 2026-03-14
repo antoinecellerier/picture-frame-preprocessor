@@ -14,6 +14,7 @@ class DetectionResult:
     """Result of running the detection pipeline on a single image."""
     all_detections: List[Detection] = field(default_factory=list)
     filtered_detections: List[Detection] = field(default_factory=list)
+    text_filtered: List[Detection] = field(default_factory=list)  # Detections removed by text filter
     primary: Optional[Detection] = None
     art_score: float = 0.0
     focal_detections: List[Detection] = field(default_factory=list)
@@ -64,6 +65,7 @@ def run_detection_pipeline(
     # If primary's region is >10% text, remove it and re-select from
     # remaining detections. Filters signs, labels, exhibit info panels.
     remaining = list(detections)
+    text_filtered = []
     if primary is not None and cropper is not None:
         while primary is not None:
             text_ratio = cropper._text_detector.text_ratio(img, primary.bbox)
@@ -72,6 +74,7 @@ def run_detection_pipeline(
             if verbose:
                 print(f"  Skipping text-heavy primary: {primary.class_name} "
                       f"({text_ratio:.0%} text)")
+            text_filtered.append(primary)
             remaining = [d for d in remaining if d is not primary]
             if remaining and hasattr(detector, 'get_primary_subject_with_score'):
                 primary, art_score = detector.get_primary_subject_with_score(remaining)
@@ -98,6 +101,7 @@ def run_detection_pipeline(
     return DetectionResult(
         all_detections=detections,
         filtered_detections=remaining,
+        text_filtered=text_filtered,
         primary=primary,
         art_score=art_score,
         focal_detections=focal_detections,

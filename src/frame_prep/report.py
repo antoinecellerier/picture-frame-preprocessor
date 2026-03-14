@@ -34,8 +34,9 @@ def resize_for_display(img, max_width):
 
 def draw_boxes_on_image(image_path, detections, ground_truth_boxes=None,
                         primary=None, crop_targets=None, focal_detections=None,
-                        selected_anchor=None, vlm_detections=None, max_width=800,
-                        img=None):
+                        selected_anchor=None, vlm_detections=None,
+                        text_filtered=None, text_regions=None,
+                        max_width=800, img=None):
     """Draw detected and ground truth bounding boxes on image.
 
     Args:
@@ -155,6 +156,49 @@ def draw_boxes_on_image(image_path, detections, ground_truth_boxes=None,
                 text_color = (255, 255, 255) if not is_crop_target else (0, 0, 0)
                 draw.text((x1, y1-20), label, fill=text_color, font=font)
 
+        # Draw text-filtered detection bboxes (red dashed outline)
+        if text_filtered:
+            for det in text_filtered:
+                bbox = [int(coord * scale) for coord in det.bbox]
+                x1, y1, x2, y2 = bbox
+                # Draw dashed red rectangle
+                dash_len = 8
+                for edge in [
+                    ((x1, y1), (x2, y1)),  # top
+                    ((x2, y1), (x2, y2)),  # right
+                    ((x2, y2), (x1, y2)),  # bottom
+                    ((x1, y2), (x1, y1)),  # left
+                ]:
+                    sx, sy = edge[0]
+                    ex, ey = edge[1]
+                    length = max(abs(ex - sx), abs(ey - sy))
+                    for i in range(0, length, dash_len * 2):
+                        ds = i / length if length > 0 else 0
+                        de = min((i + dash_len) / length, 1.0) if length > 0 else 1
+                        draw.line([
+                            (sx + (ex-sx)*ds, sy + (ey-sy)*ds),
+                            (sx + (ex-sx)*de, sy + (ey-sy)*de),
+                        ], fill=(255, 60, 60), width=2)
+                label = f"TEXT FILTERED: {det.class_name} {det.confidence:.2f}"
+                text_bbox = draw.textbbox((x1, y1-20), label, font=small_font)
+                draw.rectangle([text_bbox[0]-1, text_bbox[1]-1, text_bbox[2]+1, text_bbox[3]+1],
+                             fill=(255, 60, 60))
+                draw.text((x1, y1-20), label, fill=(255, 255, 255), font=small_font)
+
+        # Draw OCR text regions (small yellow polygons with recognized text)
+        if text_regions:
+            for region in text_regions:
+                pts = region.get("bbox_pts", [])
+                if len(pts) >= 3:
+                    scaled_pts = [(int(p[0] * scale), int(p[1] * scale)) for p in pts]
+                    draw.polygon(scaled_pts, outline=(255, 255, 0), width=1)
+                    text_label = region.get("text", "")
+                    conf = region.get("conf", 0)
+                    if text_label:
+                        tx, ty = scaled_pts[0]
+                        draw.text((tx, ty - 10), f'"{text_label}" {conf:.0%}',
+                                  fill=(255, 255, 0), font=small_font)
+
         buffer = io.BytesIO()
         img.save(buffer, format='JPEG', quality=90)
         img_data = base64.b64encode(buffer.getvalue()).decode()
@@ -190,6 +234,7 @@ def run_detection(image_path, detector, verbose=False, cropper=None, img=None):
         return {
             'all_detections': result.all_detections,
             'filtered_detections': result.filtered_detections,
+            'text_filtered': result.text_filtered,
             'focal_detections': result.focal_detections,
             'primary': result.primary,
             'primary_by_confidence': primary_by_confidence,
@@ -457,6 +502,23 @@ def generate_report(input_dir=None, ground_truth_path=None, output_file=None,
         # all_detections for drawing = main dets + focal dets (for display only)
         display_detections = detection_result['all_detections'] + (focal_dets or [])
 
+        # Collect OCR text regions for primary + text-filtered detections
+        text_filtered_dets = detection_result.get('text_filtered', [])
+        all_text_regions = []
+        if cropper is not None:
+            # Show OCR on: current primary, text-filtered primaries
+            text_viz_dets = list(text_filtered_dets)
+            if detection_result['primary'] is not None:
+                text_viz_dets.append(detection_result['primary'])
+            seen_bboxes = set()
+            for det in text_viz_dets:
+                bbox_key = tuple(det.bbox)
+                if bbox_key in seen_bboxes:
+                    continue
+                seen_bboxes.add(bbox_key)
+                all_text_regions.extend(
+                    cropper._text_detector.text_regions(loaded_img, det.bbox))
+
         # Generate visualization (after multi-crop so we can highlight targets)
         img_with_boxes = draw_boxes_on_image(
             image_path,
@@ -467,6 +529,8 @@ def generate_report(input_dir=None, ground_truth_path=None, output_file=None,
             focal_detections=focal_dets,
             selected_anchor=selected_inner_det,
             vlm_detections=detection_result.get('vlm_detections') or None,
+            text_filtered=text_filtered_dets or None,
+            text_regions=all_text_regions or None,
             img=loaded_img,
         )
 
@@ -796,6 +860,8 @@ body {{
       <span><span class="ldot" style="background:#ffa500"></span>Crop Target</span>
       <span><span class="ldot" style="background:#dc00dc"></span>Focal Detection</span>
       <span><span class="ldot" style="background:#00c800"></span>Other Detection</span>
+      <span><span class="ldot" style="background:#ff3c3c;border:2px dashed #ff3c3c"></span>Text Filtered</span>
+      <span><span class="ldot" style="background:#ffff00;opacity:0.8"></span>Detected Text</span>
     </div>
   </div>
   <div id="right-panel">

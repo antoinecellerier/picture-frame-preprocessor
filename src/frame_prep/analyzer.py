@@ -50,62 +50,68 @@ class TextDetector:
         thumb = crop.resize((64, 64))
         data = np.array(thumb).tobytes()
         # Version bumped when detection method or filtering changes
-        _cache_version = 4  # v4: readtext + conf filter + Shoelace polygon area
+        _cache_version = 5  # v5: + deterministic seed + regions in cache
         key_str = f"v{_cache_version}:{hashlib.md5(data).hexdigest()}:{bx1},{by1},{bx2},{by2}:{_TEXT_MAX_DIM}"
         return hashlib.sha256(key_str.encode()).hexdigest()[:20]
 
-    def text_ratio(self, image: Image.Image, bbox: Tuple[int, int, int, int]) -> float:
-        """Fraction of a detection region covered by recognized text (0.0-1.0).
+    def _analyze(self, image: Image.Image, bbox: Tuple[int, int, int, int]):
+        """Run OCR on a detection region. Returns (ratio, text_regions).
 
-        Crops the bbox from the image, rescales to _TEXT_MAX_DIM, and runs
-        full OCR (detect + recognize). Using readtext() instead of detect()
-        eliminates false positives on geometric art patterns — if the
-        recognizer can't read actual text, the detection is ignored.
+        text_regions is a list of dicts with keys: bbox_pts (polygon in
+        original image coords), text, conf.  Only regions passing the
+        confidence filter are included.
 
         Results are cached to disk.
         """
-        # Check cache
         _TEXT_CACHE_DIR.mkdir(parents=True, exist_ok=True)
         cache_key = self._cache_key(image, bbox)
         cache_file = _TEXT_CACHE_DIR / f"{cache_key}.json"
         if cache_file.exists():
             try:
-                return json.loads(cache_file.read_text())["ratio"]
+                data = json.loads(cache_file.read_text())
+                return data["ratio"], data.get("regions", [])
             except (json.JSONDecodeError, KeyError, OSError):
                 pass
 
         if not self._load():
-            return 0.0
+            return 0.0, []
 
         bx1, by1, bx2, by2 = bbox
         crop = image.crop((bx1, by1, bx2, by2))
-        w, h = crop.size
-        if w < 32 or h < 32:
-            return 0.0
+        orig_w, orig_h = crop.size
+        if orig_w < 32 or orig_h < 32:
+            return 0.0, []
 
-        # Rescale for speed
-        if max(w, h) > _TEXT_MAX_DIM:
-            if w >= h:
-                crop = crop.resize((_TEXT_MAX_DIM, max(1, int(h * _TEXT_MAX_DIM / w))), Image.LANCZOS)
+        # Rescale for speed, track scale to map coords back
+        scale_x, scale_y = 1.0, 1.0
+        if max(orig_w, orig_h) > _TEXT_MAX_DIM:
+            if orig_w >= orig_h:
+                new_h = max(1, int(orig_h * _TEXT_MAX_DIM / orig_w))
+                crop = crop.resize((_TEXT_MAX_DIM, new_h), Image.LANCZOS)
+                scale_x = orig_w / _TEXT_MAX_DIM
+                scale_y = orig_h / new_h
             else:
-                crop = crop.resize((max(1, int(w * _TEXT_MAX_DIM / h)), _TEXT_MAX_DIM), Image.LANCZOS)
+                new_w = max(1, int(orig_w * _TEXT_MAX_DIM / orig_h))
+                crop = crop.resize((new_w, _TEXT_MAX_DIM), Image.LANCZOS)
+                scale_x = orig_w / new_w
+                scale_y = orig_h / _TEXT_MAX_DIM
 
         img_np = np.array(crop)
         cw, ch = crop.size
 
-        # readtext() returns (bbox_points, text, confidence) tuples.
-        # Only recognized text counts — geometric patterns that CRAFT
-        # detects but can't read are excluded.
+        # Seed for deterministic results — CRAFT/EasyOCR is slightly
+        # non-deterministic without this, causing cached results to vary.
+        import torch
+        torch.manual_seed(0)
+
         results = self._reader.readtext(img_np)
 
         text_area = 0
+        regions = []
         for bbox_pts, text, conf in results:
-            # Skip likely false-positive OCR results:
-            # - Very low confidence (<0.1): art textures read as gibberish
-            # - Short text with low confidence: geometric patterns as 1-3 chars
             if conf < 0.1 or (len(text.strip()) <= 3 and conf < 0.5):
                 continue
-            # Shoelace formula for oriented polygon area.
+            # Shoelace formula for oriented polygon area
             n = len(bbox_pts)
             if n >= 3:
                 area = 0.0
@@ -114,16 +120,34 @@ class TextDetector:
                     area += bbox_pts[i][0] * bbox_pts[j][1]
                     area -= bbox_pts[j][0] * bbox_pts[i][1]
                 text_area += abs(area) / 2
+            # Map polygon back to original image coords
+            mapped_pts = [
+                [bx1 + p[0] * scale_x, by1 + p[1] * scale_y]
+                for p in bbox_pts
+            ]
+            regions.append({"bbox_pts": mapped_pts, "text": text, "conf": conf})
 
         ratio = text_area / (cw * ch)
 
-        # Save to cache
         try:
-            cache_file.write_text(json.dumps({"ratio": ratio}))
+            cache_file.write_text(json.dumps({"ratio": ratio, "regions": regions}))
         except OSError:
             pass
 
+        return ratio, regions
+
+    def text_ratio(self, image: Image.Image, bbox: Tuple[int, int, int, int]) -> float:
+        """Fraction of a detection region covered by recognized text (0.0-1.0)."""
+        ratio, _ = self._analyze(image, bbox)
         return ratio
+
+    def text_regions(self, image: Image.Image, bbox: Tuple[int, int, int, int]) -> list:
+        """Get recognized text regions in original image coordinates.
+
+        Returns list of dicts: {bbox_pts: [[x,y],...], text: str, conf: float}
+        """
+        _, regions = self._analyze(image, bbox)
+        return regions
 
 
 class CompositionAnalyzer:
