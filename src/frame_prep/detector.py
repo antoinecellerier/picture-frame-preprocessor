@@ -1019,58 +1019,21 @@ class OptimizedEnsembleDetector:
         )
 
     def _load_vlm(self):
-        """Lazy-load Qwen3-VL on first use.
-
-        Uses llama-cpp-python (GGUF) when vlm_gguf_path is set, otherwise
-        falls back to HuggingFace transformers.
-        """
+        """Lazy-load Qwen3-VL via llama-server on first use."""
         if self._vlm_model_instance is not None:
             return
 
         if self.vlm_server_port is not None:
             # Attach to an already-running llama-server (shared across workers)
             self._vlm_model_instance = {"proc": None, "port": self.vlm_server_port}
-            self._vlm_processor = None
         elif self.vlm_gguf_path:
             # llama-server subprocess path (supports qwen3vl architecture)
             port, proc = _start_llama_server(self.vlm_gguf_path, self.vlm_mmproj_path)
             self._vlm_model_instance = {"proc": proc, "port": port}
-            self._vlm_processor = None
         else:
-            # HuggingFace transformers path (fallback)
-            import transformers
-            from transformers import AutoProcessor
-
-            model_id = self.vlm_model
-
-            def _try_load(model_cls_name: str):
-                model_cls = getattr(transformers, model_cls_name, None)
-                if model_cls is None:
-                    raise ImportError(f"{model_cls_name} not found in installed transformers")
-                try:
-                    processor = AutoProcessor.from_pretrained(model_id, local_files_only=True)
-                    model = model_cls.from_pretrained(
-                        model_id, torch_dtype="auto", device_map="auto",
-                        local_files_only=True,
-                    )
-                except (OSError, EnvironmentError):
-                    processor = AutoProcessor.from_pretrained(model_id)
-                    model = model_cls.from_pretrained(
-                        model_id, torch_dtype="auto", device_map="auto",
-                    )
-                return processor, model
-
-            for cls_name in ("Qwen3VLForConditionalGeneration",
-                             "Qwen3_5ForConditionalGeneration",
-                             "Qwen2_5_VLForConditionalGeneration"):
-                try:
-                    self._vlm_processor, self._vlm_model_instance = _try_load(cls_name)
-                    self._vlm_model_instance.eval()
-                    return
-                except Exception:
-                    continue
-
-            raise RuntimeError(f"Could not load VLM model {model_id} with any known class")
+            raise RuntimeError(
+                "VLM requires llama-server: set vlm_gguf_path or vlm_server_port"
+            )
 
     def _vlm_boxes_to_detections(
         self,
@@ -1176,63 +1139,31 @@ class OptimizedEnsembleDetector:
 
         self._load_vlm()
 
-        if self.vlm_gguf_path:
-            # llama-server HTTP path
-            import base64, io as _io, urllib.request as _req, json as _json
-            buf = _io.BytesIO()
-            img_infer.save(buf, format="JPEG", quality=90)
-            b64 = base64.b64encode(buf.getvalue()).decode()
-            data_uri = f"data:image/jpeg;base64,{b64}"
-            port = self._vlm_model_instance["port"]
-            payload = _json.dumps({
-                "messages": [{
-                    "role": "user",
-                    "content": [
-                        {"type": "image_url", "image_url": {"url": data_uri}},
-                        {"type": "text", "text": prompt},
-                    ],
-                }],
-                "max_tokens": 1024,
-                "temperature": 0.0,
-            }).encode()
-            req = _req.Request(
-                f"http://127.0.0.1:{port}/v1/chat/completions",
-                data=payload,
-                headers={"Content-Type": "application/json"},
-            )
-            with _req.urlopen(req, timeout=600) as resp:
-                result = _json.loads(resp.read())
-            raw = result["choices"][0]["message"]["content"].strip()
-        else:
-            # HuggingFace transformers path
-            import torch
-            messages = [{
+        import base64, io as _io, urllib.request as _req, json as _json
+        buf = _io.BytesIO()
+        img_infer.save(buf, format="JPEG", quality=90)
+        b64 = base64.b64encode(buf.getvalue()).decode()
+        data_uri = f"data:image/jpeg;base64,{b64}"
+        port = self._vlm_model_instance["port"]
+        payload = _json.dumps({
+            "messages": [{
                 "role": "user",
                 "content": [
-                    {"type": "image", "image": img_infer},
+                    {"type": "image_url", "image_url": {"url": data_uri}},
                     {"type": "text", "text": prompt},
                 ],
-            }]
-            text = self._vlm_processor.apply_chat_template(
-                messages, tokenize=False, add_generation_prompt=True
-            )
-            try:
-                inputs = self._vlm_processor(text=text, images=[img_infer], return_tensors="pt")
-            except TypeError:
-                inputs = self._vlm_processor(images=[img_infer], text=text, return_tensors="pt")
-
-            device = next(self._vlm_model_instance.parameters()).device
-            inputs = {k: v.to(device) if hasattr(v, "to") else v for k, v in inputs.items()}
-            input_len = inputs.get("input_ids", next(iter(inputs.values()))).shape[1]
-
-            with torch.no_grad():
-                output_ids = self._vlm_model_instance.generate(
-                    **inputs, max_new_tokens=1024, do_sample=False,
-                    temperature=None, top_p=None, top_k=None,
-                )
-            raw = self._vlm_processor.decode(
-                output_ids[0][input_len:], skip_special_tokens=True
-            ).strip()
+            }],
+            "max_tokens": 1024,
+            "temperature": 0.0,
+        }).encode()
+        req = _req.Request(
+            f"http://127.0.0.1:{port}/v1/chat/completions",
+            data=payload,
+            headers={"Content-Type": "application/json"},
+        )
+        with _req.urlopen(req, timeout=600) as resp:
+            result = _json.loads(resp.read())
+        raw = result["choices"][0]["message"]["content"].strip()
 
         # Parse bounding boxes
         boxes = []
