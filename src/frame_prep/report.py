@@ -171,6 +171,20 @@ def run_detection(image_path, detector, verbose=False, cropper=None, img=None):
         elif detections:
             primary = detector.get_primary_subject(detections)
 
+        # Filter text-heavy primary: if primary's region is >10% text,
+        # remove it and re-select from remaining detections.
+        remaining = list(detections)
+        if primary is not None and cropper is not None:
+            while primary is not None:
+                text_ratio = cropper._text_detector.text_ratio(img, primary.bbox)
+                if text_ratio <= 0.10:
+                    break
+                remaining = [d for d in remaining if d is not primary]
+                if remaining and hasattr(detector, 'get_primary_subject_with_score'):
+                    primary, art_score = detector.get_primary_subject_with_score(remaining)
+                else:
+                    primary, art_score = None, 0.0
+
         # === FOCAL POINT DETECTION ===
         # When primary fills the frame, run a focused pass on the primary's
         # zone with face/figure prompts to find a better crop anchor.
@@ -204,6 +218,7 @@ def run_detection(image_path, detector, verbose=False, cropper=None, img=None):
 
         return {
             'all_detections': detections,
+            'filtered_detections': remaining if primary is not None else detections,
             'focal_detections': focal_detections,
             'primary': primary,
             'primary_by_confidence': primary_by_confidence,
@@ -216,7 +231,8 @@ def run_detection(image_path, detector, verbose=False, cropper=None, img=None):
         }
     except Exception as e:
         print(f"Error detecting in {image_path}: {e}")
-        return {'all_detections': [], 'focal_detections': [], 'primary': None,
+        return {'all_detections': [], 'filtered_detections': [],
+                'focal_detections': [], 'primary': None,
                 'primary_by_confidence': None, 'selection_changed': False,
                 'count': 0, 'art_score': 0.0}
 
@@ -457,16 +473,17 @@ def generate_report(input_dir=None, ground_truth_path=None, output_file=None,
         primary_fills_frame = False
         focal_dets = detection_result.get('focal_detections') or None
         if not auto_filtered:
+            crop_dets = detection_result.get('filtered_detections', detection_result['all_detections'])
             result_image, zoom_applied, primary_fills_frame, selected_inner_det = generate_result_image(
                 image_path,
-                detection_result['all_detections'],
+                crop_dets,
                 cropper,
                 focal_detections=focal_dets,
                 img=loaded_img,
             )
             multi_crop_images, crop_targets = generate_multi_crop_images(
                 image_path,
-                detection_result['all_detections'],
+                crop_dets,
                 cropper,
                 focal_detections=focal_dets,
                 img=loaded_img,

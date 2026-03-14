@@ -4,7 +4,7 @@ from typing import List, Tuple, Optional
 import numpy as np
 from PIL import Image
 from .detector import Detection, ArtFeatureDetector, calculate_iou
-from .analyzer import CompositionAnalyzer
+from .analyzer import CompositionAnalyzer, TextDetector
 
 
 class SmartCropper:
@@ -32,6 +32,7 @@ class SmartCropper:
         self.zoom_factor = zoom_factor
         self.use_saliency_fallback = use_saliency_fallback
         self.analyzer = CompositionAnalyzer()
+        self._text_detector = TextDetector()
 
         # Primary subject selector (uses center-weighting and class priorities)
         self._subject_selector = ArtFeatureDetector()
@@ -589,6 +590,10 @@ class SmartCropper:
             # the whole image is dark but the art is still valid.
             region_brightness = np.array(image.crop((bx1, by1, bx2, by2)).convert('L')).mean()
             if region_brightness < img_brightness * 0.35:
+                continue
+
+            # Skip text-heavy regions (signs, labels, exhibit info panels)
+            if self._text_detector.text_ratio(image, det.bbox) > 0.10:
                 continue
 
             cw = self._calculate_crop_window(

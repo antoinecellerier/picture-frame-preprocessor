@@ -139,6 +139,24 @@ class ImagePreprocessor:
                     elif detections:
                         primary = self.detector.get_primary_subject(detections)
 
+                    # Filter text-heavy primary: if primary's region is >10% text,
+                    # remove it and re-select from remaining detections.
+                    # Repeat until primary is not text-heavy or no detections remain.
+                    if primary is not None and art_score is not None:
+                        remaining = list(detections)
+                        while primary is not None:
+                            text_ratio = self.cropper._text_detector.text_ratio(img, primary.bbox)
+                            if text_ratio <= 0.10:
+                                break
+                            if verbose:
+                                print(f"  Skipping text-heavy primary: {primary.class_name} "
+                                      f"({text_ratio:.0%} text)")
+                            remaining = [d for d in remaining if d is not primary]
+                            if remaining:
+                                primary, art_score = self.detector.get_primary_subject_with_score(remaining)
+                            else:
+                                primary, art_score = None, 0.0
+
                     # Filter non-art images by score threshold
                     if self.filter_non_art and art_score is not None and art_score < defaults.MIN_ART_SCORE:
                         if verbose:

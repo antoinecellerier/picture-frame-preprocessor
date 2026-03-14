@@ -26,6 +26,17 @@ V4 chosen: fixes DSC_4302 (shop window), DSC_4414 (graffiti flood 29→2 boxes),
 - Removed HuggingFace transformers VLM fallback (llama-server only)
 - Audited all scoring heuristics — all active, no dead code remaining
 
+**EAST text detection filter:**
+Added `TextDetector` using OpenCV EAST model (~93MB, ~100ms/crop at 320px) to filter text-heavy regions. Applied at two levels:
+- **Secondary crop filter**: skip secondaries with >10% text ratio (fixes DSC_3401 pipe, DSC_4414 tagged door)
+- **Primary re-selection**: if primary has >10% text, remove it and re-select from remaining detections (fixes DSC_4166 pigeon sculpture, 20210424 mural, DSC_4201 cartoon figures, DSC_3167 graffiti text, DSC_4063 gallery label)
+
+**EAST limitations at 320px** — cannot detect small/fine print text:
+- DSC_4074 (museum labels): text too small at 320px (5% ratio, below threshold)
+- 20210808 (info panel on mural): text too small at 320px (1% ratio)
+
+**Potential improvements:** higher EAST resolution or alternative text detector. Queued for investigation after pipeline deduplication.
+
 ### Saliency-guided focal point for wide primaries — NOT NEEDED
 
 Investigated using saliency analysis within wide primary bboxes for better crop anchors. Installed `opencv-contrib-python`, implemented, tested on all 122 images.
@@ -254,6 +265,16 @@ These MISS without `--vlm` but are confirmed HIT with `--vlm`:
 - ~~`20210213_154948.jpg`~~: dark "painted figure" (building behind fence) filtered by relative brightness check
 - ~~`DSC_0312.JPG`~~: "vase" (plant box) filtered after removing vase from art classes
 - ~~`DSC_3614.JPG`~~, ~~`DSC_4382.JPG`~~, ~~`DSC_4399.JPG`~~: secondary quality filters already blocked these
+
+---
+
+## TODO — Refactoring
+
+### Deduplicate report and preprocessor detection pipelines
+
+`report.py` and `preprocessor.py` duplicate detection → primary selection → text filtering → focal detection → cropping logic. This leads to behavior divergence and maintenance burden. Extract shared pipeline into a single function that both call.
+
+**Files:** `src/frame_prep/report.py` (lines ~166-220), `src/frame_prep/preprocessor.py` (lines ~127-190)
 
 ---
 

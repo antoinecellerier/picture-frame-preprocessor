@@ -34,7 +34,9 @@ Output: `reports/interactive_detection_report.html`. Use `/report` to generate i
 
 - **Current detector class**: `OptimizedEnsembleDetector` (not `ArtFeatureDetector` — that's been removed)
 - **Current cropper class**: `SmartCropper`
+- **Text detection**: `TextDetector` in `analyzer.py` uses EAST model (`models/frozen_east_text_detection.pb`) at 320px to filter text-heavy regions (signs, labels). Threshold: >10% text ratio.
 - CLI entry point: `frame_prep.cli` (subcommands: `process`, `batch`, `report`)
+- CLI defaults: `--vlm` and `--multi-crop` are on by default; use `--no-vlm` / `--no-multi-crop` to disable
 - Test dataset: `test_real_images/` (122 images with ground truth annotations)
 
 ## Experimental features
@@ -53,6 +55,10 @@ This file, the slash commands in `.claude/commands/`, and the memory files are a
 - **Update `eval-baseline.json`** when eval results improve (the `/eval` skill handles this)
 
 Proactively suggest improvements at the end of a session if patterns emerged.
+
+## Committing
+
+- **Update docs before committing** — update BACKLOG.md, MEMORY.md, and CLAUDE.md with relevant findings before creating the commit, and include them in the same commit.
 
 ## Running commands
 
