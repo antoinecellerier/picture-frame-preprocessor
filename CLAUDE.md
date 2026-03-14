@@ -34,7 +34,7 @@ Output: `reports/interactive_detection_report.html`. Use `/report` to generate i
 
 - **Current detector class**: `OptimizedEnsembleDetector` (not `ArtFeatureDetector` — that's been removed)
 - **Current cropper class**: `SmartCropper`
-- **Text detection**: `TextDetector` in `analyzer.py` uses EAST model (`models/frozen_east_text_detection.pb`) at 320px to filter text-heavy regions (signs, labels). Threshold: >10% text ratio.
+- **Text detection**: `TextDetector` in `analyzer.py` uses EasyOCR `readtext()` at 320px to filter text-heavy regions (signs, labels). Threshold: >15% text ratio. Versioned cache in `cache/text_detect/`. Uses Shoelace formula for polygon area, filters short/low-conf OCR results.
 - CLI entry point: `frame_prep.cli` (subcommands: `process`, `batch`, `report`)
 - CLI defaults: `--vlm` and `--multi-crop` are on by default; use `--no-vlm` / `--no-multi-crop` to disable
 - Test dataset: `test_real_images/` (122 images with ground truth annotations)

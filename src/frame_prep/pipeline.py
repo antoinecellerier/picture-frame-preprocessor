@@ -6,6 +6,7 @@ from pathlib import Path
 from PIL import Image
 
 from .detector import Detection, ArtFeatureDetector
+from .analyzer import TEXT_RATIO_THRESHOLD
 
 
 @dataclass
@@ -66,7 +67,7 @@ def run_detection_pipeline(
     if primary is not None and cropper is not None:
         while primary is not None:
             text_ratio = cropper._text_detector.text_ratio(img, primary.bbox)
-            if text_ratio <= 0.10:
+            if text_ratio <= TEXT_RATIO_THRESHOLD:
                 break
             if verbose:
                 print(f"  Skipping text-heavy primary: {primary.class_name} "

@@ -31,11 +31,22 @@ Added `TextDetector` using OpenCV EAST model (~93MB, ~100ms/crop at 320px) to fi
 - **Secondary crop filter**: skip secondaries with >10% text ratio (fixes DSC_3401 pipe, DSC_4414 tagged door)
 - **Primary re-selection**: if primary has >10% text, remove it and re-select from remaining detections (fixes DSC_4166 pigeon sculpture, 20210424 mural, DSC_4201 cartoon figures, DSC_3167 graffiti text, DSC_4063 gallery label)
 
-**EAST limitations at 320px** — cannot detect small/fine print text:
-- DSC_4074 (museum labels): text too small at 320px (5% ratio, below threshold)
-- 20210808 (info panel on mural): text too small at 320px (1% ratio)
+Switched from EAST to EasyOCR (CRAFT) `readtext()` after evaluation:
+- Fewer false positives on art (DSC_0153: 0.7% vs EAST's 7.9%)
+- Catches graffiti text EAST missed (DSC_3167)
+- `readtext()` eliminates geometric art false positives (DSC_4158 was falsely
+  filtered by `detect()` which read the mural's lines as text)
+- Short/low-confidence OCR results filtered (<=3 chars at conf<0.5, or conf<0.1)
+- Polygon area via Shoelace formula (axis-aligned bbox inflated rotated text areas)
+- Versioned cache (`cache/text_detect/`) — version bumped on filter/area changes
+- `torch.compile` for ~2x CPU speedup
+- French language support for Parisian signs
 
-**Potential improvements:** higher EAST resolution or alternative text detector. Queued for investigation after pipeline deduplication.
+**Remaining limitations:**
+- DSC_4074 (museum labels): text too small at 320px
+- 20210808 (info panel on mural): text too small at 320px
+- EasyOCR is slightly non-deterministic — results can vary between runs
+  (mitigated by caching; once cached, results are stable)
 
 ### Saliency-guided focal point for wide primaries — NOT NEEDED
 
@@ -268,9 +279,29 @@ These MISS without `--vlm` but are confirmed HIT with `--vlm`:
 
 ---
 
+## TODO — Testing
+
+### Update and expand unit tests
+
+Tests are stale — many don't cover recent changes. Key areas to add/update:
+- **TextDetector**: polygon area computation (Shoelace), confidence filtering, cache versioning
+- **Pipeline**: `run_detection_pipeline()` text-heavy primary re-selection
+- **Cropper**: secondary text/brightness filters
+- **Scoring**: current class multiplier tiers (COCO classes removed, vase removed)
+
+### Add text detection visualization to report
+
+Show which bboxes were text-filtered in the detection overlay (e.g., dashed outline or different color) so regressions are immediately visible.
+
+---
+
 ## TODO — Refactoring
 
-### Deduplicate report and preprocessor detection pipelines
+### ~~Deduplicate report and preprocessor detection pipelines~~ — DONE (2026-03-14)
+
+Extracted to `pipeline.py`.
+
+### Deduplicate remaining report helpers
 
 `report.py` and `preprocessor.py` duplicate detection → primary selection → text filtering → focal detection → cropping logic. This leads to behavior divergence and maintenance burden. Extract shared pipeline into a single function that both call.
 

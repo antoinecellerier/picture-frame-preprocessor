@@ -11,6 +11,7 @@ from .detector import OptimizedEnsembleDetector, ArtFeatureDetector, calculate_i
 from .cropper import SmartCropper
 from . import defaults
 from .defaults import MIN_ART_SCORE
+from .analyzer import _TEXT_MAX_DIM, TEXT_RATIO_THRESHOLD
 
 
 def load_image(image_path):
@@ -377,6 +378,10 @@ def generate_report(input_dir=None, ground_truth_path=None, output_file=None,
         'vlm_confirm': getattr(detector, 'vlm_confirm', False),
         'vlm_model': getattr(detector, 'vlm_model', None),
         'vlm_max_image_size': getattr(detector, 'vlm_max_image_size', None),
+        'vlm_prompt': getattr(detector, 'VLM_PROMPT', None),
+        'text_filter': f'EasyOCR (CRAFT) @ {_TEXT_MAX_DIM}px, >{TEXT_RATIO_THRESHOLD:.0%} = text',
+        'min_art_score': defaults.MIN_ART_SCORE,
+        'secondary_conf': cropper.MULTI_CROP_SECONDARY_CONFIDENCE,
         'generated_at': datetime.now().strftime('%Y-%m-%d %H:%M'),
     }
 
@@ -830,6 +835,9 @@ function buildConfigPanel() {{
         ...(c.use_vlm ? [['VLM', c.vlm_confirm ? 'confirm (every image)' : 'fallback (no candidate)']] : []),
         ...(c.use_vlm ? [['VLM model', c.vlm_model ? c.vlm_model.split('/').pop() : '—']] : []),
         ...(c.use_vlm ? [['VLM max px', c.vlm_max_image_size]] : []),
+        ...(c.text_filter ? [['Text filter', c.text_filter]] : []),
+        ['Art score min', c.min_art_score],
+        ['Secondary conf', c.secondary_conf],
       ])}}
     </div>
     <div class="cfg-section">
@@ -849,7 +857,11 @@ function buildConfigPanel() {{
     <div class="cfg-section">
       <h3>Grounding DINO Prompts <span style="color:#666;font-weight:normal">(${{c.grounding_dino_prompts.length}})</span></h3>
       <div class="cfg-prompts">${{c.grounding_dino_prompts.join(' · ')}}</div>
-    </div>`;
+    </div>
+    ${{c.vlm_prompt ? `<div class="cfg-section">
+      <h3>VLM Prompt</h3>
+      <div class="cfg-prompts">${{c.vlm_prompt}}</div>
+    </div>` : ''}}`;
 }}
 
 function toggleConfig() {{

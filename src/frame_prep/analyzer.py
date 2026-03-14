@@ -1,36 +1,79 @@
 """Saliency, composition, and text analysis for detection filtering."""
 
+import hashlib
+import json
 from pathlib import Path
 from typing import Optional, Tuple
 import numpy as np
 import cv2
 from PIL import Image
 
-_EAST_MODEL_PATH = Path(__file__).resolve().parent.parent.parent / "models" / "frozen_east_text_detection.pb"
-_EAST_MAX_DIM = 320  # Rescale crops for speed (~50-150ms per crop)
-_EAST_CONF = 0.5
+_TEXT_MAX_DIM = 320  # Rescale crops for speed (~160ms per crop with EasyOCR)
+TEXT_RATIO_THRESHOLD = 0.15  # Regions with >15% text coverage are filtered
+_TEXT_CACHE_DIR = Path(__file__).resolve().parent.parent.parent / "cache" / "text_detect"
 
 
 class TextDetector:
-    """Detects text regions using EAST to filter signs/labels from art."""
+    """Detects text regions using EasyOCR (CRAFT) to filter signs/labels.
+
+    Fewer false positives on art than EAST, catches handwritten/graffiti text.
+    Results are cached to disk keyed on crop content hash.
+    """
 
     def __init__(self):
-        self._net = None
+        self._reader = None
 
     def _load(self):
-        if self._net is not None:
+        if self._reader is not None:
             return True
-        if not _EAST_MODEL_PATH.exists():
+        try:
+            import easyocr
+            import torch
+            self._reader = easyocr.Reader(['en', 'fr'], gpu=False, verbose=False)
+            # torch.compile gives ~2x speedup on CPU
+            if hasattr(self._reader, 'detector'):
+                self._reader.detector = torch.compile(
+                    self._reader.detector, mode='reduce-overhead')
+            if hasattr(self._reader, 'recognizer'):
+                self._reader.recognizer = torch.compile(
+                    self._reader.recognizer, mode='reduce-overhead')
+            return True
+        except ImportError:
             return False
-        self._net = cv2.dnn.readNet(str(_EAST_MODEL_PATH))
-        return True
+
+    @staticmethod
+    def _cache_key(image: Image.Image, bbox: Tuple[int, int, int, int]) -> str:
+        """Compute cache key from crop pixel content + bbox."""
+        bx1, by1, bx2, by2 = bbox
+        crop = image.crop((bx1, by1, bx2, by2))
+        # Hash a downsampled version for speed (cache key doesn't need full res)
+        thumb = crop.resize((64, 64))
+        data = np.array(thumb).tobytes()
+        # Version bumped when detection method or filtering changes
+        _cache_version = 4  # v4: readtext + conf filter + Shoelace polygon area
+        key_str = f"v{_cache_version}:{hashlib.md5(data).hexdigest()}:{bx1},{by1},{bx2},{by2}:{_TEXT_MAX_DIM}"
+        return hashlib.sha256(key_str.encode()).hexdigest()[:20]
 
     def text_ratio(self, image: Image.Image, bbox: Tuple[int, int, int, int]) -> float:
-        """Fraction of a detection region covered by text (0.0-1.0).
+        """Fraction of a detection region covered by recognized text (0.0-1.0).
 
-        Crops the bbox from the image, rescales to _EAST_MAX_DIM, and runs
-        EAST text detection. Returns the ratio of text pixel area to total area.
+        Crops the bbox from the image, rescales to _TEXT_MAX_DIM, and runs
+        full OCR (detect + recognize). Using readtext() instead of detect()
+        eliminates false positives on geometric art patterns — if the
+        recognizer can't read actual text, the detection is ignored.
+
+        Results are cached to disk.
         """
+        # Check cache
+        _TEXT_CACHE_DIR.mkdir(parents=True, exist_ok=True)
+        cache_key = self._cache_key(image, bbox)
+        cache_file = _TEXT_CACHE_DIR / f"{cache_key}.json"
+        if cache_file.exists():
+            try:
+                return json.loads(cache_file.read_text())["ratio"]
+            except (json.JSONDecodeError, KeyError, OSError):
+                pass
+
         if not self._load():
             return 0.0
 
@@ -41,53 +84,46 @@ class TextDetector:
             return 0.0
 
         # Rescale for speed
-        if max(w, h) > _EAST_MAX_DIM:
+        if max(w, h) > _TEXT_MAX_DIM:
             if w >= h:
-                crop = crop.resize((_EAST_MAX_DIM, max(32, int(h * _EAST_MAX_DIM / w))), Image.LANCZOS)
+                crop = crop.resize((_TEXT_MAX_DIM, max(1, int(h * _TEXT_MAX_DIM / w))), Image.LANCZOS)
             else:
-                crop = crop.resize((max(32, int(w * _EAST_MAX_DIM / h)), _EAST_MAX_DIM), Image.LANCZOS)
+                crop = crop.resize((max(1, int(w * _TEXT_MAX_DIM / h)), _TEXT_MAX_DIM), Image.LANCZOS)
 
-        img = np.array(crop)
-        ih, iw = img.shape[:2]
-        new_w = max(32, (iw // 32) * 32)
-        new_h = max(32, (ih // 32) * 32)
-        resized = cv2.resize(img, (new_w, new_h))
+        img_np = np.array(crop)
+        cw, ch = crop.size
 
-        blob = cv2.dnn.blobFromImage(resized, 1.0, (new_w, new_h),
-                                      (123.68, 116.78, 103.94), True, False)
-        self._net.setInput(blob)
-        scores, geometry = self._net.forward(
-            ['feature_fusion/Conv_7/Sigmoid', 'feature_fusion/concat_3'])
-
-        num_rows, num_cols = scores.shape[2:4]
-        rects, confs = [], []
-        for y in range(num_rows):
-            for x in range(num_cols):
-                if scores[0, 0, y, x] < _EAST_CONF:
-                    continue
-                ox, oy = x * 4.0, y * 4.0
-                h_box = geometry[0, 0, y, x] + geometry[0, 2, y, x]
-                w_box = geometry[0, 1, y, x] + geometry[0, 3, y, x]
-                ex = int(ox + geometry[0, 1, y, x])
-                ey = int(oy + geometry[0, 2, y, x])
-                rects.append((int(ex - w_box), int(ey - h_box), ex, ey))
-                confs.append(float(scores[0, 0, y, x]))
-
-        if not rects:
-            return 0.0
-
-        boxes_nms = [[r[0], r[1], r[2] - r[0], r[3] - r[1]] for r in rects]
-        indices = cv2.dnn.NMSBoxes(boxes_nms, confs, _EAST_CONF, 0.4)
+        # readtext() returns (bbox_points, text, confidence) tuples.
+        # Only recognized text counts — geometric patterns that CRAFT
+        # detects but can't read are excluded.
+        results = self._reader.readtext(img_np)
 
         text_area = 0
-        if len(indices) > 0:
-            for i in indices.flatten():
-                sx, sy, ex, ey = rects[i]
-                sx, sy = max(0, sx), max(0, sy)
-                ex, ey = min(new_w, ex), min(new_h, ey)
-                text_area += (ex - sx) * (ey - sy)
+        for bbox_pts, text, conf in results:
+            # Skip likely false-positive OCR results:
+            # - Very low confidence (<0.1): art textures read as gibberish
+            # - Short text with low confidence: geometric patterns as 1-3 chars
+            if conf < 0.1 or (len(text.strip()) <= 3 and conf < 0.5):
+                continue
+            # Shoelace formula for oriented polygon area.
+            n = len(bbox_pts)
+            if n >= 3:
+                area = 0.0
+                for i in range(n):
+                    j = (i + 1) % n
+                    area += bbox_pts[i][0] * bbox_pts[j][1]
+                    area -= bbox_pts[j][0] * bbox_pts[i][1]
+                text_area += abs(area) / 2
 
-        return text_area / (new_w * new_h)
+        ratio = text_area / (cw * ch)
+
+        # Save to cache
+        try:
+            cache_file.write_text(json.dumps({"ratio": ratio}))
+        except OSError:
+            pass
+
+        return ratio
 
 
 class CompositionAnalyzer:

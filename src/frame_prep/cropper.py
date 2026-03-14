@@ -4,7 +4,7 @@ from typing import List, Tuple, Optional
 import numpy as np
 from PIL import Image
 from .detector import Detection, ArtFeatureDetector, calculate_iou
-from .analyzer import CompositionAnalyzer, TextDetector
+from .analyzer import CompositionAnalyzer, TextDetector, TEXT_RATIO_THRESHOLD
 
 
 class SmartCropper:
@@ -593,7 +593,7 @@ class SmartCropper:
                 continue
 
             # Skip text-heavy regions (signs, labels, exhibit info panels)
-            if self._text_detector.text_ratio(image, det.bbox) > 0.10:
+            if self._text_detector.text_ratio(image, det.bbox) > TEXT_RATIO_THRESHOLD:
                 continue
 
             cw = self._calculate_crop_window(
