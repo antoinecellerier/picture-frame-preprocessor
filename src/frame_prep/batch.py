@@ -9,8 +9,8 @@ from typing import List
 from tqdm import tqdm
 
 from .preprocessor import ImagePreprocessor, ProcessingResult
-from .detector import ArtFeatureDetector, EnsembleDetector, OptimizedEnsembleDetector, _start_llama_server
-from .cropper import SmartCropper
+from .detector import _start_llama_server
+from .cli import create_detector, create_cropper
 from .utils import is_image_file, get_output_path, ensure_directory
 from . import defaults
 
@@ -61,40 +61,24 @@ def init_worker(config):
     torch.set_num_threads(threads_per_worker)
 
     # Create detector once per worker
-    use_openvino = config.get('use_openvino', True)
-
-    if config.get('single_model', False):
-        _detector = ArtFeatureDetector(
-            model_name=config['model'],
-            confidence_threshold=config['confidence'],
-            use_openvino=use_openvino
-        )
-    elif config.get('ensemble', False):
-        _detector = EnsembleDetector(
-            models=['yolov8m', 'rtdetr-l'],
-            confidence_threshold=config['confidence'],
-            merge_threshold=defaults.MERGE_THRESHOLD,
-            use_openvino=use_openvino
-        )
-    else:
-        # Default: optimized ensemble (YOLO-World + Grounding DINO)
-        _detector = OptimizedEnsembleDetector(
-            confidence_threshold=defaults.CONFIDENCE_THRESHOLD,
-            merge_threshold=defaults.MERGE_THRESHOLD,
-            two_pass=config.get('two_pass', defaults.TWO_PASS),
-            use_vlm=config.get('use_vlm', False),
-            vlm_gguf_path=config.get('vlm_gguf_path'),
-            vlm_mmproj_path=config.get('vlm_mmproj_path'),
-            vlm_max_image_size=config.get('vlm_max_image_size', 512),
-            vlm_server_port=config.get('vlm_server_port'),
-        )
-
-    _cropper = SmartCropper(
-        target_width=config['width'],
-        target_height=config['height'],
-        zoom_factor=config.get('zoom', defaults.ZOOM_FACTOR),
-        use_saliency_fallback=defaults.USE_SALIENCY_FALLBACK
+    _detector = create_detector(
+        single_model=config.get('single_model', False),
+        ensemble=config.get('ensemble', False),
+        model=config.get('model', 'yolov8m'),
+        confidence=config.get('confidence', defaults.CONFIDENCE_THRESHOLD),
+        no_two_pass=not config.get('two_pass', defaults.TWO_PASS),
+        verbose=False,
+        use_openvino=config.get('use_openvino', True),
+        use_vlm=config.get('use_vlm', False),
+        vlm_confirm=config.get('vlm_confirm', False),
+        vlm_max_image_size=config.get('vlm_max_image_size', 512),
+        vlm_gguf=config.get('vlm_gguf_path'),
+        vlm_mmproj=config.get('vlm_mmproj_path'),
+        vlm_server_port=config.get('vlm_server_port'),
     )
+
+    _cropper = create_cropper(config['width'], config['height'],
+                              config.get('zoom', defaults.ZOOM_FACTOR))
 
     _preprocessor = ImagePreprocessor(
         target_width=config['width'],

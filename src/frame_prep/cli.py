@@ -66,7 +66,8 @@ def common_options(f):
 
 def create_detector(single_model, ensemble, model, confidence, no_two_pass, verbose,
                     use_openvino=False, use_vlm=False, vlm_confirm=False,
-                    vlm_max_image_size=512, vlm_gguf=None, vlm_mmproj=None):
+                    vlm_max_image_size=512, vlm_gguf=None, vlm_mmproj=None,
+                    vlm_server_port=None):
     """Create a detector instance from CLI flags."""
     if single_model:
         detector = ArtFeatureDetector(
@@ -96,6 +97,7 @@ def create_detector(single_model, ensemble, model, confidence, no_two_pass, verb
             vlm_max_image_size=vlm_max_image_size,
             vlm_gguf_path=vlm_gguf,
             vlm_mmproj_path=vlm_mmproj,
+            vlm_server_port=vlm_server_port,
         )
         if verbose:
             click.echo("Using optimized ensemble: YOLO-World + Grounding DINO")
