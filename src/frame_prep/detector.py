@@ -1086,16 +1086,13 @@ class OptimizedEnsembleDetector:
         vlm_cache_dir = PROJECT_ROOT / "cache" / "qwen3vl"
         vlm_cache_dir.mkdir(parents=True, exist_ok=True)
 
-        art_classes = [
-            "painting", "mural", "fresco", "mosaic",
-            "sculpture", "statue", "street art", "graffiti", "art installation",
-        ]
         prompt = (
-            "Locate every instance of visual artwork belonging to these specific categories: "
-            + ", ".join(art_classes)
-            + ".\nDo NOT include: street signs, road signs, traffic signs, building name "
-            "plaques, shop signs, informational signs, exhibit labels, text-only signs, "
-            "or decorative typography — even if they appear colourful or ornate.\n"
+            "Locate the prominent visual artworks in this photo. Focus on: "
+            "mosaic, mural, fresco, sculpture, statue, street art, graffiti, "
+            "painting, or art installation.\n"
+            "Include ONLY intentional, standalone artworks — not graffiti tags, text scrawls, "
+            "or small incidental markings. Do NOT include objects seen through glass or shop windows, "
+            "street signs, building plaques, or any signage.\n"
             'Output a JSON list where each item has "bbox_2d": [x1, y1, x2, y2] '
             'with coordinates in range 0-1000 and a "label" field.'
         )

@@ -1,12 +1,36 @@
 # Backlog
 
-## Session Summary (2026-03-14) — saliency focal point investigation
+## Session Summary (2026-03-14)
+
+### IoU hit rate: 112/122 (92%) → 115/122 (94%)
+
+**VLM prompt improvement (net +3):**
+Rewrote Qwen3-VL grounding prompt to focus on "prominent visual artworks" and exclude graffiti tags, shop window objects, and signage. Tested 5 prompt variants (V2-V5, V4b, V4c) on representative subsets before full eval.
+
+| Variant | Key change | Result |
+|---------|-----------|--------|
+| V2 | "ONLY on facades/walls" | 113/122 (+1), regresses DSC_4305 |
+| V3 | Just shop window exclusion | No effect |
+| V4 | "Prominent artworks, not tags/scrawls, not through glass" | **115/122 (+3)** |
+| V5 | "Single most prominent" | Too aggressive, loses multi-art |
+| V4b | V4 without tag exclusion | DSC_4399 regression persists |
+| V4c | Current + "prominent" + shop window | DSC_4414 graffiti flood returns |
+
+V4 chosen: fixes DSC_4302 (shop window), DSC_4414 (graffiti flood 29→2 boxes), DSC_3401 (pipes), 20220219. Regresses DSC_4291 (borderline small sculpture on ornate facade).
+
+**Other improvements:**
+- Removed unused COCO `_art_related_classes` (zero appearances across 122 images)
+- Removed `vase` from art classes (only appeared as misdetected plant box)
+- Added relative brightness filter for secondary crops (filters shadow/dark regions)
+- Defaulted `--vlm` and `--multi-crop` to on in CLI
+- Removed HuggingFace transformers VLM fallback (llama-server only)
+- Audited all scoring heuristics — all active, no dead code remaining
 
 ### Saliency-guided focal point for wide primaries — NOT NEEDED
 
-Investigated the top backlog item: using saliency analysis within wide primary bboxes to find better crop anchors. Installed `opencv-contrib-python`, implemented the feature, tested on all 122 images.
+Investigated using saliency analysis within wide primary bboxes for better crop anchors. Installed `opencv-contrib-python`, implemented, tested on all 122 images.
 
-**Result:** No impact. The existing focal detection pass (DINO face/figure prompts) already finds quality inner detections for all 6 target images. Only 2/122 images would trigger the saliency fallback, and both are non-art misdetections. Reverted.
+**Result:** No impact. The existing focal detection pass (DINO face/figure prompts) already handles all 6 target images. Reverted.
 
 See Investigation Roadmap item #1 for full details.
 
@@ -46,11 +70,14 @@ Root cause for DSC_4302 (mosaic): VLM at 1024px finds art fragments visible thro
 | VLM v3 (+ heuristic-D conf<0.35, size_bonus floor) | 112/122 (92%) | +2 |
 | VLM v4 (+ merge source preservation) | 112/122 (92%) | swap: DSC_4312↑, DSC_4166↓ |
 
-### Remaining 10 IoU misses
-- **Borderline (3)**: 20200525 (0.115), 20220219 (0.136), DSC_4414 (0.14) — box slightly off
-- **Installation/person-as-art (2)**: 20210910, DSC_0001_BURST — "painted figure" wins; SigLIP tried and failed; VLM VQA 2/4
-- **Hard mosaics — VLM also fails (4)**: DSC_3401, DSC_4162, DSC_4302, DSC_4385 — Space Invader pixel art, VLM finds wrong region
-- **Wrong-region sculpture (1)**: DSC_4166 — correct class, bbox in wrong part of image
+### Remaining 7 IoU misses (updated 2026-03-14, after V4 prompt)
+- **Borderline (1)**: 20200525 (0.11) — mosaic det, box slightly off
+- **Installation/person-as-art (2)**: 20210910_203723, DSC_0001_BURST — "painted figure" wins
+- **Hard mosaics (2)**: DSC_4162 (tiny pig, <0.2% area), DSC_4385 (scoring gap)
+- **Wrong-region (1)**: DSC_4166 — correct class, bbox in wrong part of image
+- **VLM prompt regression (1)**: DSC_4291 — V4 prompt finds "painting" on ornate facade instead of small sculpture
+
+Previously fixed by V4 prompt (2026-03-14): ~~DSC_4302~~, ~~DSC_4414~~, ~~DSC_3401~~, ~~20220219~~
 
 ### Infrastructure improvements
 - `--vlm` alone now sufficient: GGUF paths default to `models/qwen3vl/`; `--vlm-gguf`/`--vlm-mmproj` only needed to override
