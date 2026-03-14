@@ -41,9 +41,9 @@ def common_options(f):
                   help='Disable two-pass center-crop detection (faster, may miss small centered subjects)')
     @click.option('--no-filter', is_flag=True,
                   help='Disable non-art image filtering (process all images regardless of art score)')
-    @click.option('--multi-crop', is_flag=True,
+    @click.option('--multi-crop/--no-multi-crop', default=True, show_default=True,
                   help='Generate one crop per viable art subject (e.g., multiple statues or mural panels)')
-    @click.option('--vlm', is_flag=True,
+    @click.option('--vlm/--no-vlm', default=True, show_default=True,
                   help='VLM fallback: run Qwen3-VL when YOLO/DINO finds nothing '
                        '(first run: ~5-10min/image on CPU; instant from cache after)')
     @click.option('--vlm-confirm', is_flag=True,
