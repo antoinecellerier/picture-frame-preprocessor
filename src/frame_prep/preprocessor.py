@@ -125,37 +125,15 @@ class ImagePreprocessor:
                 needs_crop = self.cropper.needs_cropping(img)
 
                 if self.strategy == 'smart' and (needs_crop or self.filter_non_art):
-                    # Pass image_path for cache lookups (OptimizedEnsembleDetector)
-                    try:
-                        detections = self.detector.detect(img, verbose=verbose, image_path=input_path)
-                    except TypeError:
-                        # Fallback for detectors that don't support image_path
-                        detections = self.detector.detect(img, verbose=verbose)
-
-                    # Get primary subject and art score
-                    primary = None
-                    if detections and hasattr(self.detector, 'get_primary_subject_with_score'):
-                        primary, art_score = self.detector.get_primary_subject_with_score(detections)
-                    elif detections:
-                        primary = self.detector.get_primary_subject(detections)
-
-                    # Filter text-heavy primary: if primary's region is >10% text,
-                    # remove it and re-select from remaining detections.
-                    # Repeat until primary is not text-heavy or no detections remain.
-                    if primary is not None and art_score is not None:
-                        remaining = list(detections)
-                        while primary is not None:
-                            text_ratio = self.cropper._text_detector.text_ratio(img, primary.bbox)
-                            if text_ratio <= 0.10:
-                                break
-                            if verbose:
-                                print(f"  Skipping text-heavy primary: {primary.class_name} "
-                                      f"({text_ratio:.0%} text)")
-                            remaining = [d for d in remaining if d is not primary]
-                            if remaining:
-                                primary, art_score = self.detector.get_primary_subject_with_score(remaining)
-                            else:
-                                primary, art_score = None, 0.0
+                    from .pipeline import run_detection_pipeline
+                    pipeline_result = run_detection_pipeline(
+                        img, self.detector, self.cropper,
+                        image_path=input_path, verbose=verbose,
+                    )
+                    detections = pipeline_result.filtered_detections
+                    primary = pipeline_result.primary
+                    art_score = pipeline_result.art_score
+                    focal_dets = pipeline_result.focal_detections
 
                     # Filter non-art images by score threshold
                     if self.filter_non_art and art_score is not None and art_score < defaults.MIN_ART_SCORE:
@@ -166,12 +144,12 @@ class ImagePreprocessor:
                             input_path=input_path,
                             filtered=True,
                             art_score=art_score,
-                            detections_found=len(detections),
+                            detections_found=len(pipeline_result.all_detections),
                             original_dimensions=original_dimensions,
                         )
 
                     # Capture detection details for ML analysis
-                    for det in detections:
+                    for det in pipeline_result.all_detections:
                         detections_list.append({
                             'bbox': det.bbox,
                             'confidence': det.confidence,
@@ -179,35 +157,13 @@ class ImagePreprocessor:
                             'original_class': det.original_class,
                             'is_primary': det == primary
                         })
-
-                    # === FOCAL POINT DETECTION ===
-                    # When the primary fills the frame (no zoom possible), run a
-                    # focused second pass on the primary's zone with face/figure
-                    # prompts to find a better crop anchor inside the large piece.
-                    # Skip for 3D objects (sculpture, statue, etc.) — the object
-                    # itself is the focal point and face detection adds noise.
-                    #
-                    # IMPORTANT: focal dets are kept separate from the main
-                    # detections list so they cannot influence primary selection
-                    # inside crop_with_detections (focal class names like
-                    # "human figure" would inherit wrong class multipliers).
-                    if (primary is not None
-                            and hasattr(self.detector, 'detect_focal_points')
-                            and not ArtFeatureDetector.is_3d_art(primary.class_name)
-                            and self.cropper.primary_fills_frame(primary.bbox, (width, height))):
-                        focal_dets = self.detector.detect_focal_points(
-                            img, primary.bbox, verbose=verbose
-                        )
-                        if focal_dets:
-                            if verbose:
-                                print(f"  Focal pass: {len(focal_dets)} focal detections")
-                            for det in focal_dets:
-                                detections_list.append({
-                                    'bbox': det.bbox,
-                                    'confidence': det.confidence,
-                                    'class_name': det.class_name,
-                                    'is_primary': False
-                                })
+                    for det in focal_dets:
+                        detections_list.append({
+                            'bbox': det.bbox,
+                            'confidence': det.confidence,
+                            'class_name': det.class_name,
+                            'is_primary': False
+                        })
 
                 # Check if cropping is needed
                 if needs_crop:

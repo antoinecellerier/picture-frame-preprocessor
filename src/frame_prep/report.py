@@ -151,83 +151,40 @@ def draw_boxes_on_image(image_path, detections, ground_truth_boxes=None,
 
 
 def run_detection(image_path, detector, verbose=False, cropper=None, img=None):
-    """Run detection on an image and return results."""
+    """Run detection on an image and return results.
+
+    Delegates to the shared pipeline in pipeline.py, then adds
+    report-specific metadata (primary_by_confidence, selection_changed).
+    """
+    from .pipeline import run_detection_pipeline
+
     try:
         if img is None:
             img = Image.open(image_path)
             img = ImageOps.exif_transpose(img)
 
-        # Pass image_path for cache lookups
-        try:
-            detections = detector.detect(img, verbose=verbose, image_path=image_path)
-        except TypeError:
-            detections = detector.detect(img, verbose=verbose)
+        result = run_detection_pipeline(
+            img, detector, cropper,
+            image_path=image_path, verbose=verbose,
+        )
 
-        # Get primary by smart selection algorithm (with score)
-        primary = None
-        art_score = 0.0
-        if detections and hasattr(detector, 'get_primary_subject_with_score'):
-            primary, art_score = detector.get_primary_subject_with_score(detections)
-        elif detections:
-            primary = detector.get_primary_subject(detections)
-
-        # Filter text-heavy primary: if primary's region is >10% text,
-        # remove it and re-select from remaining detections.
-        remaining = list(detections)
-        if primary is not None and cropper is not None:
-            while primary is not None:
-                text_ratio = cropper._text_detector.text_ratio(img, primary.bbox)
-                if text_ratio <= 0.10:
-                    break
-                remaining = [d for d in remaining if d is not primary]
-                if remaining and hasattr(detector, 'get_primary_subject_with_score'):
-                    primary, art_score = detector.get_primary_subject_with_score(remaining)
-                else:
-                    primary, art_score = None, 0.0
-
-        # === FOCAL POINT DETECTION ===
-        # When primary fills the frame, run a focused pass on the primary's
-        # zone with face/figure prompts to find a better crop anchor.
-        # Skip for 3D objects (sculpture, statue, etc.) — the object itself
-        # is the focal point and face detection inside it adds noise.
-        focal_detections = []
-        if (primary is not None
-                and cropper is not None
-                and hasattr(detector, 'detect_focal_points')
-                and not ArtFeatureDetector.is_3d_art(primary.class_name)
-                and cropper.primary_fills_frame(primary.bbox, img.size)):
-            focal_detections = detector.detect_focal_points(img, primary.bbox, verbose=verbose)
-            if focal_detections:
-                if verbose:
-                    print(f"  Focal pass: {len(focal_detections)} detections")
-                # NOTE: focal_detections are kept separate from main detections so
-                # they cannot corrupt primary selection in crop_with_detections.
-
-        # Get primary by confidence (old method) for comparison
-        primary_by_confidence = detections[0] if detections else None
-
-        # Check if selection algorithm chose a different primary
-        selection_changed = False
-        if primary and primary_by_confidence:
-            selection_changed = primary.bbox != primary_by_confidence.bbox
-
-        vlm_raw = getattr(detector, '_last_vlm_detections', [])
-        vlm_count = len(vlm_raw)
-        vlm_primary = (primary is not None and vlm_raw
-                       and any(primary.bbox == d.bbox for d in vlm_raw))
+        primary_by_confidence = result.all_detections[0] if result.all_detections else None
+        selection_changed = (result.primary is not None
+                             and primary_by_confidence is not None
+                             and result.primary.bbox != primary_by_confidence.bbox)
 
         return {
-            'all_detections': detections,
-            'filtered_detections': remaining if primary is not None else detections,
-            'focal_detections': focal_detections,
-            'primary': primary,
+            'all_detections': result.all_detections,
+            'filtered_detections': result.filtered_detections,
+            'focal_detections': result.focal_detections,
+            'primary': result.primary,
             'primary_by_confidence': primary_by_confidence,
             'selection_changed': selection_changed,
-            'count': len(detections),
-            'art_score': art_score,
-            'vlm_count': vlm_count,
-            'vlm_primary': vlm_primary,
-            'vlm_detections': vlm_raw,
+            'count': len(result.all_detections),
+            'art_score': result.art_score,
+            'vlm_count': len(result.vlm_detections),
+            'vlm_primary': result.vlm_primary,
+            'vlm_detections': result.vlm_detections,
         }
     except Exception as e:
         print(f"Error detecting in {image_path}: {e}")
