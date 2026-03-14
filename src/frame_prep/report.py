@@ -87,8 +87,13 @@ def draw_boxes_on_image(image_path, detections, ground_truth_boxes=None,
             for gt_box in ground_truth_boxes:
                 bbox = [int(coord * scale) for coord in gt_box]
                 x1, y1, x2, y2 = bbox
+                draw.rectangle([x1-1, y1-1, x2+1, y2+1], outline=(0, 0, 0), width=5)
                 draw.rectangle([x1, y1, x2, y2], outline=(0, 0, 255), width=3)
-                draw.text((x1, y2 + 5), "Ground Truth", fill=(0, 0, 255), font=small_font)
+                gt_label = "Ground Truth"
+                gt_bbox = draw.textbbox((x1, y2 + 5), gt_label, font=small_font)
+                draw.rectangle([gt_bbox[0]-1, gt_bbox[1]-1, gt_bbox[2]+1, gt_bbox[3]+1],
+                             fill=(0, 0, 255))
+                draw.text((x1, y2 + 5), gt_label, fill=(255, 255, 255), font=small_font)
 
         # Draw detected boxes
         if detections:
@@ -134,6 +139,8 @@ def draw_boxes_on_image(image_path, detections, ground_truth_boxes=None,
                     color = (0, 200, 0)
                     line_w = 2
 
+                # Dark outline behind colored box for contrast on any background
+                draw.rectangle([x1-1, y1-1, x2+1, y2+1], outline=(0, 0, 0), width=line_w+2)
                 draw.rectangle([x1, y1, x2, y2], outline=color, width=line_w)
 
                 label = f"{det.class_name} {det.confidence:.2f}"
@@ -153,7 +160,9 @@ def draw_boxes_on_image(image_path, detections, ground_truth_boxes=None,
                 text_bbox = draw.textbbox((x1, y1-20), label, font=font)
                 draw.rectangle([text_bbox[0]-2, text_bbox[1]-2, text_bbox[2]+2, text_bbox[3]+2],
                              fill=color)
-                text_color = (255, 255, 255) if not is_crop_target else (0, 0, 0)
+                # Dark text on bright backgrounds for contrast
+                brightness = (color[0] * 299 + color[1] * 587 + color[2] * 114) / 1000
+                text_color = (0, 0, 0) if brightness > 140 else (255, 255, 255)
                 draw.text((x1, y1-20), label, fill=text_color, font=font)
 
         # Draw text-filtered detection bboxes (red dashed outline)
@@ -191,12 +200,16 @@ def draw_boxes_on_image(image_path, detections, ground_truth_boxes=None,
                 pts = region.get("bbox_pts", [])
                 if len(pts) >= 3:
                     scaled_pts = [(int(p[0] * scale), int(p[1] * scale)) for p in pts]
-                    draw.polygon(scaled_pts, outline=(255, 255, 0), width=1)
+                    draw.polygon(scaled_pts, outline=(255, 255, 0), width=2)
                     text_label = region.get("text", "")
                     conf = region.get("conf", 0)
                     if text_label:
                         tx, ty = scaled_pts[0]
-                        draw.text((tx, ty - 10), f'"{text_label}" {conf:.0%}',
+                        ocr_label = f'"{text_label}" {conf:.0%}'
+                        ocr_bbox = draw.textbbox((tx, ty - 12), ocr_label, font=small_font)
+                        draw.rectangle([ocr_bbox[0]-1, ocr_bbox[1]-1, ocr_bbox[2]+1, ocr_bbox[3]+1],
+                                     fill=(0, 0, 0, 180))
+                        draw.text((tx, ty - 12), ocr_label,
                                   fill=(255, 255, 0), font=small_font)
 
         buffer = io.BytesIO()
