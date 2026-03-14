@@ -395,18 +395,6 @@ class ArtFeatureDetector:
         'exhibit', 'display',
     }
 
-    # COCO classes that are likely to BE art or contain art
-    _art_related_classes = {
-        'vase', 'potted plant', 'clock', 'tv', 'laptop',  # Often decorative/art
-        'kite',  # Often colorful art/patterns
-        'bird', 'horse', 'elephant', 'bear', 'cat', 'dog',  # Animal statues/sculptures
-        'boat', 'train', 'airplane',  # Vehicle sculptures/art
-        'bench', 'chair', 'couch', 'dining table',  # Furniture art/installations
-        'fire hydrant',  # Often painted/decorated as street art
-        'umbrella',  # Colorful installations
-        'bottle', 'cup', 'bowl',  # Glass/ceramic art
-    }
-
     # 3D art objects — the object itself is the focal point; don't run
     # a face/figure detection pass inside these (it just adds noise)
     _3d_art_terms = frozenset([
@@ -457,7 +445,7 @@ class ArtFeatureDetector:
         - Art / street art (3.5x): 'art' exact; 'street art' substring
         - Generic scene (0.3x): exhibit, display (full-image bboxes)
         - Scene art (2.0x): wall art, art installation, etc.
-        - COCO art-related (2.5x): vase, bird, horse, etc.
+        - Bare 'painting' / 'figure' (2.5x / 3.5x): ambiguous, lower than compounds
         - Person (0.4x)
         - Avoid (0.05x): trash, traffic light, etc.
         - Default (1.5x): unknown classes
@@ -508,10 +496,6 @@ class ArtFeatureDetector:
         for avoid_class in ArtFeatureDetector._avoid_classes:
             if avoid_class in class_lower:
                 return 0.05  # Strongly deprioritize
-
-        # Check COCO art-related classes
-        if class_lower in ArtFeatureDetector._art_related_classes:
-            return 2.5
 
         # Deprioritize people
         if class_lower == 'person':

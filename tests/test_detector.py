@@ -56,37 +56,37 @@ def test_get_primary_subject_with_person():
     detector = ArtFeatureDetector()
 
     # Art detection: people are viewers, not subjects
-    # 'dog' is in art_related_classes with 2.5x multiplier
+    # 'mosaic' is in _specific_art_classes with 5.0x multiplier
     # 'person' has 0.4x multiplier (deprioritized)
     # 'car' has 1.5x multiplier (default/other objects)
     # Size bonus is 1.3x for all (same area, no image size set)
     detections = [
         Detection(bbox=(0, 0, 100, 100), confidence=0.9, class_name='car', area=10000),
         Detection(bbox=(100, 100, 200, 200), confidence=0.7, class_name='person', area=10000),
-        Detection(bbox=(200, 200, 300, 300), confidence=0.6, class_name='dog', area=10000),
+        Detection(bbox=(200, 200, 300, 300), confidence=0.4, class_name='mosaic', area=10000),
     ]
 
     primary = detector.get_primary_subject(detections)
-    # 'dog' wins: 0.6 * 2.5 * 1.3 = 1.95 > 'car': 0.9 * 1.5 * 1.3 = 1.755
-    assert primary.class_name == 'dog'
+    # 'mosaic' wins: 0.4 * 5.0 * 1.3 = 2.6 > 'car': 0.9 * 1.5 * 1.3 = 1.755
+    assert primary.class_name == 'mosaic'
 
 
-def test_get_primary_subject_no_person():
-    """Test get_primary_subject prioritizes art-related classes."""
+def test_get_primary_subject_art_vs_generic():
+    """Test get_primary_subject prioritizes specific art classes."""
     detector = ArtFeatureDetector()
 
-    # 'dog' is art-related (animal sculptures) with 2.5x multiplier
+    # 'sculpture' is specific art with 5.0x multiplier
     # 'car' has 1.5x multiplier (default/other objects)
     # Size bonus is 1.3x for all (same area, no image size set)
     detections = [
         Detection(bbox=(0, 0, 100, 100), confidence=0.9, class_name='car', area=10000),
-        Detection(bbox=(100, 100, 200, 200), confidence=0.7, class_name='dog', area=10000),
+        Detection(bbox=(100, 100, 200, 200), confidence=0.5, class_name='sculpture', area=10000),
     ]
 
     primary = detector.get_primary_subject(detections)
-    # 'dog' wins: 0.7 * 2.5 * 1.3 = 2.275 > 'car': 0.9 * 1.5 * 1.3 = 1.755
-    assert primary.class_name == 'dog'
-    assert primary.confidence == 0.7
+    # 'sculpture' wins: 0.5 * 5.0 * 1.3 = 3.25 > 'car': 0.9 * 1.5 * 1.3 = 1.755
+    assert primary.class_name == 'sculpture'
+    assert primary.confidence == 0.5
 
 
 def test_get_primary_subject_highest_confidence():
