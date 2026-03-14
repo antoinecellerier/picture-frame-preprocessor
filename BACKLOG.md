@@ -222,14 +222,11 @@ These MISS without `--vlm` but are confirmed HIT with `--vlm`:
 - ~~`DSC_4168.JPG`~~ (IoU=0.98): correct detection now
 - ~~`DSC_4305.JPG`~~ (IoU=0.98): correct detection now
 
-### Crop-only issues (primary correct, crop suboptimal)
+### ~~Crop-only issues~~ — ALL FIXED (2026-03-14)
 
-These have correct IoU (HIT) but the crop framing could be better:
-- `20210213_154948.jpg` (IoU=0.55 HIT): junk "painted figure" secondary (building behind fence)
-- `DSC_0312.JPG` (IoU=0.79 HIT): "vase" secondary is a plant box
-- `DSC_3614.JPG` (IoU=0.40 HIT): street sign may appear as secondary
-- `DSC_4382.JPG` (IoU=0.87 HIT): street sign may appear as secondary
-- `DSC_4399.JPG` (IoU=0.40 HIT): street sign may appear as secondary
+- ~~`20210213_154948.jpg`~~: dark "painted figure" (building behind fence) filtered by relative brightness check
+- ~~`DSC_0312.JPG`~~: "vase" (plant box) filtered after removing vase from art classes
+- ~~`DSC_3614.JPG`~~, ~~`DSC_4382.JPG`~~, ~~`DSC_4399.JPG`~~: secondary quality filters already blocked these
 
 ---
 
