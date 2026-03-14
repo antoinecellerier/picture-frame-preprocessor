@@ -15,7 +15,8 @@ from .defaults import MIN_ART_SCORE
 
 def draw_boxes_on_image(image_path, detections, ground_truth_boxes=None,
                         primary=None, crop_targets=None, focal_detections=None,
-                        selected_anchor=None, vlm_detections=None, max_width=800):
+                        selected_anchor=None, vlm_detections=None, max_width=800,
+                        img=None):
     """Draw detected and ground truth bounding boxes on image.
 
     Args:
@@ -27,11 +28,14 @@ def draw_boxes_on_image(image_path, detections, ground_truth_boxes=None,
         selected_anchor: the single Detection chosen as the crop anchor
             from the inner/focal detections.  Drawn in gold with thick
             border so it's easy to spot.
+        img: Pre-loaded PIL Image (avoids re-reading from disk).
     """
     try:
-        img = Image.open(image_path).convert('RGB')
-        # Handle EXIF rotation
-        img = ImageOps.exif_transpose(img)
+        if img is None:
+            img = Image.open(image_path).convert('RGB')
+            img = ImageOps.exif_transpose(img)
+        else:
+            img = img.copy()
 
         scale = 1.0
         if img.width > max_width:
@@ -146,12 +150,12 @@ def draw_boxes_on_image(image_path, detections, ground_truth_boxes=None,
         return None
 
 
-def run_detection(image_path, detector, verbose=False, cropper=None):
+def run_detection(image_path, detector, verbose=False, cropper=None, img=None):
     """Run detection on an image and return results."""
     try:
-        img = Image.open(image_path)
-        # Handle EXIF rotation
-        img = ImageOps.exif_transpose(img)
+        if img is None:
+            img = Image.open(image_path)
+            img = ImageOps.exif_transpose(img)
 
         # Pass image_path for cache lookups
         try:
@@ -231,14 +235,15 @@ def check_accuracy(primary, ground_truth_boxes, iou_threshold=0.3):
     return best_iou >= iou_threshold, best_iou
 
 
-def generate_result_image(image_path, detections, cropper, focal_detections=None, max_width=400):
+def generate_result_image(image_path, detections, cropper, focal_detections=None, max_width=400, img=None):
     """Generate the cropped result image for comparison.
 
     Returns (data_uri, zoom_applied, primary_fills_frame, selected_inner_det).
     """
     try:
-        img = Image.open(image_path).convert('RGB')
-        img = ImageOps.exif_transpose(img)
+        if img is None:
+            img = Image.open(image_path).convert('RGB')
+            img = ImageOps.exif_transpose(img)
 
         # Run the actual cropping logic (focal_dets passed separately)
         cropped = cropper.crop_image(img, detections, strategy='smart',
@@ -278,7 +283,7 @@ def generate_result_image(image_path, detections, cropper, focal_detections=None
         return None, 1.0, False, None
 
 
-def generate_multi_crop_images(image_path, detections, cropper, focal_detections=None, max_width=250):
+def generate_multi_crop_images(image_path, detections, cropper, focal_detections=None, max_width=250, img=None):
     """Generate cropped images for all viable art subjects (multi-crop display).
 
     Returns (crops, crop_target_detections) where crops is a list of
@@ -287,8 +292,9 @@ def generate_multi_crop_images(image_path, detections, cropper, focal_detections
     crop anchors (for highlighting in the detection image).
     """
     try:
-        img = Image.open(image_path).convert('RGB')
-        img = ImageOps.exif_transpose(img)
+        if img is None:
+            img = Image.open(image_path).convert('RGB')
+            img = ImageOps.exif_transpose(img)
 
         multi_results = cropper.crop_all_subjects(img, detections, focal_detections=focal_detections)
         if len(multi_results) < 2:
@@ -420,8 +426,12 @@ def generate_report(input_dir=None, ground_truth_path=None, output_file=None,
         for det_data in gt_entry.get('correct_detections', []):
             gt_boxes.append(det_data['bbox'])
 
+        # Load image once and reuse across detection, cropping, and visualization
+        loaded_img = Image.open(image_path).convert('RGB')
+        loaded_img = ImageOps.exif_transpose(loaded_img)
+
         # Run detection with optimized ensemble (uses caching, verbose for two-pass info)
-        detection_result = run_detection(image_path, detector, verbose=True, cropper=cropper)
+        detection_result = run_detection(image_path, detector, verbose=True, cropper=cropper, img=loaded_img)
 
         # Check accuracy using smart primary selection
         # Exclude not_art images from accuracy denominator
@@ -452,12 +462,14 @@ def generate_report(input_dir=None, ground_truth_path=None, output_file=None,
                 detection_result['all_detections'],
                 cropper,
                 focal_detections=focal_dets,
+                img=loaded_img,
             )
             multi_crop_images, crop_targets = generate_multi_crop_images(
                 image_path,
                 detection_result['all_detections'],
                 cropper,
                 focal_detections=focal_dets,
+                img=loaded_img,
             )
 
         # all_detections for drawing = main dets + focal dets (for display only)
@@ -473,6 +485,7 @@ def generate_report(input_dir=None, ground_truth_path=None, output_file=None,
             focal_detections=focal_dets,
             selected_anchor=selected_inner_det,
             vlm_detections=detection_result.get('vlm_detections') or None,
+            img=loaded_img,
         )
 
         results.append({
