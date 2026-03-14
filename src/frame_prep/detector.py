@@ -912,162 +912,127 @@ class OptimizedEnsembleDetector:
             self._grounding_dino = self._grounding_dino.to("cpu")
             self._grounding_dino.eval()
 
-    def _run_yolo_world(self, image: Image.Image, image_hash_fn, verbose: bool, path_hash: str = "") -> List[Detection]:
-        """Run YOLO-World detection with caching.
+    def _run_cached(self, cache_name, source, label, params_hash,
+                    image_hash_fn, path_hash, run_fn, verbose):
+        """Run a detection model with two-tier caching (path-based, then content-based).
 
         Args:
-            image_hash_fn: callable returning content hash (lazy, avoids 36MB alloc on path-cache hit)
+            cache_name: subdirectory name for cache files
+            source: source tag to stamp on detections (e.g. "yolo", "dino")
+            label: human-readable name for verbose output (e.g. "YOLO-World")
+            params_hash: hash of model parameters for cache key
+            image_hash_fn: callable or string — content hash (lazy to avoid 36MB alloc)
+            path_hash: file-path-based hash (fast, checked first)
+            run_fn: callable() → List[Detection] that actually runs the model
+            verbose: print cache hit/miss info
+
+        Returns:
+            List[Detection] with source field set
         """
-        # Cache key includes confidence threshold and class prompts
+        # Try path-based cache first (faster)
+        if path_hash:
+            cache_path = _get_cache_path(cache_name, path_hash, params_hash)
+            cached = _load_cached_detections(cache_path)
+            if cached is not None:
+                if verbose:
+                    print(f"  {label}: {len(cached)} detections (cached)")
+                for d in cached:
+                    if d.source is None:
+                        d.source = source
+                return cached
+
+        # Fall back to content hash
+        image_hash = image_hash_fn() if callable(image_hash_fn) else image_hash_fn
+        cache_path = _get_cache_path(cache_name, image_hash, params_hash)
+
+        cached = _load_cached_detections(cache_path)
+        if cached is not None:
+            if verbose:
+                print(f"  {label}: {len(cached)} detections (cached)")
+            for d in cached:
+                if d.source is None:
+                    d.source = source
+            return cached
+
+        # Cache miss — run the model
+        if verbose:
+            print(f"Running {label}...")
+
+        detections = run_fn()
+
+        if verbose:
+            print(f"  {label}: {len(detections)} detections")
+
+        # Save to content-based cache (and path-based if available)
+        _save_cached_detections(cache_path, detections)
+        if path_hash:
+            path_cache = _get_cache_path(cache_name, path_hash, params_hash)
+            if path_cache != cache_path:
+                _save_cached_detections(path_cache, detections)
+        return detections
+
+    def _run_yolo_world(self, image: Image.Image, image_hash_fn, verbose: bool, path_hash: str = "") -> List[Detection]:
+        """Run YOLO-World detection with caching."""
         params_hash = _compute_params_hash(self.confidence_threshold, self._art_classes)
 
-        # Try path-based cache first (faster), then fall back to content hash
-        cache_path = None
-        if path_hash:
-            cache_path = _get_cache_path(self._yolo_cache_name, path_hash, params_hash)
-            cached = _load_cached_detections(cache_path)
-            if cached is not None:
-                if verbose:
-                    print(f"  YOLO-World: {len(cached)} detections (cached)")
-                for d in cached:
-                    if d.source is None:
-                        d.source = "yolo"
-                return cached
+        def _infer():
+            self._load_yolo_world()
+            yolo_results = self._yolo_world.predict(image, conf=self.confidence_threshold, verbose=False)
+            detections = []
+            for r in yolo_results:
+                for box in r.boxes:
+                    conf = float(box.conf[0])
+                    bbox = tuple(int(x) for x in box.xyxy[0].tolist())
+                    cls_id = int(box.cls[0])
+                    area = (bbox[2] - bbox[0]) * (bbox[3] - bbox[1])
+                    if cls_id < len(self._art_classes):
+                        class_name = self._art_classes[cls_id]
+                    else:
+                        class_name = r.names.get(cls_id, f"yolo:{cls_id}")
+                    detections.append(Detection(
+                        bbox=bbox, confidence=conf, class_name=class_name,
+                        area=area, source="yolo",
+                    ))
+            return detections
 
-        image_hash = image_hash_fn() if callable(image_hash_fn) else image_hash_fn
-        cache_path = _get_cache_path(self._yolo_cache_name, image_hash, params_hash)
-
-        cached = _load_cached_detections(cache_path)
-        if cached is not None:
-            if verbose:
-                print(f"  YOLO-World: {len(cached)} detections (cached)")
-            for d in cached:
-                if d.source is None:
-                    d.source = "yolo"
-            return cached
-
-        if verbose:
-            print("Running YOLO-World...")
-
-        self._load_yolo_world()
-        yolo_results = self._yolo_world.predict(image, conf=self.confidence_threshold, verbose=False)
-
-        detections = []
-        for r in yolo_results:
-            for box in r.boxes:
-                conf = float(box.conf[0])
-                bbox = tuple(int(x) for x in box.xyxy[0].tolist())
-                cls_id = int(box.cls[0])
-                area = (bbox[2] - bbox[0]) * (bbox[3] - bbox[1])
-
-                # Get actual class name from the model's names dict or our art_classes
-                if cls_id < len(self._art_classes):
-                    class_name = self._art_classes[cls_id]
-                else:
-                    class_name = r.names.get(cls_id, f"yolo:{cls_id}")
-
-                detections.append(Detection(
-                    bbox=bbox,
-                    confidence=conf,
-                    class_name=class_name,
-                    area=area,
-                    source="yolo",
-                ))
-
-        if verbose:
-            print(f"  YOLO-World: {len(detections)} detections")
-
-        # Save to content-based cache (and path-based if available)
-        _save_cached_detections(cache_path, detections)
-        if path_hash:
-            path_cache = _get_cache_path(self._yolo_cache_name, path_hash, params_hash)
-            if path_cache != cache_path:
-                _save_cached_detections(path_cache, detections)
-        return detections
+        return self._run_cached(
+            self._yolo_cache_name, "yolo", "YOLO-World", params_hash,
+            image_hash_fn, path_hash, _infer, verbose,
+        )
 
     def _run_grounding_dino(self, image: Image.Image, image_hash_fn, verbose: bool, path_hash: str = "") -> List[Detection]:
-        """Run Grounding DINO detection with caching.
-
-        Args:
-            image_hash_fn: callable returning content hash (lazy, avoids 36MB alloc on path-cache hit)
-        """
-        # Cache key includes confidence threshold and prompts
+        """Run Grounding DINO detection with caching."""
         params_hash = _compute_params_hash(self.confidence_threshold, self._dino_prompts)
 
-        # Try path-based cache first (faster), then fall back to content hash
-        cache_path = None
-        if path_hash:
-            cache_path = _get_cache_path(self._dino_cache_name, path_hash, params_hash)
-            cached = _load_cached_detections(cache_path)
-            if cached is not None:
-                if verbose:
-                    print(f"  Grounding DINO: {len(cached)} detections (cached)")
-                for d in cached:
-                    if d.source is None:
-                        d.source = "dino"
-                return cached
+        def _infer():
+            self._load_grounding_dino()
+            import torch
+            inputs = self._dino_processor(
+                images=image, text=self._dino_prompts, return_tensors="pt"
+            ).to("cpu")
+            with torch.no_grad():
+                outputs = self._grounding_dino(**inputs)
+            dino_results = self._dino_processor.post_process_grounded_object_detection(
+                outputs, inputs.input_ids,
+                threshold=self.confidence_threshold,
+                target_sizes=[image.size[::-1]]
+            )[0]
+            detections = []
+            for score, label, box in zip(
+                dino_results["scores"], dino_results["text_labels"], dino_results["boxes"]
+            ):
+                bbox = tuple(int(x) for x in box.tolist())
+                area = (bbox[2] - bbox[0]) * (bbox[3] - bbox[1])
+                detections.append(Detection(
+                    bbox=bbox, confidence=float(score), class_name=label,
+                    area=area, source="dino",
+                ))
+            return detections
 
-        image_hash = image_hash_fn() if callable(image_hash_fn) else image_hash_fn
-        cache_path = _get_cache_path(self._dino_cache_name, image_hash, params_hash)
-
-        cached = _load_cached_detections(cache_path)
-        if cached is not None:
-            if verbose:
-                print(f"  Grounding DINO: {len(cached)} detections (cached)")
-            for d in cached:
-                if d.source is None:
-                    d.source = "dino"
-            return cached
-
-        if verbose:
-            print("Running Grounding DINO...")
-
-        self._load_grounding_dino()
-        import torch
-
-        inputs = self._dino_processor(
-            images=image,
-            text=self._dino_prompts,
-            return_tensors="pt"
-        ).to("cpu")
-
-        with torch.no_grad():
-            outputs = self._grounding_dino(**inputs)
-
-        dino_results = self._dino_processor.post_process_grounded_object_detection(
-            outputs,
-            inputs.input_ids,
-            threshold=self.confidence_threshold,
-            target_sizes=[image.size[::-1]]
-        )[0]
-
-        detections = []
-        for score, label, box in zip(
-            dino_results["scores"],
-            dino_results["text_labels"],
-            dino_results["boxes"]
-        ):
-            bbox = tuple(int(x) for x in box.tolist())
-            area = (bbox[2] - bbox[0]) * (bbox[3] - bbox[1])
-
-            detections.append(Detection(
-                bbox=bbox,
-                confidence=float(score),
-                class_name=label,
-                area=area,
-                source="dino",
-            ))
-
-        if verbose:
-            print(f"  Grounding DINO: {len(detections)} detections")
-
-        # Save to content-based cache (and path-based if available)
-        _save_cached_detections(cache_path, detections)
-        if path_hash:
-            path_cache = _get_cache_path(self._dino_cache_name, path_hash, params_hash)
-            if path_cache != cache_path:
-                _save_cached_detections(path_cache, detections)
-        return detections
+        return self._run_cached(
+            self._dino_cache_name, "dino", "Grounding DINO", params_hash,
+            image_hash_fn, path_hash, _infer, verbose,
+        )
 
     def _load_vlm(self):
         """Lazy-load Qwen3-VL on first use.
