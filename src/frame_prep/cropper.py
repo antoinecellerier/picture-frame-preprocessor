@@ -1,6 +1,7 @@
 """Intelligent cropping strategies for portrait conversion."""
 
 from typing import List, Tuple, Optional
+import numpy as np
 from PIL import Image
 from .detector import Detection, ArtFeatureDetector, calculate_iou
 from .analyzer import CompositionAnalyzer
@@ -556,6 +557,7 @@ class SmartCropper:
         #  - Skip very small detections (< 1.5% of image area)
         img_area = width * height
         edge_margin = 0.01  # 1% of dimension
+        img_brightness = np.array(image.convert('L')).mean()
 
         remaining = sorted(
             [d for d in viable if d is not primary],
@@ -580,6 +582,13 @@ class SmartCropper:
             # Skip tiny detections (likely noise)
             det_area = (bx2 - bx1) * (by2 - by1)
             if det_area < img_area * 0.015:
+                continue
+
+            # Skip regions much darker than the image (shadow/underexposure,
+            # not visible art). Uses ratio to handle night/dim photos where
+            # the whole image is dark but the art is still valid.
+            region_brightness = np.array(image.crop((bx1, by1, bx2, by2)).convert('L')).mean()
+            if region_brightness < img_brightness * 0.35:
                 continue
 
             cw = self._calculate_crop_window(
