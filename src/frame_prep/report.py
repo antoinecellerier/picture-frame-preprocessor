@@ -7,7 +7,7 @@ from PIL import Image, ImageDraw, ImageFont, ImageOps
 import io
 from datetime import datetime
 
-from .detector import OptimizedEnsembleDetector, ArtFeatureDetector
+from .detector import OptimizedEnsembleDetector, ArtFeatureDetector, calculate_iou
 from .cropper import SmartCropper
 from .clip_detector import CLIPMosaicDetector, SigLIPClassVerifier
 from . import defaults
@@ -17,24 +17,6 @@ from .defaults import MIN_ART_SCORE
 _clip_detector = CLIPMosaicDetector(threshold=0.022)
 _clip_candidate_detector = OptimizedEnsembleDetector(confidence_threshold=0.10)
 _siglip_verifier = SigLIPClassVerifier()
-
-
-def calculate_iou(box1, box2):
-    """Calculate IoU between two boxes."""
-    x1 = max(box1[0], box2[0])
-    y1 = max(box1[1], box2[1])
-    x2 = min(box1[2], box2[2])
-    y2 = min(box1[3], box2[3])
-
-    if x2 <= x1 or y2 <= y1:
-        return 0.0
-
-    intersection = (x2 - x1) * (y2 - y1)
-    area1 = (box1[2] - box1[0]) * (box1[3] - box1[1])
-    area2 = (box2[2] - box2[0]) * (box2[3] - box2[1])
-    union = area1 + area2 - intersection
-
-    return intersection / union if union > 0 else 0.0
 
 
 def draw_boxes_on_image(image_path, detections, ground_truth_boxes=None,

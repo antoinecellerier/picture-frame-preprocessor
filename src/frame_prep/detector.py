@@ -520,6 +520,10 @@ class ArtFeatureDetector:
         # Default for unknown classes (could be art from open-vocab models)
         return 1.5
 
+    def set_image_size(self, width: int, height: int) -> None:
+        """Set the image size used for center-weighting and size scoring."""
+        self._last_image_size = (width, height)
+
     def get_primary_subject(self, detections: List[Detection]) -> Optional[Detection]:
         """
         Get the most likely primary subject from detections.
@@ -838,6 +842,8 @@ class OptimizedEnsembleDetector:
         self._vlm_model_instance = None
         # Set by detect() each call — raw VLM detections before merging
         self._last_vlm_detections: List['Detection'] = []
+        # Reusable scorer for primary subject selection (avoids per-call allocation)
+        self._scorer = ArtFeatureDetector()
 
         # YOLO-World class prompts (included in cache key)
         # Note: removed graffiti/stencil/bird statue - caused false positives
@@ -906,8 +912,12 @@ class OptimizedEnsembleDetector:
             self._grounding_dino = self._grounding_dino.to("cpu")
             self._grounding_dino.eval()
 
-    def _run_yolo_world(self, image: Image.Image, image_hash: str, verbose: bool, path_hash: str = "") -> List[Detection]:
-        """Run YOLO-World detection with caching."""
+    def _run_yolo_world(self, image: Image.Image, image_hash_fn, verbose: bool, path_hash: str = "") -> List[Detection]:
+        """Run YOLO-World detection with caching.
+
+        Args:
+            image_hash_fn: callable returning content hash (lazy, avoids 36MB alloc on path-cache hit)
+        """
         # Cache key includes confidence threshold and class prompts
         params_hash = _compute_params_hash(self.confidence_threshold, self._art_classes)
 
@@ -924,6 +934,7 @@ class OptimizedEnsembleDetector:
                         d.source = "yolo"
                 return cached
 
+        image_hash = image_hash_fn() if callable(image_hash_fn) else image_hash_fn
         cache_path = _get_cache_path(self._yolo_cache_name, image_hash, params_hash)
 
         cached = _load_cached_detections(cache_path)
@@ -974,8 +985,12 @@ class OptimizedEnsembleDetector:
                 _save_cached_detections(path_cache, detections)
         return detections
 
-    def _run_grounding_dino(self, image: Image.Image, image_hash: str, verbose: bool, path_hash: str = "") -> List[Detection]:
-        """Run Grounding DINO detection with caching."""
+    def _run_grounding_dino(self, image: Image.Image, image_hash_fn, verbose: bool, path_hash: str = "") -> List[Detection]:
+        """Run Grounding DINO detection with caching.
+
+        Args:
+            image_hash_fn: callable returning content hash (lazy, avoids 36MB alloc on path-cache hit)
+        """
         # Cache key includes confidence threshold and prompts
         params_hash = _compute_params_hash(self.confidence_threshold, self._dino_prompts)
 
@@ -992,6 +1007,7 @@ class OptimizedEnsembleDetector:
                         d.source = "dino"
                 return cached
 
+        image_hash = image_hash_fn() if callable(image_hash_fn) else image_hash_fn
         cache_path = _get_cache_path(self._dino_cache_name, image_hash, params_hash)
 
         cached = _load_cached_detections(cache_path)
@@ -1338,13 +1354,20 @@ class OptimizedEnsembleDetector:
         self._last_image_size = (image.width, image.height)
         self._last_vlm_detections = []
 
-        # Compute hashes for caching
+        # Compute hashes for caching.  Image hash is expensive (materializes
+        # full pixel buffer), so compute lazily — only when path cache misses.
         path_hash = _compute_path_hash(image_path) if image_path else ""
-        image_hash = _compute_image_hash(image)
+        image_hash = ""  # computed on demand below
+
+        def _get_image_hash():
+            nonlocal image_hash
+            if not image_hash:
+                image_hash = _compute_image_hash(image)
+            return image_hash
 
         # === PASS 1: Full image detection ===
-        yolo_detections = self._run_yolo_world(image, image_hash, verbose, path_hash)
-        dino_detections = self._run_grounding_dino(image, image_hash, verbose, path_hash)
+        yolo_detections = self._run_yolo_world(image, _get_image_hash, verbose, path_hash)
+        dino_detections = self._run_grounding_dino(image, _get_image_hash, verbose, path_hash)
 
         all_detections = yolo_detections + dino_detections
 
@@ -1361,7 +1384,7 @@ class OptimizedEnsembleDetector:
             else:
                 if verbose:
                     print("  Pass 2 triggered: no viable central candidate in pass 1")
-                center_detections = self._detect_center_crop(image, image_hash, path_hash, verbose)
+                center_detections = self._detect_center_crop(image, _get_image_hash(), path_hash, verbose)
                 all_detections.extend(center_detections)
 
         if verbose:
@@ -1386,11 +1409,7 @@ class OptimizedEnsembleDetector:
                 # C: top-2 detections are closely scored (coin-flip scenario)
                 _primary = self.get_primary_subject(merged_detections)
                 if _primary is not None:
-                    _mult = ArtFeatureDetector._get_class_multiplier(_primary.class_name)
-                    _art_score = _primary.confidence * _mult
-                    if False:  # heuristic-A disabled: fires too broadly, causes regressions
-                        _vlm_reason = f"heuristic-A (art_score={_art_score:.2f}<2.0)"
-                    elif _primary.confidence < 0.35:
+                    if _primary.confidence < 0.35:
                         # heuristic-D: primary confidence is low — uncertain detection
                         _vlm_reason = f"heuristic-D (conf={_primary.confidence:.3f}<0.35)"
                     elif len(merged_detections) >= 2:
@@ -1538,19 +1557,15 @@ class OptimizedEnsembleDetector:
         if not detections:
             return None
 
-        # Use the first detector's get_primary_subject method
-        # (we'll use the same center-weighting algorithm)
-        detector = ArtFeatureDetector()
-        detector._last_image_size = self._last_image_size
-        return detector.get_primary_subject(detections)
+        self._scorer.set_image_size(*self._last_image_size)
+        return self._scorer.get_primary_subject(detections)
 
     def get_primary_subject_with_score(self, detections: List[Detection]) -> Tuple[Optional[Detection], float]:
         """Get primary subject and its raw art score."""
         if not detections:
             return None, 0.0
-        detector = ArtFeatureDetector()
-        detector._last_image_size = self._last_image_size
-        return detector.get_primary_subject_with_score(detections)
+        self._scorer.set_image_size(*self._last_image_size)
+        return self._scorer.get_primary_subject_with_score(detections)
 
     def detect_focal_points(
         self,

@@ -2,7 +2,7 @@
 
 from typing import List, Tuple, Optional
 from PIL import Image
-from .detector import Detection, ArtFeatureDetector
+from .detector import Detection, ArtFeatureDetector, calculate_iou
 from .analyzer import CompositionAnalyzer
 
 
@@ -104,7 +104,7 @@ class SmartCropper:
         # NOTE: focal_detections are NOT included here — focal class names
         # (e.g. "human figure") can inherit wrong art-class multipliers and
         # would corrupt primary selection.
-        self._subject_selector._last_image_size = (width, height)
+        self._subject_selector.set_image_size(width, height)
         primary = self._subject_selector.get_primary_subject(detections)
         if primary is None:
             primary = detections[0]  # Fallback to highest confidence
@@ -467,7 +467,7 @@ class SmartCropper:
         width, height = image.size
 
         # Identify primary subject using center-weighted scoring
-        self._subject_selector._last_image_size = (width, height)
+        self._subject_selector.set_image_size(width, height)
         primary = self._subject_selector.get_primary_subject(detections)
 
         # Filter to viable art detections (class_multiplier >= 1.5)
@@ -527,7 +527,7 @@ class SmartCropper:
                             anchor_point=(ax, ay)
                         )
                         overlaps = any(
-                            self._calculate_iou(cw, ecw) > 0.3
+                            calculate_iou(cw, ecw) > 0.3
                             for _, ecw in candidates
                         )
                         if not overlaps:
@@ -587,7 +587,7 @@ class SmartCropper:
                 anchor_point=det.center
             )
             overlaps = any(
-                self._calculate_iou(cw, ecw) > 0.3
+                calculate_iou(cw, ecw) > 0.3
                 for _, ecw in candidates
             )
             if not overlaps:
@@ -737,27 +737,6 @@ class SmartCropper:
 
         inner_dets.sort(key=_inner_score, reverse=True)
         return inner_dets
-
-    @staticmethod
-    def _calculate_iou(
-        box1: Tuple[int, int, int, int],
-        box2: Tuple[int, int, int, int]
-    ) -> float:
-        """Calculate IoU between two bounding boxes."""
-        x1 = max(box1[0], box2[0])
-        y1 = max(box1[1], box2[1])
-        x2 = min(box1[2], box2[2])
-        y2 = min(box1[3], box2[3])
-
-        if x2 <= x1 or y2 <= y1:
-            return 0.0
-
-        intersection = (x2 - x1) * (y2 - y1)
-        area1 = (box1[2] - box1[0]) * (box1[3] - box1[1])
-        area2 = (box2[2] - box2[0]) * (box2[3] - box2[1])
-        union = area1 + area2 - intersection
-
-        return intersection / union if union > 0 else 0.0
 
     @staticmethod
     def _bbox_overlap_ratio(
