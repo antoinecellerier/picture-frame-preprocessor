@@ -1,0 +1,16 @@
+{
+  "date": "2026-03-04",
+  "flags": "--vlm",
+  "iou_hit": 112,
+  "iou_total": 122,
+  "iou_pct": 91.8,
+  "per_class": {
+    "mural": {"hit": 38, "total": 38},
+    "painting": {"hit": 9, "total": 9},
+    "non_art": {"hit": 4, "total": 4},
+    "street_art": {"hit": 20, "total": 22},
+    "sculpture": {"hit": 18, "total": 20},
+    "mosaic": {"hit": 19, "total": 25},
+    "installation": {"hit": 2, "total": 4}
+  }
+}
