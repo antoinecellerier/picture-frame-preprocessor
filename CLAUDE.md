@@ -54,9 +54,16 @@ This file, the slash commands in `.claude/commands/`, and the memory files are a
 
 Proactively suggest improvements at the end of a session if patterns emerged.
 
+## Running commands
+
+- **Always `tee` output** to a `/tmp` file when running eval, detection, or any command you may need to search afterwards (e.g., `| tee /tmp/eval_out.txt`). Then use Grep/Read on the file instead of re-running the command with different pipes.
+- **Use the Write tool** to create temp scripts at `/tmp/*.py` paths instead of heredocs (`cat << 'EOF'`) or long inline `python -c` strings — those trigger permission prompts.
+- Run temp scripts with a simple `venv/bin/python /tmp/script.py` bash call.
+
 ## What NOT to do
 
 - Don't use PyTorch/transformers for VLM inference — the project uses llama.cpp GGUF
 - Don't run images at native resolution through VLM on this CPU
 - Don't add YOLO-World prompts without evaluating — the 28-class list is zero-sum; new classes steal attention from existing ones
 - Don't commit scoring/detection changes without running `/eval` first
+- Don't re-run expensive commands just to grep different parts of the output — tee first, then search the file

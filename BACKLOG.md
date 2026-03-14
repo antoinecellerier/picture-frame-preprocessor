@@ -1,5 +1,17 @@
 # Backlog
 
+## Session Summary (2026-03-14) — saliency focal point investigation
+
+### Saliency-guided focal point for wide primaries — NOT NEEDED
+
+Investigated the top backlog item: using saliency analysis within wide primary bboxes to find better crop anchors. Installed `opencv-contrib-python`, implemented the feature, tested on all 122 images.
+
+**Result:** No impact. The existing focal detection pass (DINO face/figure prompts) already finds quality inner detections for all 6 target images. Only 2/122 images would trigger the saliency fallback, and both are non-art misdetections. Reverted.
+
+See Investigation Roadmap item #1 for full details.
+
+---
+
 ## Session Summary (2026-03-04) — resolution experiment
 
 ### 1024px VLM resolution experiment — net zero
@@ -163,88 +175,81 @@ Previous measured baseline was 94/122 (77%) — gap was purely due to eval scrip
 
 ---
 
-## Remaining Issues (30 items from latest feedback)
+## Remaining Issues (audited 2026-03-14)
 
-### Bad Detection — Wrong primary selection (8 cases)
+*Re-audited against current detection. Of original 30 feedback items, 13 now fixed without VLM.*
+*With `--vlm` (112/122 baseline), only 10 total IoU misses remain across the full dataset.*
 
-The correct subject exists in detections but a different one wins primary scoring.
+### Confirmed MISS with --vlm (4 backlog items in the 10 VLM misses)
 
-**Small central art beaten by higher-confidence non-art (3):**
-- `DSC_4388.JPG`: "framed artwork" (0.45, small, off-center) beats "art street art" (0.31, central). Class multiplier mismatch: 5.0x vs 2.0x. Needs "street art" boost or context-aware scoring.
-- `DSC_4042.JPG`: "painting" (0.32, actually a sign) beats "decorative art" (0.28, actual mosaic). Misclassification — sign detected as "painting".
-- `DSC_0155.JPG`: "painted figure" (0.34) beats GT vase area. Wrong region entirely.
+These fail both with and without VLM — the hardest cases:
+- `DSC_4385.JPG` (IoU=0.01): mosaic→graffiti, scoring gap
+- `DSC_4162.JPG` (IoU=0.00): tiny pig face mosaic, sculpture wins
+- `DSC_3401.JPG` (IoU=0.00): mosaic→sculpture, wrong detection wins
+- `DSC_0001_BURST` (IoU=0.00): person walking→painted figure
 
-**Large bbox same-tier competition (3):**
-- `DSC_4291.JPG`: "mosaic" (0.32) selected, GT wants "figure figne" (garbled class → default 1.5x)
-- `DSC_4385.JPG`: "figure" (28% area, 0.26) beats "mosaic" (1.8%, 0.30). Large bbox with 1.2x size bonus
-- `DSC_4381.JPG`: "decorated sign" (0.33) beats "sculpture" (0.25). Sign-art confusion.
+### Confirmed FIXED by VLM (14 backlog items, verified 2026-03-14)
 
-**Partial / wrong detection (2):**
-- `DSC_0274.JPG`: "painted figure" (0.28) picks wrong region of a tile mural
-- `DSC_3367.JPG`: "painted figure" (0.28) only partially covers the subject
+These MISS without `--vlm` but are confirmed HIT with `--vlm`:
+- `DSC_4388.JPG` (IoU 0.16→0.61): sculpture wins with VLM
+- `DSC_0155.JPG` (IoU 0.00→0.94): painting wins with VLM
+- `DSC_4291.JPG` (IoU 0.02→0.39): sculpture wins with VLM
+- `DSC_0274.JPG` (IoU 0.15→0.85): painting wins with VLM
+- `DSC_3367.JPG` (IoU 0.22→0.80): graffiti wins with VLM
+- `DSC_4371.JPG` (IoU 0.01→0.63): street art wins with VLM
+- `DSC_4059.JPG` (IoU 0.17→0.91): street art wins with VLM
+- `20210911_152658.jpg` (IoU 0.00→0.52): street art wins with VLM
+- `DSC_0493.JPG` (IoU 0.01→0.69): painting wins with VLM
+- `DSC_4311.JPG` (IoU 0.00→0.55): sculpture wins with VLM
+- `DSC_4312.JPG` (IoU 0.00→0.81): street art wins with VLM
+- `DSC_3065.JPG` (IoU 0.09→0.85): art installation wins with VLM
+- `DSC_4205.JPG` (IoU 0.05→0.45): decorative art wins with VLM
+- `DSC_1045.JPG` (IoU 0.30→0.30): figurine, borderline either way
 
-### Bad Detection — Subject not detected at all (6 cases)
+### FIXED since original feedback (now HIT without --vlm)
 
-Models fail to find the actual art subject. Would need model improvements, additional prompts, or post-processing.
+- ~~`DSC_4042.JPG`~~ (IoU=0.97): "decorative art" now wins correctly
+- ~~`DSC_4381.JPG`~~ (IoU=0.97): "sculpture" now wins correctly
+- ~~`20200525_170722.jpg`~~ (IoU=0.71): sculpture/mosaic now selected correctly
+- ~~`DSC_4201.JPG`~~ (IoU=0.52): mural now detected
+- ~~`DSC_4294.JPG`~~ (IoU=0.99): "art installation" now wins correctly
+- ~~`20210815_163856.jpg`~~ (IoU=0.73): correct primary now selected
+- ~~`20210910_204401.jpg`~~ (IoU=0.99): fixed by edge penalty (known)
+- ~~`DSC_0153.JPG`~~ (IoU=1.00): focal detection finds face correctly
+- ~~`DSC_1488.JPG`~~ (IoU=0.64): focal detection finds face
+- ~~`20210530_135908.jpg`~~ (IoU=0.99): mural detected correctly
+- ~~`20210808_162451.jpg`~~: mural detected (no GT to measure)
+- ~~`DSC_4168.JPG`~~ (IoU=0.98): correct detection now
+- ~~`DSC_4305.JPG`~~ (IoU=0.98): correct detection now
 
-- `20200525_170722.jpg`: Sculpture/statue figures (0.30-0.31 conf) detected but not selected — actually a primary selection issue, mosaic (0.39) wins
-- `20210911_152658.jpg`: Minion mosaic not detected by any model
-- `DSC_0493.JPG`: Large chalk drawing of woman's face → "painted figure" (0.44) picks tiny detail instead
-- `DSC_4162.JPG`: Tiny pig face mosaic → only detection is "decorated sign" at edge
-- `DSC_4201.JPG`: 3 cartoon figures in mural not individually detected
-- `DSC_4311.JPG` / `DSC_4312.JPG`: Mosaic rocket tile art not properly detected
+### Crop-only issues (primary correct, crop suboptimal)
 
-### Bad Detection — Misclassification (3 cases)
-
-- `DSC_3065.JPG`: Reflection in glass detected as "painted figure"
-- `DSC_4059.JPG`: "painted figure" picks wrong fragment of PARIS mural
-- `20210910_204401.jpg`: FIXED by edge penalty (was bad_detection in earlier round)
-
-### Bad Crop — Wide primary, suboptimal framing (6 cases)
-
-Primary is correctly detected as a large mural/painting but the crop doesn't focus on the interesting part.
-
-- `DSC_0153.JPG`: Wide mural — crop should focus on face/focal area
-- `DSC_1488.JPG`: Wide mural — crop should frame the "face" area
-- `20210530_135908.jpg`: Wide mural — lion's head (crop 3) is best but not first
-- `DSC_4205.JPG`: Wide mural — should use inner figure detections as focal points
-- `20210808_162451.jpg`: Huge mural is primary, should produce a good single crop
-- `DSC_1045.JPG`: Overlapping figurine detections — wrong one centered
-
-**Potential fix:** Use saliency analysis within the primary bbox to find the most visually interesting focal point when no good inner detections exist.
-
-### Bad Crop — Wrong primary leads to bad crop (5 cases)
-
-Root cause is in detection, not cropping. Fix would propagate from better primary selection.
-
-- `DSC_0001_BURST20241121142123881.JPG`: "painted figure" (0.45) is a person walking in snow
-- `DSC_4381.JPG`: "decorated sign" primary instead of mosaic/sculpture
-- `DSC_4385.JPG`: "figure" primary instead of "mosaic"
-- `DSC_4294.JPG`: "mosaic" (0.25) primary is tiny; exhibit/art installation should win
-- `DSC_4371.JPG`: "art installation" primary, small mosaic is the actual subject
-
-### Bad Crop — Junk secondary crop (3 cases)
-
-Secondary crop target is not visually interesting art.
-
-- `20210213_154948.jpg`: "painted figure" (0.31) is a building behind a fence
-- `DSC_0312.JPG`: "vase" (0.45) is a plant box — misclassification by model
-- `DSC_3401.JPG`: Multiple overlapping sculpture detections, confusing result
-
-### Bad Crop — Other (2 cases)
-
-- `DSC_4312.JPG`: Primary mosaic correct but GT expects a different area (rocket)
-- `20210815_163856.jpg`: "art installation exhibit" primary, woman walking selected as secondary
+These have correct IoU (HIT) but the crop framing could be better:
+- `20210213_154948.jpg` (IoU=0.55 HIT): junk "painted figure" secondary (building behind fence)
+- `DSC_0312.JPG` (IoU=0.79 HIT): "vase" secondary is a plant box
+- `DSC_3614.JPG` (IoU=0.40 HIT): street sign may appear as secondary
+- `DSC_4382.JPG` (IoU=0.87 HIT): street sign may appear as secondary
+- `DSC_4399.JPG` (IoU=0.40 HIT): street sign may appear as secondary
 
 ---
 
 ## Investigation Roadmap
 
-### 1. Saliency-guided focal point for wide primaries (6 bad_crop)
+### 1. ~~Saliency-guided focal point for wide primaries~~ — INVESTIGATED, NOT NEEDED (2026-03-14)
 
-When primary bbox is wider than crop and no quality inner detections exist, use saliency map within the primary bbox to find the most visually interesting crop anchor. Would help DSC_0153, DSC_1488, 20210530_135908, DSC_4205, 20210808_162451, DSC_1045.
+**Finding:** The 6 "wide primary bad crop" images (DSC_0153, DSC_1488, 20210530_135908, DSC_4205, 20210808_162451, DSC_1045) are **already handled by the existing focal detection pass** — DINO face/figure prompts find quality inner detections for all of them. The report confirms focal anchor points (faces) are shown correctly.
 
-**Approach:** Run composition analyzer on the primary bbox region, pick highest-saliency point as crop anchor.
+**What was tried:**
+- Installed `opencv-contrib-python` to enable `cv2.saliency.StaticSaliencySpectralResidual`
+- Added saliency fallback in `crop_with_detections()` for when primary fills frame and no inner dets exist
+- Improved `find_interest_points()` to use Gaussian-smoothed weighted centroid instead of raw argmax (which lands on noisy edge pixels)
+
+**Why it had no effect:**
+- Only 2/122 images in the dataset have fills-frame + no-focal-detections (DSC_3167, DSC_4074) — both are `non_art` ground truth misdetections
+- `StaticSaliencySpectralResidual` responds to frequency-domain anomalies, not semantic content — the centroid lands near the mural center anyway, not on faces/figures
+- The existing focal detection pass (DINO with face/figure prompts) already solves the problem these 6 images were listed for
+
+**Conclusion:** Reverted. The remaining crop quality issues for these images are about *which* focal point is best, not about having no focal point. DSC_1045 is actually a detection issue (wrong figurine selected, 16.5% area, not a wide primary). 20210808_162451 has no GT annotation.
 
 ### 2. ~~Boost "street art" class multiplier~~ — DONE (2026-02-21)
 
