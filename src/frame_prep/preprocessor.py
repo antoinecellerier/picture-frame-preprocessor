@@ -8,7 +8,6 @@ from PIL.ExifTags import TAGS
 
 from .detector import ArtFeatureDetector, OptimizedEnsembleDetector
 from .cropper import SmartCropper
-from .clip_detector import CLIPMosaicDetector, SigLIPClassVerifier
 from .utils import validate_image, ensure_directory
 from . import defaults
 
@@ -45,8 +44,6 @@ class ImagePreprocessor:
         quality: int = 95,
         filter_non_art: bool = defaults.FILTER_NON_ART,
         multi_crop: bool = False,
-        clip_mosaic: bool = False,
-        siglip_verify: bool = False,
     ):
         """
         Initialize preprocessor.
@@ -60,8 +57,6 @@ class ImagePreprocessor:
             quality: JPEG quality (1-100)
             filter_non_art: Filter out non-art images by score threshold
             multi_crop: Generate one crop per viable art subject
-            clip_mosaic: Enable CLIP-based mosaic detection (experimental)
-            siglip_verify: Enable SigLIP2 class verification/correction (experimental)
         """
         self.target_width = target_width
         self.target_height = target_height
@@ -69,21 +64,9 @@ class ImagePreprocessor:
         self.quality = quality
         self.filter_non_art = filter_non_art
         self.multi_crop = multi_crop
-        self.clip_mosaic = clip_mosaic
-        self.siglip_verify = siglip_verify
 
         self.detector = detector or ArtFeatureDetector()
         self.cropper = cropper or SmartCropper(target_width, target_height)
-        # CLIP mosaic detector — only instantiated when clip_mosaic=True.
-        # threshold=0.022 from evaluation (best F1).
-        self.clip_detector = CLIPMosaicDetector(threshold=0.022) if clip_mosaic else None
-        # Low-confidence detector used only as candidate zones for CLIP.
-        # Its detections are never added to the main detection list.
-        self._clip_candidate_detector = OptimizedEnsembleDetector(
-            confidence_threshold=0.10
-        ) if clip_mosaic else None
-        # SigLIP2 class verifier — only instantiated when siglip_verify=True.
-        self._class_verifier = SigLIPClassVerifier() if siglip_verify else None
 
     def process_image(
         self,
@@ -149,14 +132,6 @@ class ImagePreprocessor:
                         # Fallback for detectors that don't support image_path
                         detections = self.detector.detect(img, verbose=verbose)
 
-                    # === SIGLIP CLASS VERIFICATION ===
-                    # Correct mislabelled detections (e.g. real person detected as
-                    # "painted figure") before primary selection sees the classes.
-                    if self.siglip_verify and detections:
-                        detections = self._class_verifier.verify_all(
-                            detections, img, width, height, verbose=verbose
-                        )
-
                     # Get primary subject and art score
                     primary = None
                     if detections and hasattr(self.detector, 'get_primary_subject_with_score'):
@@ -176,37 +151,6 @@ class ImagePreprocessor:
                             detections_found=len(detections),
                             original_dimensions=original_dimensions,
                         )
-
-                    # === CLIP MOSAIC DETECTION ===
-                    # Score existing detection crops with CLIP, plus a
-                    # low-confidence candidate pass (conf=0.10) that finds
-                    # mosaic regions YOLO/DINO missed at standard threshold.
-                    # Candidate detections are used only as bbox zones for
-                    # CLIP — they are never added to the main detection list.
-                    clip_dets = []
-                    if self.clip_mosaic:
-                        try:
-                            candidate_dets = self._clip_candidate_detector.detect(
-                                img, verbose=False, image_path=input_path
-                            )
-                        except TypeError:
-                            candidate_dets = self._clip_candidate_detector.detect(
-                                img, verbose=False
-                            )
-                        clip_dets = self.clip_detector.detect(
-                            img, detections,
-                            candidate_detections=candidate_dets,
-                            verbose=verbose,
-                        )
-                    if clip_dets:
-                        if verbose:
-                            print(f"  CLIP: {len(clip_dets)} mosaic detection(s)")
-                        detections.extend(clip_dets)
-                        # Re-select primary to account for new mosaic dets
-                        if hasattr(self.detector, 'get_primary_subject_with_score'):
-                            primary, art_score = self.detector.get_primary_subject_with_score(detections)
-                        else:
-                            primary = self.detector.get_primary_subject(detections)
 
                     # Capture detection details for ML analysis
                     for det in detections:

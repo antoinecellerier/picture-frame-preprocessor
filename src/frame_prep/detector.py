@@ -128,7 +128,7 @@ class Detection:
     confidence: float
     class_name: str
     area: int
-    original_class: Optional[str] = None  # Set by SigLIPClassVerifier if reclassified
+    original_class: Optional[str] = None  # Original class name before any reclassification
     source: Optional[str] = None          # e.g. "vlm" for Qwen3-VL detections
 
     @property

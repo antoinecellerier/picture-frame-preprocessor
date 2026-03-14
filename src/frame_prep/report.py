@@ -9,14 +9,8 @@ from datetime import datetime
 
 from .detector import OptimizedEnsembleDetector, ArtFeatureDetector, calculate_iou
 from .cropper import SmartCropper
-from .clip_detector import CLIPMosaicDetector, SigLIPClassVerifier
 from . import defaults
 from .defaults import MIN_ART_SCORE
-
-# Module-level singletons — models load lazily on first use.
-_clip_detector = CLIPMosaicDetector(threshold=0.022)
-_clip_candidate_detector = OptimizedEnsembleDetector(confidence_threshold=0.10)
-_siglip_verifier = SigLIPClassVerifier()
 
 
 def draw_boxes_on_image(image_path, detections, ground_truth_boxes=None,
@@ -152,8 +146,7 @@ def draw_boxes_on_image(image_path, detections, ground_truth_boxes=None,
         return None
 
 
-def run_detection(image_path, detector, verbose=False, cropper=None, clip_mosaic=False,
-                  siglip_verify=False):
+def run_detection(image_path, detector, verbose=False, cropper=None):
     """Run detection on an image and return results."""
     try:
         img = Image.open(image_path)
@@ -166,17 +159,6 @@ def run_detection(image_path, detector, verbose=False, cropper=None, clip_mosaic
         except TypeError:
             detections = detector.detect(img, verbose=verbose)
 
-        # === SIGLIP CLASS VERIFICATION ===
-        # Correct mislabelled detections before primary selection.
-        if siglip_verify and detections:
-            img_w, img_h = img.size
-            detections = _siglip_verifier.verify_all(
-                detections, img, img_w, img_h, verbose=verbose
-            )
-        siglip_corrected_count = sum(
-            1 for d in detections if d.original_class is not None
-        )
-
         # Get primary by smart selection algorithm (with score)
         primary = None
         art_score = 0.0
@@ -184,38 +166,6 @@ def run_detection(image_path, detector, verbose=False, cropper=None, clip_mosaic
             primary, art_score = detector.get_primary_subject_with_score(detections)
         elif detections:
             primary = detector.get_primary_subject(detections)
-
-        # === CLIP MOSAIC DETECTION ===
-        # Low-conf candidate pass provides extra bbox zones for CLIP without
-        # polluting the main detection list.
-        clip_dets = []
-        if clip_mosaic:
-            try:
-                candidate_dets = _clip_candidate_detector.detect(
-                    img, verbose=False, image_path=str(image_path)
-                )
-            except TypeError:
-                candidate_dets = _clip_candidate_detector.detect(img, verbose=False)
-            clip_dets = _clip_detector.detect(
-                img, detections,
-                candidate_detections=candidate_dets,
-                verbose=verbose,
-            )
-        clip_count = len(clip_dets)
-        clip_max_score = max(d.confidence for d in clip_dets) if clip_dets else None
-        if clip_dets:
-            if verbose:
-                print(f"  CLIP: {len(clip_dets)} mosaic detection(s)")
-            detections.extend(clip_dets)
-            if hasattr(detector, 'get_primary_subject_with_score'):
-                primary, art_score = detector.get_primary_subject_with_score(detections)
-            else:
-                primary = detector.get_primary_subject(detections)
-        clip_primary_selected = (
-            primary is not None
-            and clip_dets
-            and any(primary.bbox == d.bbox for d in clip_dets)
-        )
 
         # === FOCAL POINT DETECTION ===
         # When primary fills the frame, run a focused pass on the primary's
@@ -256,10 +206,6 @@ def run_detection(image_path, detector, verbose=False, cropper=None, clip_mosaic
             'selection_changed': selection_changed,
             'count': len(detections),
             'art_score': art_score,
-            'clip_count': clip_count,
-            'clip_max_score': clip_max_score,
-            'clip_primary_selected': clip_primary_selected,
-            'siglip_corrected_count': siglip_corrected_count,
             'vlm_count': vlm_count,
             'vlm_primary': vlm_primary,
             'vlm_detections': vlm_raw,
@@ -268,9 +214,7 @@ def run_detection(image_path, detector, verbose=False, cropper=None, clip_mosaic
         print(f"Error detecting in {image_path}: {e}")
         return {'all_detections': [], 'focal_detections': [], 'primary': None,
                 'primary_by_confidence': None, 'selection_changed': False,
-                'count': 0, 'art_score': 0.0,
-                'clip_count': 0, 'clip_max_score': None, 'clip_primary_selected': False,
-                'siglip_corrected_count': 0}
+                'count': 0, 'art_score': 0.0}
 
 
 def check_accuracy(primary, ground_truth_boxes, iou_threshold=0.3):
@@ -386,8 +330,7 @@ def generate_multi_crop_images(image_path, detections, cropper, focal_detections
 
 
 def generate_report(input_dir=None, ground_truth_path=None, output_file=None,
-                    detector=None, cropper=None, clip_mosaic=False,
-                    siglip_verify=False, verbose=False):
+                    detector=None, cropper=None, verbose=False):
     """Generate interactive HTML report.
 
     Args:
@@ -478,8 +421,7 @@ def generate_report(input_dir=None, ground_truth_path=None, output_file=None,
             gt_boxes.append(det_data['bbox'])
 
         # Run detection with optimized ensemble (uses caching, verbose for two-pass info)
-        detection_result = run_detection(image_path, detector, verbose=True, cropper=cropper,
-                                         clip_mosaic=clip_mosaic, siglip_verify=siglip_verify)
+        detection_result = run_detection(image_path, detector, verbose=True, cropper=cropper)
 
         # Check accuracy using smart primary selection
         # Exclude not_art images from accuracy denominator
@@ -552,10 +494,6 @@ def generate_report(input_dir=None, ground_truth_path=None, output_file=None,
             'is_not_art': is_not_art,
             'auto_filtered': auto_filtered,
             'primary_fills_frame': primary_fills_frame,
-            'clip_count': detection_result.get('clip_count', 0),
-            'clip_max_score': detection_result.get('clip_max_score'),
-            'clip_primary_selected': detection_result.get('clip_primary_selected', False),
-            'siglip_corrected_count': detection_result.get('siglip_corrected_count', 0),
             'vlm_count': detection_result.get('vlm_count', 0),
             'vlm_primary': detection_result.get('vlm_primary', False),
             'vlm_detections': detection_result.get('vlm_detections', []),
@@ -586,7 +524,6 @@ def generate_report(input_dir=None, ground_truth_path=None, output_file=None,
 
         primary_text = 'No detections'
         primary_changed_text = None
-        primary_siglip_text = None
         if result['primary']:
             src = getattr(result['primary'], 'source', None)
             src_tag = f" [{src.upper()}]" if src else " [MIXED]"
@@ -596,9 +533,6 @@ def generate_report(input_dir=None, ground_truth_path=None, output_file=None,
                     f"Changed from: {result['primary_by_confidence'].class_name} "
                     f"({result['primary_by_confidence'].confidence:.3f})"
                 )
-            if result['primary'].original_class:
-                primary_siglip_text = f"SigLIP: was {result['primary'].original_class}"
-
         crops = []
         for mc_uri, mc_zoom, mc_class in result.get('multi_crop_images', []):
             crops.append({'uri': mc_uri, 'zoom': round(float(mc_zoom), 2), 'cls': mc_class})
@@ -627,7 +561,6 @@ def generate_report(input_dir=None, ground_truth_path=None, output_file=None,
             'imgCrops': crops,
             'primaryText': primary_text,
             'primaryChangedText': primary_changed_text,
-            'primarySiglipText': primary_siglip_text,
             'artScore': round(float(art_score), 4),
             'artScoreLow': art_score < MIN_ART_SCORE,
             'iou': round(float(result['best_iou']), 4),
@@ -635,10 +568,6 @@ def generate_report(input_dir=None, ground_truth_path=None, output_file=None,
             'detCount': result['detection_count'],
             'zoom': round(float(result['zoom_applied']), 3),
             'primaryFills': result.get('primary_fills_frame', False),
-            'clipCount': result.get('clip_count', 0),
-            'clipMax': round(float(result['clip_max_score']), 4) if result.get('clip_max_score') is not None else None,
-            'clipPrimary': result.get('clip_primary_selected', False),
-            'siglipCount': result.get('siglip_corrected_count', 0),
             'vlmCount': result.get('vlm_count', 0),
             'vlmPrimary': result.get('vlm_primary', False),
             'isNotArt': is_not_art,
@@ -656,7 +585,6 @@ def generate_report(input_dir=None, ground_truth_path=None, output_file=None,
     n_not_art = sum(1 for r in results if r.get('is_not_art'))
     n_no_gt = sum(1 for r in results if not r['has_ground_truth'] and not r.get('is_not_art'))
     n_big_primary = sum(1 for r in results if r.get('primary_fills_frame'))
-    n_clip = sum(1 for r in results if r.get('clip_count', 0) > 0)
     n_vlm = sum(1 for r in results if r.get('vlm_count', 0) > 0)
 
     results_json = json.dumps(results_js_data)
@@ -805,9 +733,6 @@ body {{
 .badge.filtered   {{ background: #78350f; color: #fde68a; }}
 .badge.selection  {{ background: #1e3a5f; color: #93c5fd; }}
 .badge.multicrop  {{ background: #1e3a8a; color: #93c5fd; }}
-.badge.clip       {{ background: #4c1d95; color: #c4b5fd; }}
-.badge.clip-primary {{ background: #6d28d9; color: white; }}
-.badge.siglip     {{ background: #7c2d12; color: #fdba74; }}
 .badge.vlm        {{ background: #164e63; color: #67e8f9; }}
 .badge.vlm-primary {{ background: #0e7490; color: white; }}
 #info-section {{
@@ -816,7 +741,6 @@ body {{
 .info-label {{ color: #777; font-size: 0.67rem; text-transform: uppercase; }}
 .info-val {{ color: #e0e0e0; }}
 .info-val.changed {{ color: #6ee7b7; font-size: 0.68rem; }}
-.info-val.siglip-note {{ color: #fbbf24; font-size: 0.68rem; }}
 .info-val.low-score {{ color: #ef4444; }}
 #feedback-section {{ flex: 1; overflow-y: auto; padding: 8px 10px; }}
 #feedback-section h3 {{
@@ -858,7 +782,6 @@ body {{
     <button class="filter-btn" onclick="setFilter(this,'not-art')">Not Art ({n_not_art})</button>
     <button class="filter-btn" onclick="setFilter(this,'no-gt')">No GT ({n_no_gt})</button>
     <button class="filter-btn" onclick="setFilter(this,'big-primary')">Big Primary ({n_big_primary})</button>
-    <button class="filter-btn" onclick="setFilter(this,'clip')">CLIP ({n_clip})</button>
     <button class="filter-btn" onclick="setFilter(this,'vlm')">VLM ({n_vlm})</button>
     <button class="btn" onclick="exportFeedback()" style="background:#2d6a4f;margin-left:8px">Export Feedback (Ctrl+E)</button>
   </div>
@@ -985,7 +908,6 @@ function updateFilter() {{
       case 'not-art':     show = r.status === 'not-art'; break;
       case 'no-gt':       show = r.status === 'no-gt'; break;
       case 'big-primary': show = r.primaryFills; break;
-      case 'clip':        show = r.clipCount > 0; break;
       case 'vlm':         show = r.vlmCount > 0; break;
     }}
     el.classList.toggle('hidden', !show);
@@ -1050,13 +972,6 @@ function renderContent() {{
   else if (r.isNotArt)      bh += `<span class="badge not-art">NOT ART (GT)</span>`;
   if (r.primaryChangedText) bh += `<span class="badge selection">Sel. Changed</span>`;
   if (r.imgCrops.length)    bh += `<span class="badge multicrop">Multi-crop: ${{r.imgCrops.length}}</span>`;
-  if (r.clipCount > 0) {{
-    const cs = (r.clipMax || 0).toFixed(3);
-    bh += r.clipPrimary
-      ? `<span class="badge clip-primary">CLIP primary (${{cs}})</span>`
-      : `<span class="badge clip">CLIP: ${{r.clipCount}} (${{cs}})</span>`;
-  }}
-  if (r.siglipCount > 0) bh += `<span class="badge siglip">SigLIP: ${{r.siglipCount}}</span>`;
   if (r.vlmCount > 0) bh += r.vlmPrimary
     ? `<span class="badge vlm-primary">VLM primary (${{r.vlmCount}} det)</span>`
     : `<span class="badge vlm">VLM: ${{r.vlmCount}} det</span>`;
@@ -1067,7 +982,6 @@ function renderContent() {{
     <div class="info-label">Primary Detection</div>
     <div class="info-val">${{r.primaryText}}</div>`;
   if (r.primaryChangedText) ih += `<div class="info-val changed">${{r.primaryChangedText}}</div>`;
-  if (r.primarySiglipText)  ih += `<div class="info-val siglip-note">${{r.primarySiglipText}}</div>`;
   ih += `</div><div style="display:flex;gap:10px;flex-wrap:wrap">`;
   ih += `<div><div class="info-label">Art score</div><div class="info-val${{r.artScoreLow ? ' low-score' : ''}}">${{r.artScore.toFixed(3)}}</div></div>`;
   if (r.hasGT) ih += `<div><div class="info-label">IoU</div><div class="info-val">${{r.iou.toFixed(3)}}</div></div>`;
