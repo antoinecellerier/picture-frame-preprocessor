@@ -30,13 +30,23 @@ venv/bin/python -m frame_prep.cli report
 
 Output: `reports/interactive_detection_report.html`. Use `/report` to generate in background.
 
+## Sample images for README
+
+```bash
+venv/bin/python scripts/create_sample_composites.py
+```
+
+Regenerates all sample composites and the report screenshot using the current pipeline. Outputs to `samples/`. Uses playwright for the screenshot — requires `venv/bin/playwright install chromium`.
+
 ## Key conventions
 
 - **Current detector class**: `OptimizedEnsembleDetector` (not `ArtFeatureDetector` — that's been removed)
 - **Current cropper class**: `SmartCropper`
 - **Text detection**: `TextDetector` in `analyzer.py` uses EasyOCR `readtext()` at 320px to filter text-heavy regions (signs, labels). Threshold: >15% text ratio. Versioned cache in `cache/text_detect/`. Uses Shoelace formula for polygon area, filters short/low-conf OCR results.
 - CLI entry point: `frame_prep.cli` (subcommands: `process`, `batch`, `report`)
+- **Defaults**: All defaults live in `defaults.py` as the single source of truth. CLI flags, batch workers, sample scripts, and `create_detector()` all reference it. Don't hardcode default values elsewhere.
 - CLI defaults: `--vlm` and `--multi-crop` are on by default; use `--no-vlm` / `--no-multi-crop` to disable
+- **Pipeline**: `pipeline.py` contains the shared detection pipeline (`run_detection_pipeline()`). Both `preprocessor.py` and `report.py` call it — don't duplicate detection logic.
 - Test dataset: `test_real_images/` (122 images with ground truth annotations)
 
 ## Experimental features
@@ -59,6 +69,8 @@ Proactively suggest improvements at the end of a session if patterns emerged.
 ## Committing
 
 - **Update docs before committing** — update BACKLOG.md, MEMORY.md, and CLAUDE.md with relevant findings before creating the commit, and include them in the same commit.
+- **Update README.md** when user-facing behavior changes (accuracy, features, CLI defaults).
+- **Regenerate samples** when detection or crop behavior changes: `venv/bin/python scripts/create_sample_composites.py`. Include updated samples in the commit.
 
 ## Running commands
 

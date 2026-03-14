@@ -41,15 +41,15 @@ def common_options(f):
                   help='Disable two-pass center-crop detection (faster, may miss small centered subjects)')
     @click.option('--no-filter', is_flag=True,
                   help='Disable non-art image filtering (process all images regardless of art score)')
-    @click.option('--multi-crop/--no-multi-crop', default=True, show_default=True,
+    @click.option('--multi-crop/--no-multi-crop', default=defaults.MULTI_CROP, show_default=True,
                   help='Generate one crop per viable art subject (e.g., multiple statues or mural panels)')
-    @click.option('--vlm/--no-vlm', default=True, show_default=True,
+    @click.option('--vlm/--no-vlm', default=defaults.USE_VLM, show_default=True,
                   help='VLM fallback: run Qwen3-VL when YOLO/DINO finds nothing '
                        '(first run: ~5-10min/image on CPU; instant from cache after)')
-    @click.option('--vlm-confirm', is_flag=True,
+    @click.option('--vlm-confirm', is_flag=True, default=defaults.VLM_CONFIRM,
                   help='VLM confirmation: run Qwen3-VL on every image to validate/override '
                        'primary selection (implies --vlm; first run ~13h CPU or 4min GPU)')
-    @click.option('--vlm-max-image-size', default=512, type=int, show_default=True,
+    @click.option('--vlm-max-image-size', default=defaults.VLM_MAX_IMAGE_SIZE, type=int, show_default=True,
                   help='Max image dimension for VLM inference')
     @click.option('--vlm-gguf', default=_DEFAULT_VLM_GGUF, type=click.Path(), show_default=False,
                   help=f'Path to Qwen3-VL GGUF model file '
@@ -65,8 +65,9 @@ def common_options(f):
 
 
 def create_detector(single_model, ensemble, model, confidence, no_two_pass, verbose,
-                    use_openvino=False, use_vlm=False, vlm_confirm=False,
-                    vlm_max_image_size=512, vlm_gguf=None, vlm_mmproj=None,
+                    use_openvino=False, use_vlm=defaults.USE_VLM,
+                    vlm_confirm=defaults.VLM_CONFIRM,
+                    vlm_max_image_size=defaults.VLM_MAX_IMAGE_SIZE, vlm_gguf=None, vlm_mmproj=None,
                     vlm_server_port=None):
     """Create a detector instance from CLI flags."""
     if single_model:

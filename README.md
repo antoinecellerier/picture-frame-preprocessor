@@ -7,10 +7,11 @@ Smart image preprocessor for e-ink picture frames. Uses local ML to detect art s
 ## Features
 
 - **ML-powered smart cropping** -- YOLO-World + Grounding DINO ensemble detects art, sculptures, murals, and more
-- **VLM fallback** -- optional Qwen3-VL-2B grounding pass via llama.cpp (~20s/image) activates when YOLO/DINO are uncertain; results cached after first run
+- **VLM fallback** -- Qwen3-VL-2B grounding pass via llama.cpp (~20s/image, cached) activates when YOLO/DINO are uncertain. Enabled by default
+- **Text detection** -- EasyOCR filters signs, labels, and text-heavy regions from primary selection and secondary crops
 - **Focal point detection** -- for large murals that fill the frame, a second Grounding DINO pass finds faces/figures inside the primary to use as the crop anchor
 - **Contextual zoom** -- zooms in on small or distant subjects, leaves large ones untouched
-- **Multi-crop** -- detects multiple art pieces and produces separate crops for each
+- **Multi-crop** -- detects multiple art pieces and produces separate crops for each (enabled by default)
 - **Batch processing** -- parallel workers with model caching
 - **Local processing** -- no cloud dependencies, optional OpenVINO acceleration on Intel
 
@@ -22,11 +23,11 @@ python3 -m venv venv && source venv/bin/activate
 pip install -e .
 python scripts/download_models.py
 
-# Process a single image
+# Process a single image (VLM + multi-crop enabled by default)
 frame-prep process -i photo.jpg -o output/ -v
 
-# With VLM fallback for difficult images (requires models/qwen3vl/ — see docs)
-frame-prep process -i photo.jpg -o output/ --vlm -v
+# Without VLM (faster, slightly lower accuracy)
+frame-prep process -i photo.jpg -o output/ --no-vlm -v
 
 # Batch process a directory
 frame-prep batch -i ~/photos/art/ -o ~/photos/processed/ --skip-existing
@@ -48,6 +49,10 @@ Output is 480x800 JPEG by default (3:5 portrait ratio for e-ink frames).
 
 ![Focal detection sample](samples/sample_focal_detection.jpg)
 
+**Text detection** -- EasyOCR filters text-heavy detections (signs, labels), selecting the actual artwork instead:
+
+![Text detection sample](samples/sample_text_detection.jpg)
+
 ## Documentation
 
 - **[Usage Reference](docs/USAGE.md)** -- full CLI options, cropping strategies, performance tuning
@@ -67,7 +72,7 @@ frame-prep report
 
 ![Interactive detection report](samples/report_screenshot.png)
 
-Current accuracy: **92% IoU hit rate** on 122-image ground truth test set (with `--vlm`; 88% without).
+Current accuracy: **94% IoU hit rate** (115/122) on ground truth test set (with `--vlm`; 88% without).
 
 ## Related Projects
 
