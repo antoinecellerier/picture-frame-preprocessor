@@ -13,6 +13,24 @@ from . import defaults
 from .defaults import MIN_ART_SCORE
 
 
+def load_image(image_path):
+    """Load image, convert to RGB, apply EXIF transpose."""
+    img = Image.open(image_path).convert('RGB')
+    return ImageOps.exif_transpose(img)
+
+
+def resize_for_display(img, max_width):
+    """Resize image to fit max_width, preserving aspect ratio.
+
+    Returns (resized_image, scale_factor).
+    """
+    if img.width <= max_width:
+        return img, 1.0
+    scale = max_width / img.width
+    new_size = (int(img.width * scale), int(img.height * scale))
+    return img.resize(new_size, Image.LANCZOS), scale
+
+
 def draw_boxes_on_image(image_path, detections, ground_truth_boxes=None,
                         primary=None, crop_targets=None, focal_detections=None,
                         selected_anchor=None, vlm_detections=None, max_width=800,
@@ -32,16 +50,11 @@ def draw_boxes_on_image(image_path, detections, ground_truth_boxes=None,
     """
     try:
         if img is None:
-            img = Image.open(image_path).convert('RGB')
-            img = ImageOps.exif_transpose(img)
+            img = load_image(image_path)
         else:
             img = img.copy()
 
-        scale = 1.0
-        if img.width > max_width:
-            scale = max_width / img.width
-            new_size = (int(img.width * scale), int(img.height * scale))
-            img = img.resize(new_size, Image.LANCZOS)
+        img, scale = resize_for_display(img, max_width)
 
         draw = ImageDraw.Draw(img)
 
@@ -215,8 +228,7 @@ def generate_result_image(image_path, detections, cropper, focal_detections=None
     """
     try:
         if img is None:
-            img = Image.open(image_path).convert('RGB')
-            img = ImageOps.exif_transpose(img)
+            img = load_image(image_path)
 
         # Run the actual cropping logic (focal_dets passed separately)
         cropped = cropper.crop_image(img, detections, strategy='smart',
@@ -227,11 +239,7 @@ def generate_result_image(image_path, detections, cropper, focal_detections=None
         selected_inner_det = getattr(cropper, 'last_inner_detection', None)
 
         # Resize for display
-        scale = 1.0
-        if cropped.width > max_width:
-            scale = max_width / cropped.width
-            new_size = (int(cropped.width * scale), int(cropped.height * scale))
-            cropped = cropped.resize(new_size, Image.LANCZOS)
+        cropped, _ = resize_for_display(cropped, max_width)
 
         # Add zoom annotation
         draw = ImageDraw.Draw(cropped)
@@ -266,8 +274,7 @@ def generate_multi_crop_images(image_path, detections, cropper, focal_detections
     """
     try:
         if img is None:
-            img = Image.open(image_path).convert('RGB')
-            img = ImageOps.exif_transpose(img)
+            img = load_image(image_path)
 
         multi_results = cropper.crop_all_subjects(img, detections, focal_detections=focal_detections)
         if len(multi_results) < 2:
@@ -279,10 +286,7 @@ def generate_multi_crop_images(image_path, detections, cropper, focal_detections
             crop_targets.append(det)
 
             # Resize for display
-            if cropped.width > max_width:
-                scale = max_width / cropped.width
-                new_size = (int(cropped.width * scale), int(cropped.height * scale))
-                cropped = cropped.resize(new_size, Image.LANCZOS)
+            cropped, _ = resize_for_display(cropped, max_width)
 
             # Add annotation
             draw = ImageDraw.Draw(cropped)
@@ -400,8 +404,7 @@ def generate_report(input_dir=None, ground_truth_path=None, output_file=None,
             gt_boxes.append(det_data['bbox'])
 
         # Load image once and reuse across detection, cropping, and visualization
-        loaded_img = Image.open(image_path).convert('RGB')
-        loaded_img = ImageOps.exif_transpose(loaded_img)
+        loaded_img = load_image(image_path)
 
         # Run detection with optimized ensemble (uses caching, verbose for two-pass info)
         detection_result = run_detection(image_path, detector, verbose=True, cropper=cropper, img=loaded_img)
