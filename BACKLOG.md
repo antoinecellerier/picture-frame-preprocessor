@@ -14,6 +14,18 @@ Ensemble-pass detections reused as inner focal anchors now require higher confid
 
 **Confirmed fix:** 20210808_162451 went from 4 crops (including placard) to 3 crops (mural + 2 face/figure details). DSC_0154 inner focal selection improved (ensemble "painted figure" replaced by focal-pass detection). IoU hit rate unchanged at 115/122 (94%).
 
+**Improvement 3: Person-as-art filter (COCO person detector)**
+Added `detect_persons()` to `OptimizedEnsembleDetector` using yolov8n (COCO-trained). When the primary is a "figure" class, checks if a COCO person detection (conf>0.5) overlaps it with IoU>0.5. If so, the "figure" is likely a real person, not art — suppress and re-select.
+
+Fixed: DSC_0001_BURST (IoU miss → hit). Person detected at conf=0.87 with IoU=0.91 overlap. After suppression, "painting" becomes primary and better covers the GT installation area. False positive rate: near-zero — COCO person detectors don't fire on painted figures in murals (tested on 80+ images).
+
+**IoU hit rate: 115/122 (94%) → 116/122 (95%)**
+
+**Detection accuracy explorations (2026-03-15):**
+- **Learned reranker** (sklearn LogReg/RF/GBT): FAILED — every model performed worse than heuristic (-1 to -2). Dataset too small (122 images), heuristic encodes domain knowledge scalar features can't capture.
+- **Scoring gap analysis**: DSC_4385 root cause is VLM flat confidence (all boxes get 0.80). Size_bonus (1.20 vs 0.70) kills the correct small mosaic. DSC_4166 VLM points at wrong object entirely.
+- **VLM confidence options**: logprobs from llama-server (promising), prompt-based confidence field (risky, invalidates cache), multi-pass consensus (slow but robust).
+
 **Remaining unfixable issues (detector limitations):**
 - Vandalism tags classified as "mural"/"street art" (20210530 C2, DSC_4414 C2, DSC_4303 C2) — models can't distinguish art graffiti from tags
 - Building pipes classified as "art installation"/"sculpture statue" (DSC_3401 C2/C3) — Centre Pompidou pipes genuinely resemble sculptures to the model

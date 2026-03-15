@@ -1,9 +1,9 @@
 {
-  "date": "2026-03-14",
+  "date": "2026-03-15",
   "flags": "--vlm",
-  "iou_hit": 115,
+  "iou_hit": 116,
   "iou_total": 122,
-  "iou_pct": 94.3,
+  "iou_pct": 95.1,
   "per_class": {
     "mural": {"hit": 38, "total": 38},
     "painting": {"hit": 9, "total": 9},
@@ -11,6 +11,6 @@
     "street_art": {"hit": 21, "total": 22},
     "sculpture": {"hit": 18, "total": 20},
     "mosaic": {"hit": 23, "total": 25},
-    "installation": {"hit": 2, "total": 4}
+    "installation": {"hit": 3, "total": 4}
   }
 }

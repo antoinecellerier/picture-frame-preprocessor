@@ -1446,6 +1446,40 @@ class OptimizedEnsembleDetector:
         self._scorer.set_image_size(*self._last_image_size)
         return self._scorer.get_primary_subject_with_score(detections)
 
+    # --- Person detection (COCO class 0) for figure-vs-person filtering ---
+    _person_model = None
+
+    def detect_persons(
+        self,
+        image: Image.Image,
+        confidence: float = 0.5
+    ) -> List[Detection]:
+        """Detect real people using a lightweight COCO model (yolov8n).
+
+        Used to filter "painted figure" detections that are actually real
+        people in the scene, not depicted figures in artwork.  Only loaded
+        on first call to avoid startup cost when not needed.
+        """
+        if OptimizedEnsembleDetector._person_model is None:
+            from ultralytics import YOLO
+            OptimizedEnsembleDetector._person_model = YOLO(
+                str(MODELS_DIR / 'yolov8n.pt'))
+
+        results = OptimizedEnsembleDetector._person_model(
+            image, conf=confidence, classes=[0], verbose=False)
+        dets = []
+        for r in results:
+            for box in r.boxes:
+                x1, y1, x2, y2 = (int(c) for c in box.xyxy[0].tolist())
+                dets.append(Detection(
+                    bbox=(x1, y1, x2, y2),
+                    confidence=float(box.conf[0]),
+                    class_name='person',
+                    area=(x2 - x1) * (y2 - y1),
+                    source='coco',
+                ))
+        return dets
+
     def detect_focal_points(
         self,
         image: Image.Image,

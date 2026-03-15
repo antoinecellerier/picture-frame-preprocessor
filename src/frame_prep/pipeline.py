@@ -81,6 +81,30 @@ def run_detection_pipeline(
             else:
                 primary, art_score = None, 0.0
 
+    # === Step 3b: Person-as-art filter ===
+    # If primary is a "figure" class, check if a real person (COCO detector)
+    # overlaps significantly.  Real people get high COCO person confidence
+    # (>0.5) while painted/depicted figures in murals usually don't trigger
+    # the person detector at all.
+    if (primary is not None
+            and 'figure' in primary.class_name.lower()
+            and hasattr(detector, 'detect_persons')):
+        person_dets = detector.detect_persons(img)
+        if person_dets:
+            from .detector import calculate_iou
+            for pdet in person_dets:
+                iou = calculate_iou(primary.bbox, pdet.bbox)
+                if iou > 0.5 and pdet.confidence > 0.5:
+                    if verbose:
+                        print(f"  Person filter: suppressing '{primary.class_name}' "
+                              f"(person IoU={iou:.2f}, conf={pdet.confidence:.2f})")
+                    remaining = [d for d in remaining if d is not primary]
+                    if remaining and hasattr(detector, 'get_primary_subject_with_score'):
+                        primary, art_score = detector.get_primary_subject_with_score(remaining)
+                    else:
+                        primary, art_score = None, 0.0
+                    break
+
     # === Step 4: Focal point detection ===
     focal_detections = []
     if (primary is not None

@@ -172,6 +172,8 @@ def main() -> None:
         vlm_mmproj_path=args.vlm_mmproj,
         vlm_max_image_size=args.vlm_max_image_size,
     )
+    from frame_prep.cropper import SmartCropper
+    cropper = SmartCropper(480, 800)
 
     # ── per-class accumulators ─────────────────────────────────────────────────
     # Results: list of dicts per image
@@ -214,6 +216,23 @@ def main() -> None:
             if primary:
                 det_conf = primary.confidence
                 det_bbox_norm = bbox_px_to_norm(list(primary.bbox), w, h)
+                # Person-as-art filter: suppress "figure" primaries that
+                # overlap significantly with a COCO person detection.
+                if ('figure' in det_class.lower()
+                        and hasattr(detector, 'detect_persons')):
+                    from frame_prep.detector import calculate_iou as _iou
+                    for pdet in detector.detect_persons(img):
+                        if (_iou(primary.bbox, pdet.bbox) > 0.5
+                                and pdet.confidence > 0.5):
+                            remaining = [d for d in detections if d is not primary]
+                            if remaining:
+                                primary = detector.get_primary_subject(remaining)
+                                det_class = primary.class_name if primary else "none"
+                                if primary:
+                                    det_conf = primary.confidence
+                                    det_bbox_norm = bbox_px_to_norm(
+                                        list(primary.bbox), w, h)
+                            break
             else:
                 det_class = "none"
                 det_conf = 0.0
