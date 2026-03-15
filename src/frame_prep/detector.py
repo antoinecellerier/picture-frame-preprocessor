@@ -1348,10 +1348,74 @@ class OptimizedEnsembleDetector:
                 vlm_dets = self._run_qwen_vlm(image, image_path, verbose)
                 self._last_vlm_detections = vlm_dets
                 if vlm_dets:
-                    all_detections.extend(vlm_dets)
-                    merged_detections = merge_boxes(all_detections, self.merge_threshold)
+                    # Separate small "orphan" VLM boxes — those that don't
+                    # overlap with any merged YOLO/DINO detection AND are
+                    # small (< 3% of image).  Small orphans likely reflect
+                    # VLM hallucinations or mis-locations; the VLM size_bonus
+                    # floor (0.5) would otherwise inflate their score past
+                    # legitimate YOLO/DINO detections.
+                    #
+                    # Orphans are excluded from merge_boxes so they keep
+                    # their original small bbox and get source="vlm_orphan"
+                    # (disables the floor in get_primary_subject).  Large
+                    # orphans (>= 3%) are treated as supported — if the VLM
+                    # found a big object that YOLO/DINO missed entirely, the
+                    # floor barely matters and the detection is more likely
+                    # genuine.
+                    img_area = image.size[0] * image.size[1]
+                    img_diag = (image.size[0]**2 + image.size[1]**2) ** 0.5
+                    supported_vlm = []
+                    orphan_vlm = []
+                    for vd in vlm_dets:
+                        best_iou = max(
+                            (calculate_iou(vd.bbox, md.bbox) for md in merged_detections),
+                            default=0.0,
+                        )
+                        size_ratio = vd.area / img_area if img_area else 0
+                        if best_iou < 0.15 and size_ratio < 0.03:
+                            # Small box with no IoU overlap.  Distinguish:
+                            # - "Near orphan": close to an existing detection
+                            #   (< 8% of diagonal) → VLM re-found the same
+                            #   area differently → likely wrong, suppress.
+                            # - "Far orphan": no existing detection nearby
+                            #   → VLM discovered something YOLO/DINO missed
+                            #   entirely → keep with normal confidence.
+                            vcx, vcy = vd.center
+                            min_dist = min(
+                                (((vcx - md.center[0])**2 + (vcy - md.center[1])**2)**0.5
+                                 for md in merged_detections),
+                                default=img_diag,
+                            )
+                            if min_dist < img_diag * 0.08:
+                                # Near orphan — suppress
+                                vd.source = "vlm_orphan"
+                                orphan_vlm.append(vd)
+                                if verbose:
+                                    print(f"  Pass 3: near-orphan VLM box {vd.bbox} "
+                                          f"(best IoU={best_iou:.3f}, "
+                                          f"dist={min_dist/img_diag:.2f})")
+                            else:
+                                # Far orphan — VLM found new object, keep
+                                supported_vlm.append(vd)
+                                if verbose:
+                                    print(f"  Pass 3: far-orphan VLM box {vd.bbox} "
+                                          f"(no nearby det, dist={min_dist/img_diag:.2f})")
+                        else:
+                            supported_vlm.append(vd)
+
+                    # Merge only supported VLM boxes with YOLO/DINO
+                    if supported_vlm:
+                        all_detections.extend(supported_vlm)
+                        merged_detections = merge_boxes(all_detections, self.merge_threshold)
+
+                    # Append orphans after merge (no area inflation)
+                    merged_detections.extend(orphan_vlm)
+
                     if verbose:
-                        print(f"  Pass 3: +{len(vlm_dets)} VLM dets → {len(merged_detections)} merged")
+                        n_sup = len(supported_vlm)
+                        n_orph = len(orphan_vlm)
+                        print(f"  Pass 3: +{n_sup} supported +{n_orph} orphan VLM → "
+                              f"{len(merged_detections)} total")
             elif verbose:
                 print("  Pass 3 (VLM) skipped: viable candidate, no weak/tied score")
 

@@ -36,6 +36,27 @@ Fixed: DSC_4385 (mosaic IoU miss → hit). VLM returned 29 boxes: 27 cluster
 around the correct Space Invader mosaic (conf=0.91), 2 on the wrong wall
 region (conf=0.43). Previously all had flat 0.80 and size_bonus decided.
 
+**Improvement 5: VLM orphan detection with proximity-based suppression**
+When VLM returns a small box (< 3% area) that doesn't overlap any YOLO/DINO
+detection, check spatial proximity:
+- "Near orphan" (center < 8% of diagonal from nearest detection): VLM
+  re-found the same area incorrectly → suppress (source="vlm_orphan",
+  size_bonus floor disabled)
+- "Far orphan" (center > 8%): VLM discovered something YOLO/DINO missed
+  entirely → keep with normal confidence
+
+Fixed: DSC_4166 (sculpture, near-orphan: VLM was 5% from DINO "street art"
+→ suppressed, DINO hit at IoU=0.213 preserved). Also preserved DSC_4311
+(mosaic, far-orphan: VLM correctly found tiny rocket mosaic 12% from
+nearest DINO → kept).
+
+**IoU hit rate: 117/122 (96%) → 118/122 (97%)**
+
+**VLM prompt confidence experiment**: Tested adding "prominence" field to
+VLM prompt. Model outputs near-constant values (0.80-0.95) with wrong
+direction (non-GT detections got slightly higher values). Not viable —
+Qwen3-VL-2B lacks self-assessment capability at this parameter size.
+
 **Detection accuracy explorations (2026-03-15):**
 - **Learned reranker** (sklearn LogReg/RF/GBT): FAILED — every model performed worse than heuristic (-1 to -2). Dataset too small (122 images), heuristic encodes domain knowledge scalar features can't capture.
 - **Scoring gap analysis**: DSC_4385 root cause is VLM flat confidence (all boxes get 0.80). Size_bonus (1.20 vs 0.70) kills the correct small mosaic. DSC_4166 VLM points at wrong object entirely.
