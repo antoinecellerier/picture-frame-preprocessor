@@ -349,6 +349,13 @@ These MISS without `--vlm` but are confirmed HIT with `--vlm`:
 
 ---
 
+## TODO — Data cleanup
+
+### Consolidate ground truth files
+Two GT files exist: `ground_truth_annotations.json` (report, 6 images missing bboxes) and `art_class_ground_truth.json` (eval, all 122 complete). The eval file supersedes the report file. Migrate the report to use `art_class_ground_truth.json` and retire the old file.
+
+---
+
 ## TODO — Testing
 
 ### Update and expand unit tests
