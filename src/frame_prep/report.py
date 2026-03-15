@@ -857,6 +857,7 @@ body {{
     <button class="filter-btn" onclick="setFilter(this,'big-primary')">Big Primary ({n_big_primary})</button>
     <button class="filter-btn" onclick="setFilter(this,'multi-crop')">Multi-crop ({n_multi_crop})</button>
     <button class="filter-btn" onclick="setFilter(this,'vlm')">VLM ({n_vlm})</button>
+    <button class="filter-btn" onclick="setFilter(this,'review-issues')" id="review-filter-btn" style="display:none">Review Issues</button>
     <button class="btn" onclick="exportFeedback()" style="background:#2d6a4f;margin-left:8px">Export Feedback (Ctrl+E)</button>
   </div>
 </div>
@@ -993,6 +994,7 @@ function updateFilter() {{
       case 'big-primary': show = r.primaryFills; break;
       case 'multi-crop':  show = r.imgCrops.length > 0; break;
       case 'vlm':         show = r.vlmCount > 0; break;
+      case 'review-issues': show = typeof REVIEW_FINDINGS !== 'undefined' && (REVIEW_FINDINGS[r.filename] || []).length > 0; break;
     }}
     el.classList.toggle('hidden', !show);
     if (show) visibleIndices.push(i);
@@ -1160,6 +1162,9 @@ document.addEventListener('keydown', e => {{
   }}
   if (e.key === 'ArrowLeft') navigate(-1);
   else if (e.key === 'ArrowRight' || e.key === ' ') {{ e.preventDefault(); navigate(1); }}
+  else if (e.key === 'Home') {{ e.preventDefault(); setIndex(visibleIndices[0]); }}
+  else if (e.key === 'End') {{ e.preventDefault(); setIndex(visibleIndices[visibleIndices.length - 1]); }}
+  else if (e.key === '?') {{ e.preventDefault(); toggleConfig(); }}
   else if (e.key === 'e' && (e.ctrlKey || e.metaKey)) {{ e.preventDefault(); exportFeedback(); }}
   else if (e.key.toLowerCase() === 'n') {{ e.preventDefault(); commentBox.focus(); commentBox.select(); }}
   else {{
