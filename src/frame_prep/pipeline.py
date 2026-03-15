@@ -62,13 +62,16 @@ def run_detection_pipeline(
         primary = detector.get_primary_subject(detections)
 
     # === Step 3: Text-heavy primary filter ===
-    # If primary's region is >10% text, remove it and re-select from
-    # remaining detections. Filters signs, labels, exhibit info panels.
+    # If primary's region has significant text near its center, remove it
+    # and re-select. Filters signs, labels, exhibit info panels.
+    # Text at bbox edges is discounted — it's often adjacent signage
+    # rather than text ON the art (e.g., street signs next to murals).
     remaining = list(detections)
     text_filtered = []
     if primary is not None and cropper is not None:
         while primary is not None:
-            text_ratio = cropper._text_detector.text_ratio(img, primary.bbox)
+            text_ratio = cropper._text_detector.center_weighted_text_ratio(
+                img, primary.bbox)
             if text_ratio <= TEXT_RATIO_THRESHOLD:
                 break
             if verbose:

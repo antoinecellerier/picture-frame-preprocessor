@@ -9,7 +9,7 @@ import cv2
 from PIL import Image
 
 _TEXT_MAX_DIM = 320  # Rescale crops for speed (~160ms per crop with EasyOCR)
-TEXT_RATIO_THRESHOLD = 0.15  # Regions with >15% text coverage are filtered
+TEXT_RATIO_THRESHOLD = 0.20  # Center-weighted text coverage threshold (edge text discounted)
 _TEXT_CACHE_DIR = Path(__file__).resolve().parent.parent.parent / "cache" / "text_detect"
 
 
@@ -147,6 +147,55 @@ class TextDetector:
         """Fraction of a detection region covered by recognized text (0.0-1.0)."""
         ratio, _ = self._analyze(image, bbox)
         return ratio
+
+    def center_weighted_text_ratio(
+        self, image: Image.Image, bbox: Tuple[int, int, int, int]
+    ) -> float:
+        """Text ratio weighted by distance from detection center.
+
+        Text near the center of the detection bbox contributes fully;
+        text near the edges is discounted.  This distinguishes art that
+        contains intentional text (centered) from art next to signs
+        (text at bbox edges).
+
+        Weight = 1.0 at center, 0.25 at the very edge, linear falloff.
+        """
+        _, regions = self._analyze(image, bbox)
+        if not regions:
+            return 0.0
+
+        bx1, by1, bx2, by2 = bbox
+        bw = max(1, bx2 - bx1)
+        bh = max(1, by2 - by1)
+        bcx = (bx1 + bx2) / 2
+        bcy = (by1 + by2) / 2
+        bbox_area = bw * bh
+
+        weighted_text_area = 0.0
+        for r in regions:
+            pts = r.get('bbox_pts', [])
+            if len(pts) < 3:
+                continue
+            # Region centroid
+            rcx = sum(p[0] for p in pts) / len(pts)
+            rcy = sum(p[1] for p in pts) / len(pts)
+            # Normalized distance from bbox center (0=center, 1=edge)
+            dx = abs(rcx - bcx) / (bw / 2) if bw > 0 else 0
+            dy = abs(rcy - bcy) / (bh / 2) if bh > 0 else 0
+            dist = min(1.0, max(dx, dy))  # 0 at center, 1 at edge
+            # Weight: 1.0 at center, 0.25 at edge
+            weight = 1.0 - 0.75 * dist
+            # Region area (Shoelace)
+            n = len(pts)
+            area = 0.0
+            for i in range(n):
+                j = (i + 1) % n
+                area += pts[i][0] * pts[j][1]
+                area -= pts[j][0] * pts[i][1]
+            area = abs(area) / 2
+            weighted_text_area += area * weight
+
+        return weighted_text_area / bbox_area if bbox_area > 0 else 0.0
 
     def text_regions(self, image: Image.Image, bbox: Tuple[int, int, int, int]) -> list:
         """Get recognized text regions in original image coordinates.

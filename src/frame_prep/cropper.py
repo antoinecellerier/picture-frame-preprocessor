@@ -612,7 +612,7 @@ class SmartCropper:
                     if too_close:
                         continue
                     # Skip text-heavy focal targets (signs, labels, placards)
-                    if self._text_detector.text_ratio(image, d.bbox) > TEXT_RATIO_THRESHOLD:
+                    if self._text_detector.center_weighted_text_ratio(image, d.bbox) > TEXT_RATIO_THRESHOLD:
                         continue
                     accepted_inner.append((d, inner_cw))
 
