@@ -580,7 +580,7 @@ def generate_report(input_dir=None, ground_truth_path=None, output_file=None,
     auto_filtered_count = sum(1 for r in results if r.get('auto_filtered'))
 
     print(f"\nProcessing complete!")
-    print(f"  Accuracy: {correct_count}/{total_with_gt} ({accuracy:.1f}%) (excludes {not_art_count} not-art images)")
+    print(f"  Accuracy: {correct_count}/{total_with_gt} ({accuracy:.1f}%) ({not_art_count} not-art images included)")
     print(f"  Primary selection changed: {selection_changed_count}/{len(results)} images")
     print(f"\nGenerating HTML report...")
 
