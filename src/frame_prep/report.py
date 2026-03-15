@@ -658,6 +658,7 @@ def generate_report(input_dir=None, ground_truth_path=None, output_file=None,
     n_no_gt = sum(1 for r in results if not r['has_ground_truth'] and not r.get('is_not_art'))
     n_big_primary = sum(1 for r in results if r.get('primary_fills_frame'))
     n_vlm = sum(1 for r in results if r.get('vlm_count', 0) > 0)
+    n_multi_crop = sum(1 for r in results if len(r.get('multi_crop_images', [])) > 0)
 
     results_json = json.dumps(results_js_data)
     config_json = json.dumps(config)
@@ -854,6 +855,7 @@ body {{
     <button class="filter-btn" onclick="setFilter(this,'not-art')">Not Art ({n_not_art})</button>
     <button class="filter-btn" onclick="setFilter(this,'no-gt')">No GT ({n_no_gt})</button>
     <button class="filter-btn" onclick="setFilter(this,'big-primary')">Big Primary ({n_big_primary})</button>
+    <button class="filter-btn" onclick="setFilter(this,'multi-crop')">Multi-crop ({n_multi_crop})</button>
     <button class="filter-btn" onclick="setFilter(this,'vlm')">VLM ({n_vlm})</button>
     <button class="btn" onclick="exportFeedback()" style="background:#2d6a4f;margin-left:8px">Export Feedback (Ctrl+E)</button>
   </div>
@@ -989,6 +991,7 @@ function updateFilter() {{
       case 'not-art':     show = r.status === 'not-art'; break;
       case 'no-gt':       show = r.status === 'no-gt'; break;
       case 'big-primary': show = r.primaryFills; break;
+      case 'multi-crop':  show = r.imgCrops.length > 0; break;
       case 'vlm':         show = r.vlmCount > 0; break;
     }}
     el.classList.toggle('hidden', !show);
