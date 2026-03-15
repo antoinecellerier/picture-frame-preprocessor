@@ -137,7 +137,7 @@ class SmartCropper:
                 # selection — focal dets are safe here since we're already past
                 # primary selection and only using them as candidate crop anchors.
                 inner_candidates = detections + (focal_detections or [])
-                inner_dets = self._get_quality_inner_detections(primary, inner_candidates, (width, height))
+                inner_dets = self._get_quality_inner_detections(primary, inner_candidates, (width, height), focal_set=focal_detections)
             else:
                 inner_dets = []
             if inner_dets:
@@ -493,6 +493,10 @@ class SmartCropper:
     MULTI_CROP_SECONDARY_CONFIDENCE = 0.30
     # Inner focal anchors can be less confident — they're within a detected primary
     FOCAL_INNER_CONFIDENCE = 0.25
+    # Ensemble-pass detections reused as inner focal anchors need higher
+    # confidence — their class labels (mosaic, mural, etc.) can match non-art
+    # regions like placards or peripheral decorations within a large primary.
+    ENSEMBLE_INNER_CONFIDENCE = 0.35
 
     def crop_all_subjects(
         self,
@@ -578,7 +582,8 @@ class SmartCropper:
                     and not ArtFeatureDetector.is_3d_art(primary.class_name)):
                 inner_candidates_all = detections + (focal_detections or [])
                 inner_dets = self._get_quality_inner_detections(
-                    primary, inner_candidates_all, (width, height))
+                    primary, inner_candidates_all, (width, height),
+                    focal_set=focal_detections)
 
                 primary_diag = (primary_w ** 2 + primary_h ** 2) ** 0.5
                 min_center_dist = primary_diag * 0.08
@@ -605,6 +610,9 @@ class SmartCropper:
                         for ad, _ in accepted_inner
                     )
                     if too_close:
+                        continue
+                    # Skip text-heavy focal targets (signs, labels, placards)
+                    if self._text_detector.text_ratio(image, d.bbox) > TEXT_RATIO_THRESHOLD:
                         continue
                     accepted_inner.append((d, inner_cw))
 
@@ -813,14 +821,16 @@ class SmartCropper:
         self,
         primary: Detection,
         detections: List[Detection],
-        image_size: tuple
+        image_size: tuple,
+        focal_set: Optional[List[Detection]] = None
     ) -> List[Detection]:
         """
         Find quality detections that fall inside the primary bbox.
 
         Filters:
         - Must overlap > 50% with primary bbox
-        - Confidence >= FOCAL_INNER_CONFIDENCE (lower bar than secondaries)
+        - Confidence >= FOCAL_INNER_CONFIDENCE for focal-pass detections,
+          >= ENSEMBLE_INNER_CONFIDENCE for ensemble-pass detections
         - Must not touch image edges (partial / cut-off detections)
         - Area >= 1% of full image (avoids tiny noise / extreme zoom)
 
@@ -835,6 +845,7 @@ class SmartCropper:
         width, height = image_size
         img_area = width * height
         edge_margin = 0.01
+        focal_ids = set(id(d) for d in (focal_set or []))
 
         px1, py1, px2, py2 = primary.bbox
         primary_area = max(1, (px2 - px1) * (py2 - py1))
@@ -845,7 +856,12 @@ class SmartCropper:
                 continue
             if self._bbox_overlap_ratio(d.bbox, primary.bbox) <= 0.5:
                 continue
-            if d.confidence < self.FOCAL_INNER_CONFIDENCE:
+            # Focal-pass detections (face/figure prompts) get a lower bar;
+            # ensemble-pass detections (mosaic/mural/etc.) need higher
+            # confidence to avoid non-art inner regions (signs, placards).
+            min_conf = (self.FOCAL_INNER_CONFIDENCE if id(d) in focal_ids
+                        else self.ENSEMBLE_INNER_CONFIDENCE)
+            if d.confidence < min_conf:
                 continue
             dx1, dy1, dx2, dy2 = d.bbox
             if (dx1 < width * edge_margin or

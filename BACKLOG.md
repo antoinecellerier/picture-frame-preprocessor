@@ -1,5 +1,27 @@
 # Backlog
 
+## Session Summary (2026-03-15)
+
+### Visual review: 122 images reviewed by Sonnet agents, 2 cropper improvements
+
+**Visual review process:** 9 parallel Sonnet agents reviewed all 122 images (scene + individual crop files). Found 41 findings across 6 categories: 15 bad secondary/focal crops, 6 non-art content selected, 4 signage intrusion, 7 known IoU misses, 4 missed opportunities, 5 minor framing.
+
+**Improvement 1: Text filter for inner focal crops**
+Added `text_ratio` check to `_get_quality_inner_detections` acceptance loop. Previously, text filtering only applied to secondary crops — inner focal crops (within a large primary) skipped the check. Fixes edge cases where text-heavy regions (signs, placards) become focal crop targets.
+
+**Improvement 2: Dual confidence threshold for inner focal candidates**
+Ensemble-pass detections reused as inner focal anchors now require higher confidence (0.35 vs 0.25 for focal-pass detections). This fixes the Pichiavo placard issue (20210808_162451) where a "mosaic@0.254" detection from the ensemble pass was selected as an inner focal crop — it was actually an information placard mounted on the mural. Focal-pass detections (face/figure/head prompts) keep the lower 0.25 bar since they're purpose-built for finding interesting art details.
+
+**Confirmed fix:** 20210808_162451 went from 4 crops (including placard) to 3 crops (mural + 2 face/figure details). DSC_0154 inner focal selection improved (ensemble "painted figure" replaced by focal-pass detection). IoU hit rate unchanged at 115/122 (94%).
+
+**Remaining unfixable issues (detector limitations):**
+- Vandalism tags classified as "mural"/"street art" (20210530 C2, DSC_4414 C2, DSC_4303 C2) — models can't distinguish art graffiti from tags
+- Building pipes classified as "art installation"/"sculpture statue" (DSC_3401 C2/C3) — Centre Pompidou pipes genuinely resemble sculptures to the model
+- People detected as "painted figure" (DSC_2149 C2, DSC_0001_BURST C1) — visual similarity to art
+- EasyOCR at 320px can't read French text or stylized graffiti (Pichiavo placard text_ratio=0.016)
+
+---
+
 ## Session Summary (2026-03-14)
 
 ### IoU hit rate: 112/122 (92%) → 115/122 (94%)
