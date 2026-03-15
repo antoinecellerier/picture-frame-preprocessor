@@ -12,15 +12,19 @@ Art photo preprocessor for e-ink picture frames. Detects art subjects in museum/
 
 ## Evaluation & regression testing
 
-**After ANY change to detector.py, cropper.py, or scoring logic**, run the eval and compare to baseline:
+**After ANY change to detector.py, cropper.py, pipeline.py, analyzer.py, or scoring logic**, run the eval and compare to baseline:
 
 ```bash
 venv/bin/python scripts/evaluate_art_class_accuracy.py --vlm | tee /tmp/eval_out.txt
 ```
 
+The eval uses `run_detection_pipeline()` — the same pipeline as the real tool. This ensures the eval measures what users actually see (including text filtering, person filtering, etc.). **Never bypass the pipeline in the eval** — discrepancies between eval and production cause inflated numbers.
+
 The current baseline is stored in `eval-baseline.json`. Compare IoU hit rate before committing. If results regress, revert — don't commit net-negative changes.
 
 Use `/eval` to run evaluation with automatic baseline comparison.
+
+The IoU threshold (`IOU_THRESHOLD = 0.15`) is defined in `defaults.py` and shared by both the eval script and the report. Don't hardcode thresholds elsewhere.
 
 ## Report generation
 
@@ -42,7 +46,9 @@ Regenerates all sample composites and the report screenshot using the current pi
 
 - **Current detector class**: `OptimizedEnsembleDetector` (not `ArtFeatureDetector` — that's been removed)
 - **Current cropper class**: `SmartCropper`
-- **Text detection**: `TextDetector` in `analyzer.py` uses EasyOCR `readtext()` at 320px to filter text-heavy regions (signs, labels). Threshold: >15% text ratio. Versioned cache in `cache/text_detect/`. Uses Shoelace formula for polygon area, filters short/low-conf OCR results.
+- **Text detection**: `TextDetector` in `analyzer.py` uses EasyOCR `readtext()` at 320px to filter text-heavy regions (signs, labels). Uses `center_weighted_text_ratio` (text near bbox center counts fully, edge text discounted). Threshold: `TEXT_RATIO_THRESHOLD = 0.20` in `analyzer.py`. Versioned cache in `cache/text_detect/` (v6). Uses Shoelace formula for polygon area, filters short/low-conf OCR results and single-char false positives on art textures.
+- **Person filter**: `detect_persons()` in detector.py uses YOLOv8n (COCO class 0) to suppress "painted figure" detections that are actually real people. Pipeline step 3b.
+- **VLM confidence**: `_vlm_boxes_to_detections()` clusters duplicate VLM boxes by IoU>0.3 and uses vote count as confidence (not flat 0.80). Small orphan VLM boxes that don't overlap YOLO/DINO detections are suppressed via proximity check (near-orphan < 8% diagonal = suppress, far-orphan = keep).
 - CLI entry point: `frame_prep.cli` (subcommands: `process`, `batch`, `report`)
 - **Defaults**: All defaults live in `defaults.py` as the single source of truth. CLI flags, batch workers, sample scripts, and `create_detector()` all reference it. Don't hardcode default values elsewhere.
 - CLI defaults: `--vlm` and `--multi-crop` are on by default; use `--no-vlm` / `--no-multi-crop` to disable
@@ -54,6 +60,8 @@ Regenerates all sample composites and the report screenshot using the current pi
 - **Validate effectiveness BEFORE full integration** — run eval on a prototype/branch first. Don't build out a full feature only to discover it's net-negative.
 - Default new detectors/models to **opt-in** (behind a flag) until proven net-positive on the 122-image test set.
 - Document significant findings in `BACKLOG.md`, not only in MEMORY.md.
+- **Avoid overfitting to the eval dataset** — tuning a threshold by 0.001 to catch one specific image is not a real improvement. Prefer structural fixes (new signals, new filtering approaches) over fragile parameter tweaks.
+- **Local-only** — the user wants the tool to run entirely locally. Don't propose API-based solutions (Claude API, cloud services). CPU-compatible models only.
 
 ## Improving Claude instructions
 
@@ -85,3 +93,5 @@ Proactively suggest improvements at the end of a session if patterns emerged.
 - Don't add YOLO-World prompts without evaluating — the 28-class list is zero-sum; new classes steal attention from existing ones
 - Don't commit scoring/detection changes without running `/eval` first
 - Don't re-run expensive commands just to grep different parts of the output — tee first, then search the file
+- Don't measure eval results differently from the real pipeline — if the eval bypasses text filtering or other pipeline steps, the numbers are inflated and misleading
+- Don't propose cloud/API-based detection solutions — the tool must run fully local
