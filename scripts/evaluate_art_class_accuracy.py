@@ -138,9 +138,10 @@ def parse_args() -> argparse.Namespace:
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("--no-cache", action="store_true", help="Ignore cached detections")
     p.add_argument("--verbose", "-v", action="store_true", help="Print per-image results")
+    from frame_prep.defaults import IOU_THRESHOLD
     p.add_argument(
-        "--iou-threshold", type=float, default=0.15,
-        help="IoU threshold to count a detection as hitting the GT region (default: 0.15)",
+        "--iou-threshold", type=float, default=IOU_THRESHOLD,
+        help=f"IoU threshold to count a detection as hitting the GT region (default: {IOU_THRESHOLD})",
     )
     p.add_argument(
         "--dino-model", default="IDEA-Research/grounding-dino-tiny",

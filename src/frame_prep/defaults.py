@@ -26,6 +26,9 @@ ZOOM_FACTOR = 8.0
 USE_SALIENCY_FALLBACK = True
 STRATEGY = 'smart'
 
+# IoU evaluation
+IOU_THRESHOLD = 0.15  # Minimum IoU for a detection to count as a "hit"
+
 # Non-art filtering
 FILTER_NON_ART = True
 MIN_ART_SCORE = 0.5  # confidence * class_multiplier; catches non-art (0.08) while keeping real art (>=0.55)

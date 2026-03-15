@@ -266,8 +266,11 @@ def run_detection(image_path, detector, verbose=False, cropper=None, img=None):
                 'count': 0, 'art_score': 0.0}
 
 
-def check_accuracy(primary, ground_truth_boxes, iou_threshold=0.3):
+def check_accuracy(primary, ground_truth_boxes, iou_threshold=None):
     """Check if primary detection matches ground truth."""
+    from .defaults import IOU_THRESHOLD
+    if iou_threshold is None:
+        iou_threshold = IOU_THRESHOLD
     if not primary or not ground_truth_boxes:
         return False, 0.0
 
@@ -473,15 +476,15 @@ def generate_report(input_dir=None, ground_truth_path=None, output_file=None,
         detection_result = run_detection(image_path, detector, verbose=True, cropper=cropper, img=loaded_img)
 
         # Check accuracy using smart primary selection
-        # Exclude not_art images from accuracy denominator
+        # All images with GT boxes count (including non_art)
         is_correct = False
         best_iou = 0.0
-        if not is_not_art and gt_boxes and detection_result['primary']:
+        if gt_boxes and detection_result['primary']:
             is_correct, best_iou = check_accuracy(detection_result['primary'], gt_boxes)
             total_with_gt += 1
             if is_correct:
                 correct_count += 1
-        elif not is_not_art and gt_boxes:
+        elif gt_boxes:
             # Has ground truth but no primary detection -- counts as incorrect
             total_with_gt += 1
 
