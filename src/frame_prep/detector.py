@@ -1051,38 +1051,77 @@ class OptimizedEnsembleDetector:
         boxes: list,
         image_size: tuple,
     ) -> List[Detection]:
-        """Convert VLM 0-1000 normalized boxes to Detection objects."""
+        """Convert VLM 0-1000 normalized boxes to Detection objects.
+
+        When the VLM returns multiple boxes, uses vote-based confidence:
+        clusters near-duplicate boxes and sets confidence proportional to
+        cluster size.  VLMs often return many overlapping boxes for the
+        most prominent subject — this redundancy IS the confidence signal.
+
+        Single-box responses keep the fixed 0.80 confidence.
+        """
         width, height = image_size
-        detections = []
-        seen = set()
+        # First pass: convert all boxes to pixel coords
+        raw_px = []
         for b in boxes:
             coords = b.get("bbox_2d", [])
             if len(coords) != 4:
                 continue
-            x1 = int(coords[0] * width / 1000)
-            y1 = int(coords[1] * height / 1000)
-            x2 = int(coords[2] * width / 1000)
-            y2 = int(coords[3] * height / 1000)
-            # Clip to image bounds
-            x1 = max(0, min(x1, width))
-            y1 = max(0, min(y1, height))
-            x2 = max(0, min(x2, width))
-            y2 = max(0, min(y2, height))
+            x1 = max(0, min(int(coords[0] * width / 1000), width))
+            y1 = max(0, min(int(coords[1] * height / 1000), height))
+            x2 = max(0, min(int(coords[2] * width / 1000), width))
+            y2 = max(0, min(int(coords[3] * height / 1000), height))
             if x2 <= x1 or y2 <= y1:
                 continue
-            key = (x1, y1, x2, y2)
-            if key in seen:
-                continue
-            seen.add(key)
-            area = (x2 - x1) * (y2 - y1)
-            label = b.get("label", "artwork")
+            raw_px.append(((x1, y1, x2, y2), b.get("label", "artwork")))
+
+        if not raw_px:
+            return []
+
+        # Single box or very few: use fixed confidence
+        if len(raw_px) <= 2:
+            detections = []
+            seen = set()
+            for bbox, label in raw_px:
+                if bbox in seen:
+                    continue
+                seen.add(bbox)
+                detections.append(Detection(
+                    bbox=bbox, confidence=0.80, class_name=label,
+                    area=(bbox[2]-bbox[0])*(bbox[3]-bbox[1]), source="vlm",
+                ))
+            return detections
+
+        # Multiple boxes: cluster and use vote count as confidence.
+        # Greedy clustering by IoU > 0.3
+        clusters: list[list] = []  # Each: list of (bbox, label)
+        for bbox, label in raw_px:
+            matched = False
+            for cluster in clusters:
+                rep = cluster[0][0]
+                if calculate_iou(bbox, rep) > 0.3:
+                    cluster.append((bbox, label))
+                    matched = True
+                    break
+            if not matched:
+                clusters.append([(bbox, label)])
+
+        total_votes = len(raw_px)
+        detections = []
+        for cluster in clusters:
+            rep_bbox = cluster[0][0]
+            rep_label = cluster[0][1]
+            votes = len(cluster)
+            # Confidence: 0.40 base + up to 0.55 based on vote share
+            # Single-vote clusters get 0.40; dominant clusters approach 0.95
+            conf = min(0.95, 0.40 + 0.55 * (votes / total_votes))
             detections.append(Detection(
-                bbox=(x1, y1, x2, y2),
-                confidence=0.80,
-                class_name=label,
-                area=area,
+                bbox=rep_bbox, confidence=round(conf, 3),
+                class_name=rep_label,
+                area=(rep_bbox[2]-rep_bbox[0])*(rep_bbox[3]-rep_bbox[1]),
                 source="vlm",
             ))
+
         return detections
 
     def _run_qwen_vlm(

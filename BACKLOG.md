@@ -19,7 +19,22 @@ Added `detect_persons()` to `OptimizedEnsembleDetector` using yolov8n (COCO-trai
 
 Fixed: DSC_0001_BURST (IoU miss → hit). Person detected at conf=0.87 with IoU=0.91 overlap. After suppression, "painting" becomes primary and better covers the GT installation area. False positive rate: near-zero — COCO person detectors don't fire on painted figures in murals (tested on 80+ images).
 
-**IoU hit rate: 115/122 (94%) → 116/122 (95%)**
+**IoU hit rate: 115/122 (94%) → 116/122 (95%) → 117/122 (96%)**
+
+**Improvement 4: VLM vote-based confidence (replaces flat 0.80)**
+Small VLMs (Qwen3-VL-2B) often return many near-duplicate boxes for the most
+prominent subject — 44% of responses have 3+ boxes, some hit 30. This
+autoregressive "hedging" is a genuine confidence signal: the more often the
+model outputs overlapping boxes, the more salient the subject.
+
+Changed `_vlm_boxes_to_detections()` to cluster raw VLM boxes by IoU>0.3
+and set confidence proportional to cluster vote share (0.40 base + 0.55 ×
+vote_ratio). Dominant clusters get ~0.90+ while singleton spurious boxes
+get ~0.43. No cache invalidation needed — pure post-processing.
+
+Fixed: DSC_4385 (mosaic IoU miss → hit). VLM returned 29 boxes: 27 cluster
+around the correct Space Invader mosaic (conf=0.91), 2 on the wrong wall
+region (conf=0.43). Previously all had flat 0.80 and size_bonus decided.
 
 **Detection accuracy explorations (2026-03-15):**
 - **Learned reranker** (sklearn LogReg/RF/GBT): FAILED — every model performed worse than heuristic (-1 to -2). Dataset too small (122 images), heuristic encodes domain knowledge scalar features can't capture.
