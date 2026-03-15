@@ -1,13 +1,14 @@
 {
   "date": "2026-03-15",
   "flags": "--vlm",
-  "iou_hit": 118,
+  "note": "Measured with run_detection_pipeline (includes text filter, person filter)",
+  "iou_hit": 115,
   "iou_total": 122,
-  "iou_pct": 96.7,
+  "iou_pct": 94.3,
   "per_class": {
-    "mural": {"hit": 38, "total": 38},
+    "mural": {"hit": 37, "total": 38},
     "painting": {"hit": 9, "total": 9},
-    "non_art": {"hit": 4, "total": 4},
+    "non_art": {"hit": 2, "total": 4},
     "street_art": {"hit": 21, "total": 22},
     "sculpture": {"hit": 19, "total": 20},
     "mosaic": {"hit": 24, "total": 25},

@@ -205,38 +205,18 @@ def main() -> None:
                 pass  # TODO: per-image cache invalidation if needed
 
         try:
-            detections = detector.detect(img, image_path=str(img_path))
+            from frame_prep.pipeline import run_detection_pipeline
+            result = run_detection_pipeline(
+                img, detector, cropper, image_path=str(img_path))
+            primary = result.primary
         except Exception as e:
             print(f"  ERROR {filename}: {e}")
             continue
 
-        if detections:
-            primary = detector.get_primary_subject(detections)
-            det_class = primary.class_name if primary else "none"
-            if primary:
-                det_conf = primary.confidence
-                det_bbox_norm = bbox_px_to_norm(list(primary.bbox), w, h)
-                # Person-as-art filter: suppress "figure" primaries that
-                # overlap significantly with a COCO person detection.
-                if ('figure' in det_class.lower()
-                        and hasattr(detector, 'detect_persons')):
-                    from frame_prep.detector import calculate_iou as _iou
-                    for pdet in detector.detect_persons(img):
-                        if (_iou(primary.bbox, pdet.bbox) > 0.5
-                                and pdet.confidence > 0.5):
-                            remaining = [d for d in detections if d is not primary]
-                            if remaining:
-                                primary = detector.get_primary_subject(remaining)
-                                det_class = primary.class_name if primary else "none"
-                                if primary:
-                                    det_conf = primary.confidence
-                                    det_bbox_norm = bbox_px_to_norm(
-                                        list(primary.bbox), w, h)
-                            break
-            else:
-                det_class = "none"
-                det_conf = 0.0
-                det_bbox_norm = [0, 0, 0, 0]
+        if primary:
+            det_class = primary.class_name
+            det_conf = primary.confidence
+            det_bbox_norm = bbox_px_to_norm(list(primary.bbox), w, h)
         else:
             det_class = "none"
             det_conf = 0.0

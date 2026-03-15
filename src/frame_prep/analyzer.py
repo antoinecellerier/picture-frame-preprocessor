@@ -50,7 +50,7 @@ class TextDetector:
         thumb = crop.resize((64, 64))
         data = np.array(thumb).tobytes()
         # Version bumped when detection method or filtering changes
-        _cache_version = 5  # v5: + deterministic seed + regions in cache
+        _cache_version = 6  # v6: filter single-char OCR false positives on art textures
         key_str = f"v{_cache_version}:{hashlib.md5(data).hexdigest()}:{bx1},{by1},{bx2},{by2}:{_TEXT_MAX_DIM}"
         return hashlib.sha256(key_str.encode()).hexdigest()[:20]
 
@@ -106,6 +106,7 @@ class TextDetector:
 
         results = self._reader.readtext(img_np)
 
+        crop_area = cw * ch
         text_area = 0
         regions = []
         for bbox_pts, text, conf in results:
@@ -113,13 +114,19 @@ class TextDetector:
                 continue
             # Shoelace formula for oriented polygon area
             n = len(bbox_pts)
+            region_area = 0.0
             if n >= 3:
-                area = 0.0
                 for i in range(n):
                     j = (i + 1) % n
-                    area += bbox_pts[i][0] * bbox_pts[j][1]
-                    area -= bbox_pts[j][0] * bbox_pts[i][1]
-                text_area += abs(area) / 2
+                    region_area += bbox_pts[i][0] * bbox_pts[j][1]
+                    region_area -= bbox_pts[j][0] * bbox_pts[i][1]
+                region_area = abs(region_area) / 2
+            # Skip single-char detections that cover >25% of the crop —
+            # these are false positives from mosaic tiles, art textures, or
+            # graffiti letterforms that EasyOCR misreads as a character.
+            if len(text.strip()) <= 2 and region_area > 0.25 * crop_area:
+                continue
+            text_area += region_area
             # Map polygon back to original image coords
             mapped_pts = [
                 [bx1 + p[0] * scale_x, by1 + p[1] * scale_y]
