@@ -3,6 +3,7 @@
 import os
 import sys
 import functools
+from datetime import datetime, timedelta
 from pathlib import Path
 import click
 
@@ -207,6 +208,29 @@ def process(input, output, width, height, strategy, model, confidence, single_mo
         raise click.Abort()
 
 
+def _parse_date_bound(ctx, param, value, end=False):
+    """Parse a YYYY-MM-DD or ISO datetime string into a datetime bound.
+
+    A date-only end bound is advanced by one day so the whole day is
+    included (bounds are compared as [since, until)).
+    """
+    if value is None:
+        return None
+    try:
+        parsed = datetime.fromisoformat(value)
+    except ValueError:
+        raise click.BadParameter(
+            f"'{value}' is not a valid date (expected YYYY-MM-DD or ISO datetime)")
+    date_only = parsed.time() == datetime.min.time() and 'T' not in value and ' ' not in value
+    if end and date_only:
+        parsed += timedelta(days=1)
+    return parsed
+
+
+def _parse_date_bound_end(ctx, param, value):
+    return _parse_date_bound(ctx, param, value, end=True)
+
+
 @cli.command()
 @click.option('--input', '-i', required=True, type=click.Path(exists=True),
               help='Input directory containing images')
@@ -218,12 +242,19 @@ def process(input, output, width, height, strategy, model, confidence, single_mo
               help='Skip images that already exist in output directory')
 @click.option('--recursive', '-r', is_flag=True,
               help='Process subdirectories recursively')
+@click.option('--since', default=None, callback=_parse_date_bound,
+              help='Only process files modified on/after this date '
+                   '(YYYY-MM-DD or ISO datetime, local time)')
+@click.option('--until', default=None, callback=_parse_date_bound_end,
+              help='Only process files modified on/before this date '
+                   '(YYYY-MM-DD or ISO datetime, local time; date-only is inclusive)')
 @click.option('--no-openvino', is_flag=True,
               help='Disable OpenVINO acceleration (use PyTorch instead)')
 @click.option('--threads-per-worker', default=4, type=int,
               help='Number of threads per worker process (default: 4)')
 @common_options
-def batch(input, output, workers, skip_existing, recursive, no_openvino,
+def batch(input, output, workers, skip_existing, recursive, since, until,
+          no_openvino,
           threads_per_worker, width, height, strategy, model, confidence,
           single_model, ensemble, zoom, quality, no_two_pass, no_filter,
           multi_crop, vlm, vlm_confirm,
@@ -243,6 +274,8 @@ def batch(input, output, workers, skip_existing, recursive, no_openvino,
         'quality': quality,
         'skip_existing': skip_existing,
         'recursive': recursive,
+        'since': since,
+        'until': until,
         'use_openvino': not no_openvino,
         'two_pass': not no_two_pass,
         'threads_per_worker': threads_per_worker,

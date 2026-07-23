@@ -31,6 +31,10 @@ frame-prep process -i photo.jpg -o output/ --no-vlm -v
 
 # Batch process a directory
 frame-prep batch -i ~/photos/art/ -o ~/photos/processed/ --skip-existing
+
+# Only process files added/modified since a date (or within a range)
+frame-prep batch -i ~/photos/art/ -o ~/photos/processed/ --since 2026-07-01
+frame-prep batch -i ~/photos/art/ -o ~/photos/processed/ --since 2026-07-01 --until 2026-07-15
 ```
 
 Output is 480x800 JPEG by default (3:5 portrait ratio for e-ink frames).

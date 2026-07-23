@@ -64,6 +64,8 @@ frame-prep batch \
 | `--no-openvino` | | | Disable OpenVINO acceleration |
 | `--skip-existing` | | | Skip already processed images |
 | `--recursive` | `-r` | | Process subdirectories recursively |
+| `--since` | | | Only process files modified on/after this date (`YYYY-MM-DD` or ISO datetime; batch only) |
+| `--until` | | | Only process files modified on/before this date (date-only is inclusive of the whole day; batch only) |
 | `--vlm` | | | Enable Qwen3-VL fallback (see [VLM section](#vlm-fallback)) |
 | `--vlm-confirm` | | | Run VLM on every image (implies `--vlm`) |
 | `--vlm-gguf` | | models/qwen3vl/…Q8_0.gguf | Path to Qwen3-VL GGUF model |

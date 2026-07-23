@@ -3,13 +3,15 @@
 import os
 import tempfile
 import pytest
+from datetime import datetime
 from pathlib import Path
 from PIL import Image
 from frame_prep.utils import (
     is_image_file,
     ensure_directory,
     validate_image,
-    get_output_path
+    get_output_path,
+    filter_by_mtime
 )
 
 
@@ -73,3 +75,61 @@ def test_get_output_path_with_suffix():
 
     result = get_output_path(input_path, output_dir, suffix='_processed')
     assert result == '/path/to/output/image_processed.jpg'
+
+
+@pytest.fixture
+def dated_files():
+    """Three files with mtimes on Jan 1, Jun 15, and Dec 31 of 2025."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        paths = []
+        for name, dt in [
+            ('old.jpg', datetime(2025, 1, 1, 12, 0)),
+            ('mid.jpg', datetime(2025, 6, 15, 12, 0)),
+            ('new.jpg', datetime(2025, 12, 31, 12, 0)),
+        ]:
+            path = os.path.join(tmpdir, name)
+            with open(path, 'w') as f:
+                f.write('x')
+            ts = dt.timestamp()
+            os.utime(path, (ts, ts))
+            paths.append(path)
+        yield paths
+
+
+def test_filter_by_mtime_no_bounds(dated_files):
+    """No bounds returns all files."""
+    assert filter_by_mtime(dated_files) == dated_files
+
+
+def test_filter_by_mtime_since(dated_files):
+    """Since bound keeps files modified at or after it."""
+    result = filter_by_mtime(dated_files, since=datetime(2025, 6, 1))
+    assert result == dated_files[1:]
+
+
+def test_filter_by_mtime_until(dated_files):
+    """Until bound keeps files modified strictly before it."""
+    result = filter_by_mtime(dated_files, until=datetime(2025, 6, 1))
+    assert result == dated_files[:1]
+
+
+def test_filter_by_mtime_range(dated_files):
+    """Range keeps only files inside [since, until)."""
+    result = filter_by_mtime(
+        dated_files,
+        since=datetime(2025, 6, 1),
+        until=datetime(2025, 7, 1),
+    )
+    assert result == [dated_files[1]]
+
+
+def test_filter_by_mtime_since_inclusive(dated_files):
+    """A file modified exactly at the since bound is kept."""
+    result = filter_by_mtime(dated_files, since=datetime(2025, 6, 15, 12, 0))
+    assert dated_files[1] in result
+
+
+def test_filter_by_mtime_missing_file(dated_files):
+    """Files that can't be stat'd are excluded."""
+    paths = dated_files + [os.path.join(os.path.dirname(dated_files[0]), 'gone.jpg')]
+    assert filter_by_mtime(paths) == dated_files

@@ -11,7 +11,7 @@ from tqdm import tqdm
 from .preprocessor import ImagePreprocessor, ProcessingResult
 from .detector import _start_llama_server
 from .cli import create_detector, create_cropper
-from .utils import is_image_file, get_output_path, ensure_directory
+from .utils import is_image_file, get_output_path, ensure_directory, filter_by_mtime
 from . import defaults
 
 
@@ -193,8 +193,20 @@ def run_batch(input_dir, output_dir, config, workers=8):
             if is_image_file(os.path.join(input_dir, f))
         ]
 
+    since, until = config.get('since'), config.get('until')
+    date_excluded = 0
+    if since or until:
+        before = len(images)
+        images = filter_by_mtime(images, since, until)
+        date_excluded = before - len(images)
+        print(f"Date filter: {len(images)}/{before} images within range")
+
     if not images:
-        print("No images found in input directory")
+        if date_excluded:
+            print(f"No images found in input directory "
+                  f"({date_excluded} excluded by date filter)")
+        else:
+            print("No images found in input directory")
         return 0
 
     print(f"Found {len(images)} images")
