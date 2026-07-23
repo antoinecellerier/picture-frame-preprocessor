@@ -26,7 +26,7 @@ CPU budget: always-on ≤ ~5s/image; fallback-tier (VLM-style, ~24/122 images, c
 
 - [x] Verify VLM cache key separates models — **found & fixed 2026-07-23**: `vlm_model` stayed at the 2B ID regardless of `--vlm-gguf`, so 4B would have silently reused the 2B cache. Cache key now appends the GGUF stem for non-default models (`detector.py::_run_qwen_vlm`); existing 2B cache entries remain valid.
 - [x] `download_models.py --vlm --vlm-size 4b` support added (Q8_0 ~4.3GB + mmproj F16 ~836MB)
-- [x] Download 4B GGUFs (~5.1GB): launched in background 2026-07-23 (`logs/trackA-4b-download-2026-07-23.log`); verify files exist in `models/qwen3vl/` before launching the eval
+- [x] Download 4B GGUFs (~5.1GB): **done 2026-07-23**, both files verified in `models/qwen3vl/` (Q8_0 4280MB + mmproj 836MB, `logs/trackA-4b-download-2026-07-23.log`)
 - [ ] Run eval (**needs confirmation, est. 30-60 min cache-cold**, survives session end):
   ```
   cd ~/stuff/picture-frame-preprocessor && nohup venv/bin/python scripts/evaluate_art_class_accuracy.py --vlm \
