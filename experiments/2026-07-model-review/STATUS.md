@@ -8,7 +8,7 @@ Master plan: see "Evaluate new detection-quality and speed options (July 2026 re
 ## Standing rules (every session)
 
 1. Read this file first; check `logs/` for finished background runs.
-2. **Ask Antoine for explicit confirmation before starting ANY compute-intensive run** (full eval, model download >1GB, cache-cold VLM/SAM pass, overnight job). State what runs, expected duration, and that it survives session end. If declined → preparation work only.
+2. **Ask Antoine for explicit confirmation before starting ANY compute-intensive run** (full eval, cache-cold VLM/SAM pass, overnight job). State what runs, expected duration, and that it survives session end. If declined → preparation work only. **Downloads are exempt** — the network is fast and downloads are cheap (Antoine, 2026-07-23); fetch models freely, no confirmation needed.
 3. Heavy runs are detached: `nohup <cmd> > experiments/2026-07-model-review/logs/<track>-<date>.log 2>&1 &`
 4. One model eval at a time (12-thread CPU — concurrent evals thrash).
 5. All heavy inference must go through a per-image cache under `cache/` BEFORE any full run.
@@ -26,7 +26,7 @@ CPU budget: always-on ≤ ~5s/image; fallback-tier (VLM-style, ~24/122 images, c
 
 - [x] Verify VLM cache key separates models — **found & fixed 2026-07-23**: `vlm_model` stayed at the 2B ID regardless of `--vlm-gguf`, so 4B would have silently reused the 2B cache. Cache key now appends the GGUF stem for non-default models (`detector.py::_run_qwen_vlm`); existing 2B cache entries remain valid.
 - [x] `download_models.py --vlm --vlm-size 4b` support added (Q8_0 ~4.3GB + mmproj F16 ~836MB)
-- [ ] Download 4B GGUFs (**needs confirmation, ~5.1GB**): `venv/bin/python scripts/download_models.py --vlm --vlm-size 4b`
+- [x] Download 4B GGUFs (~5.1GB): launched in background 2026-07-23 (`logs/trackA-4b-download-2026-07-23.log`); verify files exist in `models/qwen3vl/` before launching the eval
 - [ ] Run eval (**needs confirmation, est. 30-60 min cache-cold**, survives session end):
   ```
   cd ~/stuff/picture-frame-preprocessor && nohup venv/bin/python scripts/evaluate_art_class_accuracy.py --vlm \
@@ -51,7 +51,7 @@ Roles on the table: fallback-tier (like VLM) or crop-refinement on primary bbox 
 ## Track C — LocateAnything-3B (conditional — only if A/B leave VLM-addressable misses open)
 
 - [ ] Build llama.cpp `mtmd-grounders` fork branch in `~/stuff/llama.cpp-grounders/` (do NOT touch `~/stuff/llama.cpp/build/`); use `LLAMA_SERVER_BIN` to point at it; llama-server needs `--special` for grounding tokens
-- [ ] Download `yuuko-eth/LocateAnything-3B-GGUF` Q4_K_M (~2.1GB + projector) (**needs confirmation**)
+- [ ] Download `yuuko-eth/LocateAnything-3B-GGUF` Q4_K_M (~2.1GB + projector) — downloads exempt from confirmation
 - [ ] Standalone eval on 17-miss set, same protocol as `evaluate_qwen3vl.py`
 - [ ] Integrate only if it clearly beats the best Qwen result
 
