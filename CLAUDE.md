@@ -5,6 +5,7 @@ Art photo preprocessor for e-ink picture frames. Detects art subjects in museum/
 ## Environment
 
 - **Always use `venv/bin/python`** — system `python` is not available
+- venv is Python 3.14 with **CPU-only torch wheels** (`--index-url https://download.pytorch.org/whl/cpu`). When reinstalling torch, keep it CPU-only — default wheels add ~5GB of unused CUDA libraries.
 - CPU-only machine (Intel i7-1270P, AVX2, no discrete GPU, 30GB RAM)
 - Always resize images before VLM inference (`--vlm-max-image-size 512` default). Never run VLM at native resolution (3000-4000px) — it takes hours per image on CPU.
 - VLM uses **llama-server** (`~/stuff/llama.cpp/build/bin/llama-server`), NOT PyTorch/transformers. GGUF models in `models/qwen3vl/`. The `--vlm` flag alone is sufficient.

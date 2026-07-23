@@ -9,6 +9,8 @@ torch>=2.0.0
 torchvision>=0.15.0
 transformers>=4.30.0
 openvino>=2024.0  # Optional: 1.4x speedup on Intel CPUs
+easyocr>=1.7.0  # Text detection filter (analyzer.py)
+huggingface_hub>=0.20.0  # Model downloads (scripts/download_models.py)
 
 # CLI
 click>=8.1.0
@@ -18,3 +20,4 @@ colorama>=0.4.6
 # Dev
 pytest>=7.4.0
 black>=23.0.0
+playwright>=1.40.0  # README report screenshot (scripts/create_sample_composites.py)

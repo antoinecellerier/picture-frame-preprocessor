@@ -15,6 +15,8 @@ setup(
         "ultralytics>=8.0.0",
         "torch>=2.0.0",
         "torchvision>=0.15.0",
+        "transformers>=4.30.0",
+        "easyocr>=1.7.0",
         "click>=8.1.0",
         "tqdm>=4.65.0",
         "colorama>=0.4.6",
