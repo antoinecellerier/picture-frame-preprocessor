@@ -1140,6 +1140,14 @@ class OptimizedEnsembleDetector:
         prompt_hash = hashlib.sha256(prompt.encode()).hexdigest()[:8]
 
         # Cache key: path + model + size + prompt_hash (prompt_hash invalidates on prompt changes)
+        # self.vlm_model alone is not enough: it defaults to the 2B model ID even when
+        # --vlm-gguf points at a different GGUF, which would silently share cache entries
+        # across models. Add the GGUF stem for any non-default model file; the default 2B
+        # stem is excluded so existing cache entries stay valid.
+        gguf_stem = Path(self.vlm_gguf_path).stem if self.vlm_gguf_path else ""
+        model_key = (f"{self.vlm_model}:{gguf_stem}"
+                     if gguf_stem and gguf_stem != "Qwen3VL-2B-Instruct-Q8_0"
+                     else self.vlm_model)
         cache_data = None
         cache_file = None
         if image_path:
@@ -1147,7 +1155,7 @@ class OptimizedEnsembleDetector:
             if path.exists():
                 stat = path.stat()
                 key_str = (f"{path.absolute()}:{stat.st_size}:{stat.st_mtime}"
-                           f":{self.vlm_model}:grounding:{self.vlm_max_image_size}"
+                           f":{model_key}:grounding:{self.vlm_max_image_size}"
                            f":{prompt_hash}")
                 cache_key = hashlib.sha256(key_str.encode()).hexdigest()[:24]
                 cache_file = vlm_cache_dir / f"{cache_key}.json"

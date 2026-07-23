@@ -14,12 +14,25 @@ from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).parent.parent
 
-# GGUF files hosted on HuggingFace
-_VLM_REPO = "Qwen/Qwen3-VL-2B-Instruct-GGUF"
-_VLM_FILES = [
-    "Qwen3VL-2B-Instruct-Q8_0.gguf",          # ~1.8 GB — quantized model weights
-    "mmproj-Qwen3VL-2B-Instruct-F16.gguf",    # ~782 MB — vision encoder projection
-]
+# GGUF files hosted on HuggingFace, per model size
+_VLM_VARIANTS = {
+    "2b": {
+        "repo": "Qwen/Qwen3-VL-2B-Instruct-GGUF",
+        "files": [
+            "Qwen3VL-2B-Instruct-Q8_0.gguf",          # ~1.8 GB — quantized model weights
+            "mmproj-Qwen3VL-2B-Instruct-F16.gguf",    # ~782 MB — vision encoder projection
+        ],
+        "total": "~2.6 GB",
+    },
+    "4b": {
+        "repo": "Qwen/Qwen3-VL-4B-Instruct-GGUF",
+        "files": [
+            "Qwen3VL-4B-Instruct-Q8_0.gguf",          # ~4.3 GB — quantized model weights
+            "mmproj-Qwen3VL-4B-Instruct-F16.gguf",    # ~836 MB — vision encoder projection
+        ],
+        "total": "~5.1 GB",
+    },
+}
 _VLM_DIR = PROJECT_ROOT / "models" / "qwen3vl"
 
 
@@ -47,7 +60,7 @@ def download_yolo():
     return 0
 
 
-def download_vlm():
+def download_vlm(size="2b"):
     try:
         from huggingface_hub import hf_hub_download
     except ImportError:
@@ -55,10 +68,11 @@ def download_vlm():
         print("Run: pip install huggingface-hub")
         return 1
 
+    variant = _VLM_VARIANTS[size]
     _VLM_DIR.mkdir(parents=True, exist_ok=True)
-    print(f"Downloading Qwen3-VL-2B GGUF files (~2.6 GB total) to {_VLM_DIR}/")
+    print(f"Downloading Qwen3-VL-{size.upper()} GGUF files ({variant['total']} total) to {_VLM_DIR}/")
 
-    for filename in _VLM_FILES:
+    for filename in variant["files"]:
         dest = _VLM_DIR / filename
         if dest.exists():
             print(f"  ✓ {filename} (already present, {dest.stat().st_size // 1_000_000} MB)")
@@ -66,7 +80,7 @@ def download_vlm():
         print(f"  Downloading {filename}...")
         try:
             hf_hub_download(
-                repo_id=_VLM_REPO,
+                repo_id=variant["repo"],
                 filename=filename,
                 local_dir=str(_VLM_DIR),
             )
@@ -101,6 +115,8 @@ def main():
     p = argparse.ArgumentParser(description=__doc__,
                                 formatter_class=argparse.RawDescriptionHelpFormatter)
     p.add_argument('--vlm', action='store_true', help='Download Qwen3-VL GGUF files (~2.6 GB)')
+    p.add_argument('--vlm-size', choices=sorted(_VLM_VARIANTS), default='2b',
+                   help='Qwen3-VL model size to download (default: 2b; 4b is ~5.1 GB)')
     p.add_argument('--all', action='store_true', help='Download YOLO + VLM models')
     args = p.parse_args()
 
@@ -116,7 +132,7 @@ def main():
 
     if do_vlm:
         print("=== Qwen3-VL GGUF models ===")
-        rc = download_vlm()
+        rc = download_vlm(args.vlm_size)
         if rc:
             return rc
         print()

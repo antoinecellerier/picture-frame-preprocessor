@@ -1,5 +1,14 @@
 # Backlog
 
+## ACTIVE — July 2026 model review (multi-session)
+
+Four evaluation tracks in progress: Qwen3-VL-4B A/B, SAM 3 prototype, LocateAnything-3B, OpenVINO/llama.cpp speedups.
+**Status, session protocol, and ready-to-launch commands: `experiments/2026-07-model-review/STATUS.md`** — read that first before continuing this work. Heavy compute requires Antoine's explicit confirmation each session.
+
+Session 1 (2026-07-23, prep only): fixed VLM cache-key collision (`detector.py::_run_qwen_vlm` — `--vlm-gguf` with a non-default model silently reused the 2B cache; key now includes GGUF stem, existing 2B cache preserved). Added `--vlm-size 4b` to `scripts/download_models.py`.
+
+---
+
 ## Session Summary (2026-03-15)
 
 ### Visual review: 122 images reviewed by Sonnet agents, 2 cropper improvements
