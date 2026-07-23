@@ -83,4 +83,4 @@ Roles on the table: fallback-tier (like VLM) or crop-refinement on primary bbox 
 
 ## Session log
 
-- **2026-07-23 (session 1, prep only)**: Researched new options since March. Chose 4 tracks. Fixed VLM cache-key collision bug (would have invalidated the 4B A/B). Added `--vlm-size` to download script. Created this scaffold. No heavy compute run. Next: confirm 4B download + eval launch (Track A), D3 rebuild can interleave.
+- **2026-07-23 (session 1, prep only)**: Researched new options since March. Chose 4 tracks. Fixed VLM cache-key collision bug (would have invalidated the 4B A/B). Added `--vlm-size` to download script; 4B GGUFs downloaded and verified. Added power/thermal/concurrency benchmark protocol. No heavy compute run. Antoine's own `frame-prep batch` job was running at session end (expected done ~2026-07-24 01:30). **Next session**: run the Track A pre-flight (batch job finished? temp < 65°C? AC + performance?), get Antoine's confirmation, launch the 4B eval from the command above; D3 llama.cpp rebuild can interleave while it runs.
