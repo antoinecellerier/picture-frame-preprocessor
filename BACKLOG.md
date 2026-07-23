@@ -9,6 +9,14 @@ Session 1 (2026-07-23, prep only): fixed VLM cache-key collision (`detector.py::
 
 ---
 
+## Session (2026-07-23): batch Ctrl-C fix
+
+Ctrl-C during `frame-prep batch` used to hang until SIGKILL (leaked semaphores). Three causes: (1) workers received the terminal's SIGINT directly and died, breaking the pool — the resulting `BrokenProcessPool` was miscounted as per-image failures so tqdm raced forward; (2) no KeyboardInterrupt handling anywhere, and both `ProcessPoolExecutor.__exit__` and the concurrent.futures atexit hook joined wedged workers with `wait=True` (workers can block in C inference or the 600s VLM `urlopen`); (3) llama-server shared the process group and was torn down with a bare `terminate()`.
+
+Fix (`batch.py`, `detector.py`): workers ignore SIGINT (`_worker_ignore_sigint`); on interrupt the main process cancels pending futures and SIGTERMs workers via Python 3.14's `terminate_workers()` (fallback to `_processes` for <3.14); second Ctrl-C hard-exits (`os._exit(130)`); llama-server starts with `start_new_session=True` and is stopped by `_stop_llama_server()` (terminate → wait → SIGKILL); `kill <pid>` behaves like Ctrl-C; exit code 130 with partial stats. Verified on a 584-image batch: clean stop in ~20s, accurate partial summary, no orphans. Tests: `tests/test_batch.py` (new). If the ~20s wrap-up ever bothers: shorten `_stop_llama_server` timeout or use `kill_workers()`.
+
+---
+
 ## Session Summary (2026-03-15)
 
 ### Visual review: 122 images reviewed by Sonnet agents, 2 cropper improvements

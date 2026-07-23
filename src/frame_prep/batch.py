@@ -2,14 +2,16 @@
 
 import os
 import json
+import signal
 from concurrent.futures import ProcessPoolExecutor, as_completed
+from concurrent.futures.process import BrokenProcessPool
 from dataclasses import dataclass
 from typing import List
 
 from tqdm import tqdm
 
 from .preprocessor import ImagePreprocessor, ProcessingResult
-from .detector import _start_llama_server
+from .detector import _start_llama_server, _stop_llama_server
 from .cli import create_detector, create_cropper
 from .utils import is_image_file, get_output_path, ensure_directory, filter_by_mtime
 from . import defaults
@@ -37,6 +39,27 @@ _cropper = None
 _preprocessor = None
 
 
+def _worker_ignore_sigint():
+    """Make the worker immune to the terminal's Ctrl-C.
+
+    SIGINT is delivered to the whole foreground process group; workers must
+    ignore it so the main process alone decides shutdown. SIGTERM keeps its
+    default disposition so terminate_workers() can still kill workers wedged
+    in C inference code or socket reads.
+    """
+    signal.signal(signal.SIGINT, signal.SIG_IGN)
+
+
+def _terminate_pool_workers(executor):
+    """Forcefully stop worker processes (they may be wedged in C code)."""
+    terminate = getattr(executor, 'terminate_workers', None)  # Python 3.14+
+    if terminate is not None:
+        terminate()
+    else:
+        for proc in list(getattr(executor, '_processes', {}).values()):
+            proc.terminate()
+
+
 def init_worker(config):
     """
     Initialize worker process with pre-loaded models.
@@ -48,6 +71,8 @@ def init_worker(config):
         config: Configuration dictionary with detector settings
     """
     global _detector, _cropper, _preprocessor
+
+    _worker_ignore_sigint()
 
     # Optimize threading for multi-process batch processing
     import os
@@ -231,47 +256,72 @@ def run_batch(input_dir, output_dir, config, workers=8):
         print("Optimized ensemble: YOLO-World + Grounding DINO (models cached per worker)")
     print(f"Optimizations: {', '.join(optimizations)}\n")
 
-    # Start a single shared llama-server in the main process so all workers reuse it.
+    # Make `kill <pid>` behave like Ctrl-C in the main process.
+    def _sigterm_handler(signum, frame):
+        raise KeyboardInterrupt
+    signal.signal(signal.SIGTERM, _sigterm_handler)
+
     _vlm_proc = None
-    if config.get('use_vlm') and config.get('vlm_gguf_path') and not config.get('single_model') and not config.get('ensemble'):
-        print("Starting shared llama-server for VLM...")
-        vlm_port, _vlm_proc = _start_llama_server(config['vlm_gguf_path'], config['vlm_mmproj_path'])
-        config = {**config, 'vlm_server_port': vlm_port}
-        print(f"llama-server ready on port {vlm_port}")
-
+    interrupted = False
     try:
-        with ProcessPoolExecutor(max_workers=workers, initializer=init_worker, initargs=(config,)) as executor:
-            futures = {executor.submit(process_single_image, task): task for task in tasks}
+        # Start a single shared llama-server in the main process so all workers reuse it.
+        if config.get('use_vlm') and config.get('vlm_gguf_path') and not config.get('single_model') and not config.get('ensemble'):
+            print("Starting shared llama-server for VLM...")
+            vlm_port, _vlm_proc = _start_llama_server(config['vlm_gguf_path'], config['vlm_mmproj_path'])
+            config = {**config, 'vlm_server_port': vlm_port}
+            print(f"llama-server ready on port {vlm_port}")
 
-            with tqdm(total=len(tasks), unit='img') as pbar:
-                for future in as_completed(futures):
-                    task = futures[future]
-                    input_path = task[0]
+        executor = ProcessPoolExecutor(max_workers=workers, initializer=init_worker, initargs=(config,))
+        try:
+            try:
+                futures = {executor.submit(process_single_image, task): task for task in tasks}
 
-                    try:
-                        result = future.result()
-                        if result.filtered:
-                            stats.filtered += 1
-                        elif result.success:
-                            if result.strategy_used == 'skipped':
-                                stats.skipped += 1
-                            else:
-                                stats.success += 1
-                                if result.output_paths:
-                                    stats.output_files += len(result.output_paths)
+                with tqdm(total=len(tasks), unit='img') as pbar:
+                    for future in as_completed(futures):
+                        task = futures[future]
+                        input_path = task[0]
+
+                        try:
+                            result = future.result()
+                            if result.filtered:
+                                stats.filtered += 1
+                            elif result.success:
+                                if result.strategy_used == 'skipped':
+                                    stats.skipped += 1
                                 else:
-                                    stats.output_files += 1
-                        else:
+                                    stats.success += 1
+                                    if result.output_paths:
+                                        stats.output_files += len(result.output_paths)
+                                    else:
+                                        stats.output_files += 1
+                            else:
+                                stats.failed += 1
+                                stats.errors.append(f"{input_path}: {result.error_message}")
+                        except BrokenProcessPool:
+                            # Pool death is not a per-image error — abort the loop.
+                            raise
+                        except Exception as e:
                             stats.failed += 1
-                            stats.errors.append(f"{input_path}: {result.error_message}")
-                    except Exception as e:
-                        stats.failed += 1
-                        stats.errors.append(f"{input_path}: {str(e)}")
+                            stats.errors.append(f"{input_path}: {str(e)}")
 
-                    pbar.update(1)
+                        pbar.update(1)
+            except KeyboardInterrupt:
+                interrupted = True
+                # A second Ctrl-C during cleanup must hard-exit, not hang.
+                signal.signal(signal.SIGINT, lambda *_: os._exit(130))
+                print("\nInterrupted — cancelling remaining work...")
+                executor.shutdown(wait=False, cancel_futures=True)
+                _terminate_pool_workers(executor)
+            except BrokenProcessPool:
+                print("\nError: worker pool died unexpectedly (worker crash/OOM?); aborting.")
+                stats.failed += 1
+                stats.errors.append("worker pool broke; remaining images not processed")
+                executor.shutdown(wait=False, cancel_futures=True)
+        finally:
+            if not interrupted:
+                executor.shutdown(wait=True)
     finally:
-        if _vlm_proc is not None:
-            _vlm_proc.terminate()
+        _stop_llama_server(_vlm_proc)
 
     # Print summary
     print("\n" + "=" * 60)
@@ -297,4 +347,7 @@ def run_batch(input_dir, output_dir, config, workers=8):
     print(f"\nOutput directory: {output_dir}")
     print("=" * 60)
 
+    if interrupted:
+        print("\nInterrupted by user — partial results above.")
+        return 130
     return 0 if stats.failed == 0 else 1

@@ -107,18 +107,42 @@ def _start_llama_server(gguf_path: str, mmproj_path: str):
         "--threads", "8",
         "--log-disable",
     ]
-    proc = subprocess.Popen(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    # start_new_session detaches the server from the terminal's process group so
+    # Ctrl-C doesn't kill it out from under the workers; we stop it explicitly.
+    proc = subprocess.Popen(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                            start_new_session=True)
     url = f"http://127.0.0.1:{port}/health"
-    for _ in range(240):
-        time.sleep(0.5)
-        try:
-            with urllib.request.urlopen(url, timeout=1) as r:
-                if r.status == 200:
-                    return port, proc
-        except Exception:
-            pass
+    try:
+        for _ in range(240):
+            time.sleep(0.5)
+            try:
+                with urllib.request.urlopen(url, timeout=1) as r:
+                    if r.status == 200:
+                        return port, proc
+            except Exception:
+                pass
+    except BaseException:
+        # Interrupted during startup — the detached server won't get the
+        # terminal's SIGINT, so kill it before propagating.
+        proc.kill()
+        raise
     proc.terminate()
     raise RuntimeError("llama-server failed to start within 120s")
+
+
+def _stop_llama_server(proc, timeout: float = 5.0):
+    """Terminate a llama-server subprocess, escalating to SIGKILL if needed."""
+    if proc is None:
+        return
+    try:
+        proc.terminate()
+        proc.wait(timeout=timeout)
+    except Exception:
+        try:
+            proc.kill()
+            proc.wait(timeout=timeout)
+        except Exception:
+            pass
 
 
 @dataclass
