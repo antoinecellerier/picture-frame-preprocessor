@@ -899,10 +899,10 @@ class OptimizedEnsembleDetector:
 
             model_id = self._dino_model_id
             try:
-                self._dino_processor = AutoProcessor.from_pretrained(model_id, local_files_only=True, use_fast=True)
+                self._dino_processor = AutoProcessor.from_pretrained(model_id, local_files_only=True, backend="torchvision")
                 self._grounding_dino = AutoModelForZeroShotObjectDetection.from_pretrained(model_id, local_files_only=True)
             except OSError:
-                self._dino_processor = AutoProcessor.from_pretrained(model_id, use_fast=True)
+                self._dino_processor = AutoProcessor.from_pretrained(model_id, backend="torchvision")
                 self._grounding_dino = AutoModelForZeroShotObjectDetection.from_pretrained(model_id)
             self._grounding_dino = self._grounding_dino.to("cpu")
             self._grounding_dino.eval()

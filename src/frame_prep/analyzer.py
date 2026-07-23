@@ -27,8 +27,16 @@ class TextDetector:
         if self._reader is not None:
             return True
         try:
+            import warnings
             import easyocr
             import torch
+            # EasyOCR internals trip two torch deprecation/UserWarnings on CPU:
+            # quantized-tensor creation in its LSTM recognizer, and pin_memory=True
+            # in its DataLoader with no accelerator. Neither is fixable from here.
+            warnings.filterwarnings(
+                "ignore", message=r".*quantize_per_tensor.*", category=UserWarning)
+            warnings.filterwarnings(
+                "ignore", message=r".*pin_memory.*no accelerator.*", category=UserWarning)
             self._reader = easyocr.Reader(['en', 'fr'], gpu=False, verbose=False)
             # torch.compile gives ~2x speedup on CPU
             if hasattr(self._reader, 'detector'):
