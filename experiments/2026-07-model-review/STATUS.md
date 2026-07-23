@@ -16,6 +16,20 @@ Master plan: see "Evaluate new detection-quality and speed options (July 2026 re
 
 CPU budget: always-on ≤ ~5s/image; fallback-tier (VLM-style, ~24/122 images, cached) ≤ ~60s/image; >120s/image → not viable in any role.
 
+**Power & thermal state control all timing comparisons** (Antoine, 2026-07-23): this machine performs very differently on battery vs AC and across power profiles, and the i7-1270P (28W laptop part) thermal-throttles under sustained load. Accuracy results (IoU) are unaffected; every latency claim needs these controls:
+
+1. **Capture power state + CPU temp into the log before any timed run** (no `powerprofilesctl` here — sysfs only):
+   ```
+   cat /sys/class/power_supply/AC/online /sys/devices/system/cpu/cpu0/cpufreq/scaling_governor /sys/firmware/acpi/platform_profile
+   paste <(cat /sys/class/thermal/thermal_zone*/type) <(cat /sys/class/thermal/thermal_zone*/temp) | grep x86_pkg_temp
+   ```
+   Canonical condition = AC (`1`) + `performance` governor + `performance` profile.
+2. **Check nothing heavy is already running** — `pgrep -af 'frame-prep|llama-server|evaluate_'` — Antoine's own batch jobs use this machine too (seen 2026-07-23: a `frame-prep batch` + llama-server run pegging the package at 98°C). Never launch a timed run, and never trust a timing, while another heavy job is active.
+3. **Cooldown before timed benchmarks**: wait for package temp < ~65°C before starting. A benchmark launched on a hot chip starts pre-throttled.
+4. **Compare steady-state, not warm-up**: for long runs, use per-image *medians* excluding the first ~10 images — the chip settles into its throttled sustained clock a few minutes in, and early images run faster than the rest.
+5. **Interleave short A/B benchmarks** (e.g. D3 llama.cpp old-vs-new binary): alternate A/B/A/B on the same images rather than all-A-then-all-B, so both sides share the same thermal trajectory.
+6. Timings from mismatched conditions are NOT comparable — rerun rather than caveat.
+
 ## Results table
 
 | Date | Track | Config | IoU | Latency/img | Log | Decision |
@@ -28,11 +42,16 @@ CPU budget: always-on ≤ ~5s/image; fallback-tier (VLM-style, ~24/122 images, c
 - [x] `download_models.py --vlm --vlm-size 4b` support added (Q8_0 ~4.3GB + mmproj F16 ~836MB)
 - [x] Download 4B GGUFs (~5.1GB): **done 2026-07-23**, both files verified in `models/qwen3vl/` (Q8_0 4280MB + mmproj 836MB, `logs/trackA-4b-download-2026-07-23.log`)
 - [ ] Run eval (**needs confirmation, est. 30-60 min cache-cold**, survives session end):
+  Pre-flight: `pgrep -af 'frame-prep|llama-server|evaluate_'` must be empty; package temp < ~65°C; AC + performance profile. Then:
   ```
-  cd ~/stuff/picture-frame-preprocessor && nohup venv/bin/python scripts/evaluate_art_class_accuracy.py --vlm \
+  cd ~/stuff/picture-frame-preprocessor && LOG=experiments/2026-07-model-review/logs/trackA-4b-$(date +%F).log && \
+  { echo "power state (AC/governor/profile):"; cat /sys/class/power_supply/AC/online \
+      /sys/devices/system/cpu/cpu0/cpufreq/scaling_governor /sys/firmware/acpi/platform_profile; \
+    paste <(cat /sys/class/thermal/thermal_zone*/type) <(cat /sys/class/thermal/thermal_zone*/temp) | grep x86_pkg_temp; } > "$LOG" && \
+  nohup venv/bin/python scripts/evaluate_art_class_accuracy.py --vlm \
     --vlm-gguf models/qwen3vl/Qwen3VL-4B-Instruct-Q8_0.gguf \
     --vlm-mmproj models/qwen3vl/mmproj-Qwen3VL-4B-Instruct-F16.gguf \
-    > experiments/2026-07-model-review/logs/trackA-4b-$(date +%F).log 2>&1 &
+    >> "$LOG" 2>&1 &
   ```
 - [ ] Compare vs baseline: overall + per-class + the 6 misses (20200525, 20210910_203723, DSC_4162, DSC_4291, 2 text-filtered). Record per-image VLM latency from log.
 - [ ] Decision: adopt only if net-positive IoU AND ≤ ~60s/image. Document either way in `memory/model-evaluations.md`.
@@ -59,8 +78,8 @@ Roles on the table: fallback-tier (like VLM) or crop-refinement on primary bbox 
 
 - [ ] D1: Grounding DINO → OpenVINO (biggest expected win; DINO tiny is the slowest ensemble stage). Follow upstream `demo/export_openvino.py` / OpenVINO blog recipe. Acceptance: same 116/122 **hit set** + measured speedup. Wire into existing `use_openvino` path in `detector.py`
 - [ ] D2: YOLO-World OpenVINO re-check (`export_to_openvino.py:92` skips world models — retry with current ultralytics). Same hit-set-parity acceptance
-- [ ] D3: llama.cpp rebuild (`~/stuff/llama.cpp/`, pull master + rebuild) — benchmark VLM s/image before/after on ~5 images with cache bypassed
-- [ ] Benchmark methodology: time full 122-image eval from tee'd logs, report per-stage means
+- [ ] D3: llama.cpp rebuild (`~/stuff/llama.cpp/`, pull master + rebuild — keep the old binary aside for A/B) — benchmark VLM s/image on ~5 images with cache bypassed, **interleaved A/B/A/B per the thermal protocol**
+- [ ] Benchmark methodology: time full 122-image eval from tee'd logs; report per-stage **medians excluding warm-up** (thermal protocol above); identical power/thermal conditions across compared runs
 
 ## Session log
 
